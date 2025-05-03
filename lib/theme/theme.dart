@@ -96,4 +96,10 @@ class AppTheme {
   static const double gridCrossAxisSpacing = 0.50;
   static const double gridMainAxisSpacing = 5.0;
   static const double gridChildAspectRatio = 3 / 3.5;
+
+  // Recipe Card
+  static const double recipeCardBorderRadius = 12.0;
+
+  // Resep Anda Page
+  static const double mostViewedContainerPadding = 16.0;
 }

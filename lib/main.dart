@@ -44,7 +44,7 @@ import 'view/profile/Pengaturan/pusat_bantuan.dart';
 
 // Recipe
 import 'view/recipe/resep_detail_page.dart';
-import 'view/recipe/MyRecipePage.dart';
+import 'view/recipe/resep_anda_page.dart';
 
 // Menu (utamanya jika halaman utama ada di file ini)
 import 'menu.dart';
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF206153)),
         useMaterial3: true,
       ),
-      initialRoute: '/hasil-pencarian',
+      initialRoute: '/resep-anda',
       routes: {
         // Onboarding & Auth
         '/': (context) => const HomeScreen(),
@@ -111,7 +111,7 @@ class MyApp extends StatelessWidget {
         '/tambah-resep': (context) => const AppWithNavbar(BuatResep()),
         '/edit-resep': (context) => const AppWithNavbar(EditResep()),
         '/detail-resep': (context) => const AppWithNavbar(RecipeDetailPage()),
-        '/recipe': (context) => const AppWithNavbar(ResepAndaPage()),
+        '/resep-anda': (context) => const AppWithNavbar(ResepAndaPage()),
 
         // Default route
         '/resep-schedule': (context) => const AppWithNavbar(PenjadwalanPage()),

@@ -386,7 +386,7 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.only(left: 30, right: 20, top: 16, bottom: 16),  // Changed left padding to 30
             child: GestureDetector(
               onTap: () {
-              Navigator.pushNamed(context, '/recipe');
+              Navigator.pushNamed(context, '/resep-anda');
               },
               child: Text(
               recipesText,
