@@ -78,7 +78,6 @@ flutter:
     - images/telur_balado.png
     - images/seafood.png
     - images/pasta.png
-    - images/pasta.png
     - images/daging.png
     - images/burger.png
     - images/pizza.png
@@ -124,7 +123,6 @@ flutter:
     - images/oatmeal_stroberi.png
     - images/send_button.png
     - images/share_button.png
-    - images/star.png
     - images/star_hijau.png
     - images/telur_dadar.png
     - images/search_button.png
@@ -181,14 +179,12 @@ flutter:
     - images/xyfebrian.png
     - images/ayulestari.png
 
-    - images/pina_colada.jpg
     - images/skewers.png
     - images/pasta.jpg
     - images/pancakes.jpg
     - images/search.png
     - images/tambah.png
     - images/notif.png
-    - images/arrow.png
 
     - images/croffle.png
     - images/croffle-1.png
@@ -206,36 +202,12 @@ flutter:
     - images/pizza_telur.png
     - images/oatmeal_telur.png
     - images/telur_roti_panggang.png
+    - images/french_toast.jpg
 
     - images/andre.png
     - images/cecep.png
     - images/miya.png
     - images/mila.png
-
-    
-
-
-    
-
-
-
-    
-
-
-
-    
-
-
-    
-
-
-
-
-
-
-    
-
-
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

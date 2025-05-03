@@ -6,12 +6,17 @@ import '../../theme/theme.dart';
 
 class KomunitasPage extends StatefulWidget {
   const KomunitasPage({Key? key}) : super(key: key);
-
   @override
   State<KomunitasPage> createState() => _KomunitasPageState();
 }
 
 class _KomunitasPageState extends State<KomunitasPage> {
+  // Define tab options
+  final List<String> _tabs = ['Trending', 'Terbaru', 'Terlama'];
+
+  // Track the currently selected tab
+  int _selectedTabIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     // Using BottomNavbar widget the same way as CategoryPage does
@@ -53,34 +58,51 @@ class _KomunitasPageState extends State<KomunitasPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,  // Center the tabs horizontally
           mainAxisSize: MainAxisSize.min,  // Make the Row take only needed space
-          children: [
-            _buildTab('Trending', isSelected: true),
-            const SizedBox(width: 16),
-            _buildTab('Terbaru', isSelected: false),
-            const SizedBox(width: 16),
-            _buildTab('Terlama', isSelected: false),
-          ],
+          children: List.generate(_tabs.length, (index) {
+            return Row(
+              children: [
+                _buildTab(_tabs[index],
+                    isSelected: _selectedTabIndex == index,
+                    onTap: () => _onTabSelected(index)
+                ),
+                // Add spacing between tabs, except after the last tab
+                if (index < _tabs.length - 1) const SizedBox(width: 16),
+              ],
+            );
+          }),
         ),
       ),
     );
   }
 
-  Widget _buildTab(String text, {required bool isSelected}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF035E53) : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF035E53),
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          fontSize: 14,
+  // Build individual tab with tap functionality
+  Widget _buildTab(String text, {required bool isSelected, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF035E53) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF035E53),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
+          ),
         ),
       ),
     );
+  }
+
+  // Handler for tab selection
+  void _onTabSelected(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+    });
+    // Here you can also add logic to load different content based on the selected tab
   }
 
   // Recipe list

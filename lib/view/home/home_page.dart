@@ -1,20 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:masak2/view/home/popup_search.dart';
 
-class HomePage extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:masak2/view/home/popup_search.dart';
+
+class HomePage extends StatefulWidget {  // Changed from StatelessWidget to StatefulWidget
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // Track the currently selected filter tab
+  int _selectedFilterIndex = 0;
+
+  // List of meal types for the filter tabs
+  final List<String> mealTypes = [
+    'Sarapan',
+    'Makan Siang',
+    'Makan Malam',
+    'Vegan',
+    'Dessert',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-
-        
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-
             children: [
               _buildTopSection(context),
               _buildFilterTabs(),
@@ -24,7 +41,7 @@ class HomePage extends StatelessWidget {
                 'Resep Anda   >',
                 Colors.white,
                 Color(0xFF035E53),
-              ), // Menggunakan latar belakang hijau
+              ),
               _buildTopUsers(context),
               _buildRecentlyAddedRecipe(
                 context,
@@ -43,7 +60,7 @@ class HomePage extends StatelessWidget {
   // Top greeting and icons section
   Widget _buildTopSection(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 16, 20, 10),  // Changed left padding to 30
+      padding: const EdgeInsets.fromLTRB(30, 16, 20, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -65,99 +82,96 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/notif');
-                  },
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: AssetImage('images/notif.png'),
-                        fit: BoxFit.cover,
-                      ),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, '/notif');
+                },
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage('images/notif.png'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/penjadwalan');
-                  },
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: AssetImage('images/calendar.png'),
-                        fit: BoxFit.cover,
-                      ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, '/penjadwalan');
+                },
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage('images/calendar.png'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    // Call the function to show the bottom sheet
-                    showRecipeRecommendationsTopSheet(context);
-                  },
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: AssetImage('images/search.png'),
-                        fit: BoxFit.cover,
-                      ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  // Call the function to show the bottom sheet
+                  showRecipeRecommendationsTopSheet(context);
+                },
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage('images/search.png'),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
-              ],
-            ),
-
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  // Filter tabs for meal types
+  // Interactive filter tabs for meal types
   Widget _buildFilterTabs() {
-    final List<String> mealTypes = [
-      'Sarapan',
-      'Makan Siang',
-      'Makan Malam',
-      'Vegan',
-      'Dessert',
-    ];
-
     return Container(
       height: 25,
       margin: const EdgeInsets.symmetric(vertical: 16),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.only(left: 30, right: 16),  // Changed left padding to 30
+        padding: const EdgeInsets.only(left: 30, right: 16),
         itemCount: mealTypes.length,
         itemBuilder: (context, index) {
-          final bool isSelected = index == 0;
+          final bool isSelected = index == _selectedFilterIndex;
           return Container(
             margin: const EdgeInsets.only(right: 12),
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                // Update selected filter index when tapped
+                setState(() {
+                  _selectedFilterIndex = index;
+                });
+
+                // You can add logic here to filter content based on selected tab
+                print('Selected filter: ${mealTypes[index]}');
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isSelected
-                        ? const Color(0xFF035E53)
-                        : const Color(0xFFFFF4FC),
-                foregroundColor:
-                    isSelected
-                        ? const Color(0xFFFFF4FC)
-                        : const Color(0xFF035E53),
+                backgroundColor: isSelected
+                    ? const Color(0xFF035E53)
+                    : const Color(0xFFFFF4FC),
+                foregroundColor: isSelected
+                    ? const Color(0xFFFFF4FC)
+                    : const Color(0xFF035E53),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
