@@ -1,86 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../view/component/header_b_n_s.dart'; // Import CustomHeader
+import '../../view/component/bottom_navbar.dart'; // Import BottomNavbar
+import '../../theme/theme.dart';
 
-class KomunitasPage extends StatelessWidget {
+class KomunitasPage extends StatefulWidget {
   const KomunitasPage({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    // Set status bar menjadi visible dengan transparansi
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+  State<KomunitasPage> createState() => _KomunitasPageState();
+}
 
+class _KomunitasPageState extends State<KomunitasPage> {
+  @override
+  Widget build(BuildContext context) {
+    // Using BottomNavbar widget the same way as CategoryPage does
+    return BottomNavbar(
+      _buildMainContent(),
+    );
+  }
+
+  // Widget that contains the main content of KomunitasPage
+  Widget _buildMainContent() {
     return Scaffold(
-      // Memungkinkan body mengisi area di belakang status bar
-      extendBodyBehindAppBar: true,
+      extendBody: true, // Let body extend behind the navigation bar
+      backgroundColor: Colors.white,
       body: SafeArea(
+        bottom: false, // Content can extend below safe area
         child: Column(
           children: [
-            _buildHeader(),
+            // Using CustomHeader component
+            CustomHeader(
+              title: 'Komunitas',
+              titleColor: Color(0xFF035E53),
+              // No need to provide callback as handler is already in CustomHeader
+            ),
             _buildTabBar(),
             Expanded(
               child: _buildRecipeList(),
             ),
           ],
         ),
-      ),
-      // bottomNavigationBar: _buildBottomNavBar(),
-    );
-  }
-
-  // Sisa kode sama seperti sebelumnya
-  // Header with title and action buttons
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: Image.asset(
-            'images/arrow.png',
-            height: 24,
-            width: 24,
-          ),
-            onPressed: () {},
-          ),
-          const Expanded(
-            child: Text(
-              'Komunitas',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF035E53),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF035E53),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            margin: const EdgeInsets.only(right: 8),
-            child: Image.asset(
-              'images/notif.png',
-              height: 28,
-              width: 28,
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF035E53),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            margin: const EdgeInsets.only(right: 8),
-            child: Image.asset(
-              'images/search.png',
-              height: 28,
-              width: 28,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -160,7 +120,7 @@ class KomunitasPage extends StatelessWidget {
     ];
 
     return ListView.builder(
-      padding: const EdgeInsets.all(0),
+      padding: const EdgeInsets.only(bottom: 90), // Mengubah padding untuk memberikan ruang di bawah agar tidak tertutup oleh navbar
       itemCount: recipes.length,
       itemBuilder: (context, index) {
         final recipe = recipes[index];
@@ -257,14 +217,11 @@ class KomunitasPage extends StatelessWidget {
                 right: 10,
                 child: Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.favorite_border,
-                    color: Color(0xFF035E53),
-                    size: 18,
+
+                  child: Image.asset(
+                      'images/love.png',
+                      width: 30,
+                      height: 30
                   ),
                 ),
               ),
@@ -359,52 +316,6 @@ class KomunitasPage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // Bottom Navigation Bar
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF035E53),
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: 'Recipes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
-        currentIndex: 1, // Community tab selected
-        onTap: (index) {},
       ),
     );
   }

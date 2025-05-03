@@ -1,50 +1,34 @@
 import 'package:flutter/material.dart';
+import '../../theme/theme.dart';
+import '../../view/component/header_back.dart'; // Import the HeaderWidget
+import '../../view/component/bottom_navbar.dart'; // Import BottomNavbar
 
 class ReviewPage extends StatelessWidget {
   const ReviewPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F7),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _buildReviewsList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Header with title and back button
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        children: [
-          Image.asset(
-            'images/arrow.png',
-            width: 24,
-            height: 24,
-            color: const Color(0xFF035E53),
-          ),
-          const Expanded(
-            child: Text(
-              'Ulasan & Diskusi',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF035E53),
+    // Wrap with BottomNavbar
+    return BottomNavbar(
+      Scaffold(
+        backgroundColor: const Color(0xFFF5F7F7),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Using the HeaderWidget component instead of custom header
+              HeaderWidget(
+                title: 'Ulasan & Diskusi',
+                onBackPressed: () {
+                  Navigator.pop(context);
+                },
+                // No need for rightWidget as it's optional
               ),
-              textAlign: TextAlign.center,
-            ),
+              Expanded(
+                child: _buildReviewsList(),
+              ),
+            ],
           ),
-          const SizedBox(width: 24), // Balancing the back button
-        ],
+        ),
       ),
     );
   }
@@ -52,7 +36,7 @@ class ReviewPage extends StatelessWidget {
   // Reviews list
   Widget _buildReviewsList() {
     return ListView(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.only(bottom: 90), // Add bottom padding to prevent content from being hidden by navbar
       children: [
         // Recipe Card
         _buildRecipeCard(),
@@ -190,8 +174,6 @@ class ReviewPage extends StatelessWidget {
       ),
     );
   }
-
-
 
   // Individual review card
   Widget _buildReviewCard({
@@ -334,12 +316,8 @@ class ReviewPage extends StatelessWidget {
               ),
             ),
           )
-
-
         ],
       ),
     );
   }
-
-
 }

@@ -134,7 +134,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
   // Grid view for food items - now using the FoodCard widget
   Widget _buildFoodGridView() {
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 20),
+      padding: const EdgeInsets.fromLTRB(2, 20, 2, 110), // Menambahkan padding bottom 90px agar konten tidak tertutup oleh navbar
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 0.50,
