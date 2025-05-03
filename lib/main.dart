@@ -79,200 +79,57 @@ class MyApp extends StatelessWidget {
         '/forgot-password': (context) => const ForgotPasswordScreen(),
 
         // Kategori
-        '/kategori': (context) => const AppWithNavbar(CategoryPage()),
-        '/sub-category': (context) => const AppWithNavbar(SubCategoryPage()),
+        '/kategori': (context) => const SimplePageWrapper(CategoryPage()),
+        '/sub-category': (context) => const SimplePageWrapper(SubCategoryPage()),
 
         // Komunitas
-        '/komunitas': (context) => const AppWithNavbar(KomunitasPage()),
-        '/review': (context) => const AppWithNavbar(ReviewPage()),
+        '/komunitas': (context) => const SimplePageWrapper(KomunitasPage()),
+        '/review': (context) => const SimplePageWrapper(ReviewPage()),
 
         // Home & Fitur
-        '/beranda': (context) => const AppWithNavbar(HomePage()),
-        '/notif': (context) =>  AppWithNavbar(NotificationPage()),
-        '/penjadwalan': (context) => const AppWithNavbar(PenjadwalanPage()),
-        '/search': (context) => const AppWithNavbar(SearchPopup()),
-        '/filter': (context) => const AppWithNavbar(FilterPopup()),
-        '/pengguna-terbaik': (context) => const AppWithNavbar(PenggunaTerbaik()),
-        '/trending-resep': (context) => const AppWithNavbar(TrandingResep()),
-        '/hasil-pencarian': (context) => const AppWithNavbar(HasilPencaharian()),
+        '/beranda': (context) => const SimplePageWrapper(HomePage()),
+        '/notif': (context) => SimplePageWrapper(NotificationPage()),
+        '/penjadwalan': (context) => const SimplePageWrapper(PenjadwalanPage()),
+        '/search': (context) => const SimplePageWrapper(SearchPopup()),
+        '/filter': (context) => const SimplePageWrapper(FilterPopup()),
+        '/pengguna-terbaik': (context) => const SimplePageWrapper(PenggunaTerbaik()),
+        '/trending-resep': (context) => const SimplePageWrapper(TrandingResep()),
+        '/hasil-pencarian': (context) => const SimplePageWrapper(HasilPencaharian()),
 
         // Profil
-        '/profil-utama': (context) => const AppWithNavbar(ProfilUtama()),
-        '/bagikan-profil': (context) => const AppWithNavbar(BagikanProfil()),
-        '/edit-profil': (context) => const AppWithNavbar(EditProfil()),
-        '/mengikuti-pengikut': (context) => const AppWithNavbar(MengikutiPengikut()),
-        '/makanan-favorit': (context) => const AppWithNavbar(MakananFavorit()),
+        '/profil-utama': (context) => const SimplePageWrapper(ProfilUtama()),
+        '/bagikan-profil': (context) => const SimplePageWrapper(BagikanProfil()),
+        '/edit-profil': (context) => const SimplePageWrapper(EditProfil()),
+        '/mengikuti-pengikut': (context) => const SimplePageWrapper(MengikutiPengikut()),
+        '/makanan-favorit': (context) => const SimplePageWrapper(MakananFavorit()),
 
         // Pengaturan
-        '/pengaturan-utama': (context) => const AppWithNavbar(PengaturanUtama()),
-        '/pusat-bantuan': (context) => const AppWithNavbar(PusatBantuan()),
+        '/pengaturan-utama': (context) => const SimplePageWrapper(PengaturanUtama()),
+        '/pusat-bantuan': (context) => const SimplePageWrapper(PusatBantuan()),
 
         // Resep
-        '/tambah-resep': (context) => const AppWithNavbar(BuatResep()),
-        '/edit-resep': (context) => const AppWithNavbar(EditResep()),
-        '/detail-resep': (context) => const AppWithNavbar(RecipeDetailPage()),
-        '/recipe': (context) => const AppWithNavbar(ResepAndaPage()),
+        '/tambah-resep': (context) => const SimplePageWrapper(BuatResep()),
+        '/edit-resep': (context) => const SimplePageWrapper(EditResep()),
+        '/detail-resep': (context) => const SimplePageWrapper(RecipeDetailPage()),
+        '/recipe': (context) => const SimplePageWrapper(ResepAndaPage()),
 
         // Default route
-        '/resep-schedule': (context) => const AppWithNavbar(PenjadwalanPage()),
+        '/resep-schedule': (context) => const SimplePageWrapper(PenjadwalanPage()),
       },
-      
     );
   }
-  
 }
 
-
-
-class AppWithNavbar extends StatefulWidget {
+// Simple wrapper to display pages without the bottom navigation bar
+class SimplePageWrapper extends StatelessWidget {
   final Widget child;
-  const AppWithNavbar(this.child, {super.key});
-
-  @override
-  AppWithNavbarState createState() => AppWithNavbarState();
-}
-
-class AppWithNavbarState extends State<AppWithNavbar> {
-  // Map each navigation item to its corresponding route
-  final Map<int, String> _navRoutes = {
-    0: '/beranda',           // Home
-    1: '/komunitas',         // Community/Chat
-    2: '/kategori',          // Categories/Layers
-    3: '/profil-utama',      // Profile
-  };
-
-  int getSelectedIndex() {
-    String? currentRoute = ModalRoute.of(context)?.settings.name;
-    
-    // Check which navigation section the current route belongs to
-    if (currentRoute != null) {
-      // Home section routes
-      if (currentRoute == '/beranda' || 
-          currentRoute == '/notif' || 
-          currentRoute == '/pengguna-terbaik' ||
-          currentRoute == '/trending-resep' ||
-          currentRoute == '/hasil-pencarian') {
-        return 0;
-      }
-      
-      // Community section routes
-      else if (currentRoute == '/komunitas' || 
-               currentRoute == '/review') {
-        return 1;
-      }
-      
-      // Categories section routes
-      else if (currentRoute == '/kategori' || 
-               currentRoute == '/sub-category' ||
-               currentRoute == '/detail-resep' ||
-               currentRoute == '/penjadwalan' ||
-               currentRoute == '/recipe') {
-        return 2;
-      }
-      
-      // Profile section routes
-      else if (currentRoute == '/profil-utama' || 
-               currentRoute == '/edit-profil' ||
-               currentRoute == '/bagikan-profil' ||
-               currentRoute == '/mengikuti-pengikut' ||
-               currentRoute == '/makanan-favorit' ||
-               currentRoute == '/tambah-resep' ||
-               currentRoute == '/edit-resep' ||
-               currentRoute == '/pengaturan-utama' ||
-               currentRoute == '/pengaturan-notifikasi' ||
-               currentRoute == '/pusat-bantuan') {
-        return 3;
-      }
-    }
-    
-    return 0; // Default to home if route not found
-  }
-
-  void _onItemTapped(int index) {
-    String targetRoute = _navRoutes[index] ?? '/beranda';
-    
-    // Only navigate if we're not already on a page in this section
-    if (getSelectedIndex() != index) {
-      Navigator.pushReplacementNamed(context, targetRoute);
-    }
-  }
+  const SimplePageWrapper(this.child, {Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    int selectedIndex = getSelectedIndex();
-
     return Scaffold(
-      extendBody: true,
       backgroundColor: Colors.white,
-      body: widget.child,
-      bottomNavigationBar: Container(
-        height: 90,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Color(0xFF7ECBCD),    // Solid color at bottom
-              Color(0x807ECBCD),    // Semi-transparent in middle
-              Color(0x007ECBCD),    // Fully transparent at top
-            ],
-            stops: [0.0, 0.5, 1.0], 
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-          child: Container(
-            height: 50,
-            margin: const EdgeInsets.symmetric(horizontal: 40),
-            decoration: BoxDecoration(
-              color: const Color(0xFF006257),  // Dark teal color
-              borderRadius: BorderRadius.circular(35),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildNavItem(0, Icons.home_outlined, selectedIndex),
-                _buildNavItem(1, Icons.chat_bubble_outline, selectedIndex),
-                _buildNavItem(2, Icons.layers_outlined, selectedIndex),
-                _buildNavItem(3, Icons.person_outline, selectedIndex),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, int selectedIndex) {
-    bool isSelected = selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 50,
-            height: 40,
-            alignment: Alignment.center,
-            child: Icon(
-              icon, 
-              size: 28, 
-              color: Colors.white
-            ),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            height: 3,
-            width: isSelected ? 24 : 0,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-        ],
-      ),
+      body: child,
     );
   }
 }
