@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:masak2/view/home/popup_search.dart';
 import 'package:masak2/view/component/trending_recipe_card.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
-import 'package:masak2/view/component/category_tab.dart'; // Import the CategoryTabBar widget
+import 'package:masak2/view/component/category_tab.dart';
+import 'package:masak2/theme/theme.dart'; // Import the AppTheme
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,13 +27,13 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BottomNavbar(
       Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.backgroundColor,
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTopSection(context),
-              // Use the CategoryTabBar component here instead of side tabs
+              // Use the CategoryTabBar component
               CategoryTabBar(
                 categories: mealTypes,
                 selectedIndex: _selectedCategoryIndex,
@@ -41,7 +42,7 @@ class _HomePageState extends State<HomePage> {
                     _selectedCategoryIndex = index;
                   });
                 },
-                primaryColor: const Color(0xFF035E53),
+                primaryColor: AppTheme.primaryColor,
               ),
               // Main content area
               Expanded(
@@ -54,13 +55,13 @@ class _HomePageState extends State<HomePage> {
                         context,
                         'Resep Anda   >',
                         Colors.white,
-                        Color(0xFF035E53),
+                        AppTheme.primaryColor,
                       ),
                       _buildTopUsers(context),
                       _buildRecentlyAddedRecipe(
                         context,
                         'Baru Saja Ditambahkan',
-                        Color(0xFF035E53),
+                        AppTheme.primaryColor,
                         Colors.white,
                       ),
                       const SizedBox(height: 70), // Space for bottom navbar
@@ -78,23 +79,28 @@ class _HomePageState extends State<HomePage> {
   // Top greeting and icons section
   Widget _buildTopSection(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 20, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.spacingXLarge,
+        AppTheme.spacingXLarge,
+        AppTheme.spacingXXLarge,
+        AppTheme.spacingLarge,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 'Hi! Siti',
                 style: TextStyle(
-                  color: Color(0xFF035E53),
+                  color: AppTheme.primaryColor,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
+              SizedBox(height: AppTheme.spacingSmall),
+              const Text(
                 'Masak apa hari ini?',
                 style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
@@ -107,8 +113,8 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pushNamed(context, '/notif');
                 },
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: AppTheme.favoriteButtonSize,
+                  height: AppTheme.favoriteButtonSize,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
@@ -118,14 +124,14 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: AppTheme.spacingMedium),
               GestureDetector(
                 onTap: () {
                   Navigator.pushNamed(context, '/penjadwalan');
                 },
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: AppTheme.favoriteButtonSize,
+                  height: AppTheme.favoriteButtonSize,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
@@ -135,14 +141,14 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: AppTheme.spacingMedium),
               GestureDetector(
                 onTap: () {
                   showRecipeRecommendationsTopSheet(context);
                 },
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: AppTheme.favoriteButtonSize,
+                  height: AppTheme.favoriteButtonSize,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
@@ -159,23 +165,28 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Trending Recipe section - Using the new component
+  // Trending Recipe section - Using the component
   Widget _buildTrendingRecipe(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 16, right: 20, top: 8, bottom: 8),
+          padding: EdgeInsets.only(
+            left: AppTheme.spacingXLarge,
+            right: AppTheme.spacingXXLarge,
+            top: AppTheme.spacingMedium,
+            bottom: AppTheme.spacingMedium,
+          ),
           child: GestureDetector(
             onTap: () {
               Navigator.pushNamed(context, '/trending-resep');
             },
-            child: const Text(
+            child: Text(
               'Resep Trending   >',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF035E53),
+                color: AppTheme.primaryColor,
               ),
             ),
           ),
@@ -203,13 +214,18 @@ class _HomePageState extends State<HomePage> {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 16, right: 20, top: 16, bottom: 16),
+            padding: EdgeInsets.only(
+              left: AppTheme.spacingXLarge,
+              right: AppTheme.spacingXXLarge,
+              top: AppTheme.spacingXLarge,
+              bottom: AppTheme.spacingXLarge,
+            ),
             child: GestureDetector(
               onTap: () {
                 Navigator.pushNamed(context, '/resep-anda');
@@ -228,7 +244,10 @@ class _HomePageState extends State<HomePage> {
             height: 250,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 16, right: 16),
+              padding: EdgeInsets.only(
+                left: AppTheme.spacingXLarge,
+                right: AppTheme.spacingXLarge,
+              ),
               children: [
                 Center(
                   child: SizedBox(
@@ -241,7 +260,7 @@ class _HomePageState extends State<HomePage> {
                         'likes': 15,
                         'duration': '50menit',
                         'price': '50RB',
-                        'description': 'Gulai ayam dengan santan kental dan rempah'
+                        'description': 'Gulai ayam dengan santan kental'
                       },
                       borderColor: Colors.white,
                       nameColor: Colors.white,
@@ -271,7 +290,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.spacingXXLarge),
         ],
       ),
     );
@@ -289,7 +308,12 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 16, right: 20, top: 16, bottom: 16),
+            padding: EdgeInsets.only(
+              left: AppTheme.spacingXLarge,
+              right: AppTheme.spacingXXLarge,
+              top: AppTheme.spacingXLarge,
+              bottom: AppTheme.spacingXLarge,
+            ),
             child: Text(
               recipesText,
               style: TextStyle(
@@ -303,7 +327,10 @@ class _HomePageState extends State<HomePage> {
             height: 250,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 16, right: 16),
+              padding: EdgeInsets.only(
+                left: AppTheme.spacingXLarge,
+                right: AppTheme.spacingXLarge,
+              ),
               children: [
                 Center(
                   child: SizedBox(
@@ -318,9 +345,9 @@ class _HomePageState extends State<HomePage> {
                         'price': '40RB',
                         'description': 'Pasta dengan saus carbonara dan bacon'
                       },
-                      borderColor: const Color(0xFF035E53),
-                      nameColor: const Color(0xFF035E53),
-                      descriptionColor: const Color(0xFF035E53).withOpacity(0.7),
+                      borderColor: AppTheme.primaryColor,
+                      nameColor: AppTheme.primaryColor,
+                      descriptionColor: AppTheme.primaryColor.withOpacity(0.7),
                     ),
                   ),
                 ),
@@ -337,16 +364,16 @@ class _HomePageState extends State<HomePage> {
                         'price': '25RB',
                         'description': 'Minuman segar dengan lemon dan mint'
                       },
-                      borderColor: const Color(0xFF035E53),
-                      nameColor: const Color(0xFF035E53),
-                      descriptionColor: const Color(0xFF035E53).withOpacity(0.7),
+                      borderColor: AppTheme.primaryColor,
+                      nameColor: AppTheme.primaryColor,
+                      descriptionColor: AppTheme.primaryColor.withOpacity(0.7),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.spacingXXLarge),
         ],
       ),
     );
@@ -361,7 +388,7 @@ class _HomePageState extends State<HomePage> {
       }) {
     return IntrinsicHeight(
       child: Container(
-        margin: const EdgeInsets.only(right: 10, left: 10),
+        margin: AppTheme.marginFoodCard,
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,28 +396,28 @@ class _HomePageState extends State<HomePage> {
           children: [
             // Food image with position settings
             Container(
-              height: 160,
+              height: AppTheme.foodCardImageHeight,
               width: double.infinity,
               alignment: Alignment.topRight,
               child: Stack(
                 children: [
                   // Food image with rounded corners
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
                     child: Image.asset(
                       food['image'],
-                      height: 160,
+                      height: AppTheme.foodCardImageHeight,
                       width: double.infinity,
                       fit: BoxFit.cover,
                     ),
                   ),
                   // Favorite button (heart icon)
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: AppTheme.spacingMedium,
+                    right: AppTheme.spacingMedium,
                     child: Container(
-                      width: 30,
-                      height: 30,
+                      width: AppTheme.favoriteButtonSize,
+                      height: AppTheme.favoriteButtonSize,
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage('images/love.png'),
@@ -422,20 +449,25 @@ class _HomePageState extends State<HomePage> {
                       width: 2,
                     ),
                   ),
-                  borderRadius: const BorderRadius.only(
-                    bottomRight: Radius.circular(14),
-                    bottomLeft: Radius.circular(14),
+                  borderRadius: BorderRadius.only(
+                    bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
+                    bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 0),
-                margin: const EdgeInsets.symmetric(horizontal: 7),
+                margin: EdgeInsets.symmetric(horizontal: AppTheme.spacingLarge),
                 width: double.infinity,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Food Name and Description
                     Container(
-                      margin: const EdgeInsets.only(bottom: 4, left: 10, right: 10, top: 4),
+                      margin: EdgeInsets.only(
+                        bottom: AppTheme.spacingSmall,
+                        left: AppTheme.spacingLarge,
+                        right: AppTheme.spacingLarge,
+                        top: AppTheme.spacingSmall,
+                      ),
                       width: double.infinity,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,16 +476,16 @@ class _HomePageState extends State<HomePage> {
                             food['name'],
                             style: TextStyle(
                               color: nameColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontSize: AppTheme.foodTitleStyle.fontSize,
+                              fontWeight: AppTheme.foodTitleStyle.fontWeight,
                             ),
                           ),
-                          const SizedBox(height: 1),
+                          SizedBox(height: AppTheme.spacingXSmall),
                           Text(
                             food['description'],
                             style: TextStyle(
                               color: descriptionColor,
-                              fontSize: 10,
+                              fontSize: AppTheme.foodDescriptionStyle.fontSize,
                             ),
                           ),
                         ],
@@ -461,7 +493,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                     // Likes, Duration, Price
                     Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                      margin: EdgeInsets.symmetric(
+                        horizontal: AppTheme.spacingSmall,
+                        vertical: 0,
+                      ),
                       width: double.infinity,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -470,16 +505,16 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Text(
                                 food['likes'].toString(),
-                                style: const TextStyle(
-                                  color: Color(0xFF57B4BA),
-                                  fontSize: 10,
+                                style: TextStyle(
+                                  color: AppTheme.accentTeal,
+                                  fontSize: AppTheme.foodInfoStyle.fontSize,
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: AppTheme.spacingSmall),
                               Icon(
                                 Icons.star,
-                                color: Color(0xFF57B4BA),
-                                size: 12,
+                                color: AppTheme.accentTeal,
+                                size: AppTheme.iconSizeSmall,
                               ),
                             ],
                           ),
@@ -487,35 +522,35 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               Icon(
                                 Icons.access_time,
-                                color: Color(0xFF57B4BA),
-                                size: 12,
+                                color: AppTheme.accentTeal,
+                                size: AppTheme.iconSizeSmall,
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: AppTheme.spacingSmall),
                               Text(
                                 food['duration'],
-                                style: const TextStyle(
-                                  color: Color(0xFF57B4BA),
-                                  fontSize: 10,
+                                style: TextStyle(
+                                  color: AppTheme.accentTeal,
+                                  fontSize: AppTheme.foodInfoStyle.fontSize,
                                 ),
                               ),
                             ],
                           ),
                           Row(
                             children: [
-                              const Text(
+                              Text(
                                 "RP",
                                 style: TextStyle(
-                                  color: Color(0xFF57B4BA),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.accentTeal,
+                                  fontSize: AppTheme.foodPriceStyle.fontSize,
+                                  fontWeight: AppTheme.foodPriceStyle.fontWeight,
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: AppTheme.spacingSmall),
                               Text(
                                 food['price'],
-                                style: const TextStyle(
-                                  color: Color(0xFF57B4BA),
-                                  fontSize: 10,
+                                style: TextStyle(
+                                  color: AppTheme.accentTeal,
+                                  fontSize: AppTheme.foodInfoStyle.fontSize,
                                 ),
                               ),
                             ],
@@ -546,17 +581,22 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 16, right: 20, top: 16, bottom: 16),
+          padding: EdgeInsets.only(
+            left: AppTheme.spacingXLarge,
+            right: AppTheme.spacingXXLarge,
+            top: AppTheme.spacingXLarge,
+            bottom: AppTheme.spacingXLarge,
+          ),
           child: GestureDetector(
             onTap: () {
               Navigator.pushNamed(context, '/pengguna-terbaik');
             },
             child: Text(
               'Pengguna Terbaik   >',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF035E53),
+                color: AppTheme.primaryColor,
               ),
             ),
           ),
@@ -565,16 +605,19 @@ class _HomePageState extends State<HomePage> {
           height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(left: 16, right: 16),
+            padding: EdgeInsets.only(
+              left: AppTheme.spacingXLarge,
+              right: AppTheme.spacingXLarge,
+            ),
             itemCount: users.length,
             itemBuilder: (context, index) {
               return Container(
                 width: 80,
-                margin: const EdgeInsets.only(right: 16),
+                margin: EdgeInsets.only(right: AppTheme.spacingXLarge),
                 child: Column(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
                       child: Container(
                         width: 60,
                         height: 60,
@@ -590,7 +633,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: AppTheme.spacingMedium),
                     Text(
                       users[index]['name']!,
                       style: const TextStyle(

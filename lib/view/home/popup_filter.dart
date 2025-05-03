@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/theme.dart'; // Import your theme
 
 class FilterPopup extends StatefulWidget {
   const FilterPopup({Key? key}) : super(key: key);
@@ -29,18 +30,15 @@ class _FilterPopupDialogState extends State<FilterPopup> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Filter',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF035E53),
-                ),
+                style: AppTheme.headerStyle,
               ),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.close,
-                  color: Color(0xFF035E53),
+                  color: AppTheme.primaryColor,
+                  size: AppTheme.iconSizeLarge,
                 ),
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -48,7 +46,7 @@ class _FilterPopupDialogState extends State<FilterPopup> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppTheme.spacingXLarge),
 
           // Handle bar - visual indicator of top sheet
           Center(
@@ -57,97 +55,97 @@ class _FilterPopupDialogState extends State<FilterPopup> {
               height: 5,
               decoration: BoxDecoration(
                 color: Colors.grey.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: AppTheme.spacingXXLarge),
 
           // Allergen section
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.add_circle_outline,
-                color: Color(0xFF035E53),
-                size: 20,
+                color: AppTheme.primaryColor,
+                size: AppTheme.iconSizeMedium,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: AppTheme.spacingMedium),
+              Text(
                 'Tambah Alergen',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF000000),
+                  color: AppTheme.textBrown,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: AppTheme.spacingLarge),
 
           // Allergen tags
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppTheme.spacingMedium,
+            runSpacing: AppTheme.spacingMedium,
             children: [
               ..._selectedAllergens.map((allergen) => _buildAllergenChip(allergen)),
               _buildAddAllergenButton(),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.spacingXLarge),
 
           // Difficulty section
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.add_circle_outline,
-                color: Color(0xFF035E53),
-                size: 20,
+                color: AppTheme.primaryColor,
+                size: AppTheme.iconSizeMedium,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: AppTheme.spacingMedium),
+              Text(
                 'Kesulitan',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF000000),
+                  color: AppTheme.textBrown,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: AppTheme.spacingLarge),
 
           // Difficulty chips
           Row(
             children: [
               _buildDifficultyChip('Mudah'),
-              const SizedBox(width: 8),
+              SizedBox(width: AppTheme.spacingMedium),
               _buildDifficultyChip('Sedang'),
-              const SizedBox(width: 8),
+              SizedBox(width: AppTheme.spacingMedium),
               _buildDifficultyChip('Sulit'),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.spacingXLarge),
 
           // Price estimation section
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.add_circle_outline,
-                color: Color(0xFF035E53),
-                size: 20,
+                color: AppTheme.primaryColor,
+                size: AppTheme.iconSizeMedium,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: AppTheme.spacingMedium),
+              Text(
                 'Estimasi Harga',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF000000),
+                  color: AppTheme.textBrown,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: AppTheme.spacingLarge),
 
           // Price slider
           Row(
@@ -155,15 +153,15 @@ class _FilterPopupDialogState extends State<FilterPopup> {
               Container(
                 width: 5,
                 height: 24,
-                color: const Color(0xFF035E53),
+                color: AppTheme.primaryColor,
               ),
               Expanded(
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: const Color(0xFFb0dcdc),
-                    inactiveTrackColor: const Color(0xFFb0dcdc),
-                    thumbColor: const Color(0xFF035E53),
-                    overlayColor: const Color(0x29035E53),
+                    activeTrackColor: AppTheme.searchBarColor,
+                    inactiveTrackColor: AppTheme.searchBarColor,
+                    thumbColor: AppTheme.primaryColor,
+                    overlayColor: AppTheme.primaryColor.withOpacity(0.2),
                     trackHeight: 8.0,
                   ),
                   child: Slider(
@@ -178,38 +176,38 @@ class _FilterPopupDialogState extends State<FilterPopup> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: AppTheme.spacingMedium),
+              Text(
                 '10jt',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF000000),
+                  color: AppTheme.textBrown,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.spacingXLarge),
 
           // Time estimation section
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.add_circle_outline,
-                color: Color(0xFF035E53),
-                size: 20,
+                color: AppTheme.primaryColor,
+                size: AppTheme.iconSizeMedium,
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: AppTheme.spacingMedium),
+              Text(
                 'Estimasi Waktu',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF000000),
+                  color: AppTheme.textBrown,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: AppTheme.spacingLarge),
 
           // Time slider
           Row(
@@ -217,15 +215,15 @@ class _FilterPopupDialogState extends State<FilterPopup> {
               Container(
                 width: 5,
                 height: 24,
-                color: const Color(0xFF035E53),
+                color: AppTheme.primaryColor,
               ),
               Expanded(
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: const Color(0xFFb0dcdc),
-                    inactiveTrackColor: const Color(0xFFb0dcdc),
-                    thumbColor: const Color(0xFF035E53),
-                    overlayColor: const Color(0x29035E53),
+                    activeTrackColor: AppTheme.searchBarColor,
+                    inactiveTrackColor: AppTheme.searchBarColor,
+                    thumbColor: AppTheme.primaryColor,
+                    overlayColor: AppTheme.primaryColor.withOpacity(0.2),
                     trackHeight: 8.0,
                   ),
                   child: Slider(
@@ -240,17 +238,17 @@ class _FilterPopupDialogState extends State<FilterPopup> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              const Text(
+              SizedBox(width: AppTheme.spacingMedium),
+              Text(
                 '180Menit',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF000000),
+                  color: AppTheme.textBrown,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: AppTheme.spacingXXLarge),
 
           // Apply filter button
           Center(
@@ -260,12 +258,12 @@ class _FilterPopupDialogState extends State<FilterPopup> {
                 // You can return the filter values here
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFb0dcdc),
-                foregroundColor: const Color(0xFF035E53),
+                backgroundColor: AppTheme.searchBarColor,
+                foregroundColor: AppTheme.primaryColor,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
                 ),
               ),
               child: const Text(
@@ -279,7 +277,7 @@ class _FilterPopupDialogState extends State<FilterPopup> {
           ),
 
           // Add some bottom padding for better spacing
-          const SizedBox(height: 10),
+          SizedBox(height: AppTheme.spacingLarge),
         ],
       ),
     );
@@ -289,16 +287,16 @@ class _FilterPopupDialogState extends State<FilterPopup> {
   Widget _buildAllergenChip(String label) {
     return Chip(
       label: Text(label),
-      backgroundColor: const Color(0xFFb0dcdc),
-      labelStyle: const TextStyle(color: Color(0xFF035E53)),
-      deleteIconColor: const Color(0xFF035E53),
+      backgroundColor: AppTheme.searchBarColor,
+      labelStyle: TextStyle(color: AppTheme.primaryColor),
+      deleteIconColor: AppTheme.primaryColor,
       onDeleted: () {
         setState(() {
           _selectedAllergens.remove(label);
         });
       },
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
       ),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -308,18 +306,21 @@ class _FilterPopupDialogState extends State<FilterPopup> {
   // Helper method to build add allergen button
   Widget _buildAddAllergenButton() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFb0dcdc),
-        borderRadius: BorderRadius.circular(30),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingLarge,
+          vertical: AppTheme.spacingMedium
       ),
-      child: const Row(
+      decoration: BoxDecoration(
+        color: AppTheme.searchBarColor,
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Add +',
             style: TextStyle(
-              color: Color(0xFF035E53),
+              color: AppTheme.primaryColor,
               fontSize: 14,
             ),
           ),
@@ -335,10 +336,10 @@ class _FilterPopupDialogState extends State<FilterPopup> {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      backgroundColor: const Color(0xFFb0dcdc),
-      selectedColor: const Color(0xFF035E53),
+      backgroundColor: AppTheme.searchBarColor,
+      selectedColor: AppTheme.primaryColor,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : const Color(0xFF035E53),
+        color: isSelected ? Colors.white : AppTheme.primaryColor,
       ),
       onSelected: (bool selected) {
         if (selected) {
@@ -348,7 +349,7 @@ class _FilterPopupDialogState extends State<FilterPopup> {
         }
       },
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8),
     );
@@ -373,18 +374,18 @@ void showFilterDialog(BuildContext context) {
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height * 0.85,
             ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
               borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+                bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
+                bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
               ),
             ),
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 20,
-              left: 20,
-              right: 20,
-              bottom: 20,
+              top: MediaQuery.of(context).padding.top + AppTheme.spacingXXLarge,
+              left: AppTheme.spacingXXLarge,
+              right: AppTheme.spacingXXLarge,
+              bottom: AppTheme.spacingXXLarge,
             ),
             child: const SafeArea(
               bottom: false,
