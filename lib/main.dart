@@ -87,12 +87,12 @@ class MyApp extends StatelessWidget {
         '/review': (context) => const AppWithNavbar(ReviewPage()),
 
         // Home & Fitur
-        '/beranda': (context) => const AppWithNavbar(HomePage()),
+        '/beranda': (context) => const HomePage(),
         '/notif': (context) =>  AppWithNavbar(NotificationPage()),
         '/penjadwalan': (context) => const AppWithNavbar(PenjadwalanPage()),
         '/search': (context) => const AppWithNavbar(SearchPopup()),
         '/filter': (context) => const AppWithNavbar(FilterPopup()),
-        '/pengguna-terbaik': (context) => const AppWithNavbar(PenggunaTerbaik()),
+        '/pengguna-terbaik': (context) => const PenggunaTerbaik(),
         '/trending-resep': (context) => const AppWithNavbar(TrandingResep()),
         '/hasil-pencarian': (context) => const AppWithNavbar(HasilPencaharian()),
 
@@ -110,7 +110,7 @@ class MyApp extends StatelessWidget {
         // Resep
         '/tambah-resep': (context) => const AppWithNavbar(BuatResep()),
         '/edit-resep': (context) => const AppWithNavbar(EditResep()),
-        '/detail-resep': (context) => const AppWithNavbar(RecipeDetailPage()),
+        '/detail-resep': (context) => const RecipeDetailPage(),
         '/resep-anda': (context) => const AppWithNavbar(ResepAndaPage()),
 
         // Default route

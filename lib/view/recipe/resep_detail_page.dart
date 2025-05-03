@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:masak2/view/component/bottom_navbar.dart';
+import 'package:masak2/view/component/header_b_l_s.dart'; // Import the new header
+import '../../theme/theme.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   const RecipeDetailPage({super.key});
 
   @override
-  State<RecipeDetailPage> createState() => DetailRecipe();
+  State<RecipeDetailPage> createState() => _RecipeDetailPageState();
 }
 
-class DetailRecipe extends State<RecipeDetailPage> {
-  // Define app colors
-  final Color primaryColor = const Color(0xFF005A4D);
-  final Color accentTeal = const Color(0xFF57B4BA);
-  final Color lightTeal = const Color(0xFFB3E0DB);
-  final Color emeraldGreen = const Color(0xFF015551);
-  final Color backgroundColor = const Color(0xFFF5FFFD);
-  final Color textDarkColor = const Color(0xFF333333);
-
+class _RecipeDetailPageState extends State<RecipeDetailPage> {
   // Sample recipe data
   final Map<String, dynamic> recipe = {
     'name': 'Croffle Ice Cream',
@@ -28,7 +23,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
         'cokelat atau sirup maple, serta taburan gula halus. '
         'Sempurna untuk camilan manis yang menggugah selera!',
     'points': 'RP 20 RB',
-    'difficulty': null, // Setting to null as per requirement
+    'difficulty': null,
     'tools': [
       'Wajan',
       'Spatula',
@@ -57,43 +52,54 @@ class DetailRecipe extends State<RecipeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildRecipeImage(),
-                    _buildAuthorSection(),
-                    _buildDivider(),
-                    _buildDescriptionSection(),
-                    _buildScheduleButton(), // Memastikan tombol jadwalkan menu muncul
-                    _buildToolsSection(),
-                    _buildIngredientsSection(),
-                    _buildStepsSection(),
-                    _buildDivider(),
-                    _buildRatingSection(),
-                    _buildCommentInput(),
-                    _buildDivider(),
-                    _buildViewAllCommentsButton(),
-                    const SizedBox(height: 60), // Space for bottom navbar
-                  ],
+    return BottomNavbar(
+      Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              RecipeDetailHeader(
+                title: recipe['name'],
+                onBackPressed: () => Navigator.pop(context),
+                likes: recipe['likes'],
+                comments: recipe['comments'],
+                onLikePressed: () {
+                  // Handle like button press
+                },
+                onSharePressed: () {
+                  // Handle share button press
+                },
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildRecipeImage(),
+                      _buildAuthorSection(),
+                      _buildDivider(),
+                      _buildDescriptionSection(),
+                      _buildScheduleButton(),
+                      _buildToolsSection(),
+                      _buildIngredientsSection(),
+                      _buildStepsSection(),
+                      _buildDivider(),
+                      _buildRatingSection(),
+                      _buildCommentInput(),
+                      _buildDivider(),
+                      _buildViewAllCommentsButton(),
+                      const SizedBox(height: 60),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // _buildBottomNavigationBar(),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Menambahkan tombol Jadwalkan Menu
   Widget _buildScheduleButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
@@ -104,7 +110,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: primaryColor,
+            color: AppTheme.primaryColor,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -130,7 +136,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
     );
   }
 
-  // Fungsi untuk menampilkan dialog kalender
   void _showCalendarDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -140,7 +145,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
             'Jadwalkan Menu',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: primaryColor,
+              color: AppTheme.primaryColor,
             ),
           ),
           content: SizedBox(
@@ -159,7 +164,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('Batal', style: TextStyle(color: primaryColor)),
+              child: Text('Batal', style: TextStyle(color: AppTheme.primaryColor)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -167,7 +172,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                 _showSuccessDialog(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: AppTheme.primaryColor,
               ),
               child: const Text(
                 'Tambahkan',
@@ -180,7 +185,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
     );
   }
 
-  // Widget untuk membangun kalender
   Widget _buildCalendar() {
     return GridView.builder(
       shrinkWrap: true,
@@ -190,9 +194,8 @@ class DetailRecipe extends State<RecipeDetailPage> {
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
       ),
-      itemCount: 35, // 5 weeks
+      itemCount: 35,
       itemBuilder: (context, index) {
-        // Header for days of week
         if (index < 7) {
           final days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
           return Center(
@@ -200,18 +203,16 @@ class DetailRecipe extends State<RecipeDetailPage> {
               days[index],
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: primaryColor,
+                color: AppTheme.primaryColor,
               ),
             ),
           );
         }
 
-        // Calculate the day number
         int day = index - 7 + 1;
 
-        // Handle March days at the beginning (30, 31)
         if (day <= 0) {
-          day = 30 + day; // March has 31 days
+          day = 30 + day;
           return Center(
             child: Text(
               day.toString(),
@@ -220,7 +221,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
           );
         }
 
-        // Handle May days at the end
         if (day > 30) {
           day = day - 30;
           return Center(
@@ -241,7 +241,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? accentTeal : Colors.transparent,
+              color: isSelected ? AppTheme.accentTeal : Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -259,7 +259,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
     );
   }
 
-  // Dialog sukses setelah menu berhasil dijadwalkan
   void _showSuccessDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -313,7 +312,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Back button (updated to use arrow.png)
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
@@ -322,24 +320,20 @@ class DetailRecipe extends State<RecipeDetailPage> {
               padding: const EdgeInsets.all(3),
               child: Image.asset(
                 'images/arrow.png',
-                color: primaryColor,
+                color: AppTheme.primaryColor,
                 width: 24,
                 height: 24,
               ),
             ),
           ),
-
-          // Recipe title
           Text(
             recipe['name'],
             style: TextStyle(
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
               fontSize: 20,
             ),
           ),
-
-          // Action buttons
           Row(
             children: [
               Container(
@@ -359,7 +353,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
               Container(
                 width: 30,
                 height: 30,
-                
                 child: IconButton(
                   icon: Image.asset(
                     'images/share_button.png',
@@ -394,7 +387,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Image part
           ClipRRect(
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(12),
@@ -406,11 +398,10 @@ class DetailRecipe extends State<RecipeDetailPage> {
               fit: BoxFit.cover,
             ),
           ),
-          // Text info part
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(18),
                 bottomRight: Radius.circular(18),
@@ -485,7 +476,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                   Text(
                     recipe['author'],
                     style: TextStyle(
-                      color: primaryColor,
+                      color: AppTheme.primaryColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -493,7 +484,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                   Text(
                     recipe['authorName'],
                     style: TextStyle(
-                      color: textDarkColor,
+                      color: AppTheme.textBrown,
                       fontSize: 14,
                     ),
                   ),
@@ -503,9 +494,8 @@ class DetailRecipe extends State<RecipeDetailPage> {
           ),
           Row(
             children: [
-              // Tombol Mengikuti/Ikuti dengan lebar berbeda
               SizedBox(
-                width: isFollowing ? 120 : 100, // Lebar lebih besar untuk kedua status
+                width: isFollowing ? 120 : 100,
                 child: ElevatedButton(
                   onPressed: () {
                     setState(() {
@@ -513,8 +503,8 @@ class DetailRecipe extends State<RecipeDetailPage> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isFollowing ? lightTeal : primaryColor,
-                    foregroundColor: isFollowing ? primaryColor : Colors.white,
+                    backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
+                    foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -527,12 +517,9 @@ class DetailRecipe extends State<RecipeDetailPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              // Icon titik tiga (more options)
               IconButton(
-                icon: Icon(Icons.more_vert, color: primaryColor),
-                onPressed: () {
-                  // Tambahkan aksi ketika titik tiga diklik
-                },
+                icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
+                onPressed: () {},
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -548,7 +535,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
       child: Divider(
         thickness: 2,
-        color: primaryColor,
+        color: AppTheme.primaryColor,
       ),
     );
   }
@@ -565,14 +552,13 @@ class DetailRecipe extends State<RecipeDetailPage> {
               Text(
                 'Deskripsi',
                 style: TextStyle(
-                  color: primaryColor,
+                  color: AppTheme.primaryColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
               ),
               Row(
                 children: [
-                  // Points - RP 20RB
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -598,7 +584,6 @@ class DetailRecipe extends State<RecipeDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Time - 15 menit with alarm icon
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -608,7 +593,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                       children: [
                         Image.asset(
                           'images/alarm_hitam.png',
-                          color: primaryColor,
+                          color: AppTheme.primaryColor,
                           width: 14,
                           height: 14,
                         ),
@@ -616,7 +601,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                         Text(
                           '15 menit',
                           style: TextStyle(
-                            color: primaryColor,
+                            color: AppTheme.primaryColor,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -625,11 +610,10 @@ class DetailRecipe extends State<RecipeDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Difficulty - Mudah
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 4),
                     decoration: BoxDecoration(
-                      color: accentTeal,
+                      color: AppTheme.accentTeal,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
@@ -649,7 +633,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
           Text(
             recipe['description'],
             style: TextStyle(
-              color: textDarkColor,
+              color: AppTheme.textBrown,
               fontSize: 14,
               height: 1.5,
             ),
@@ -668,7 +652,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
           Text(
             'Alat-Alat',
             style: TextStyle(
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -684,13 +668,13 @@ class DetailRecipe extends State<RecipeDetailPage> {
                   Icon(
                     Icons.circle,
                     size: 8,
-                    color: primaryColor,
+                    color: AppTheme.primaryColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     tool,
                     style: TextStyle(
-                      color: textDarkColor,
+                      color: AppTheme.textBrown,
                       fontSize: 14,
                     ),
                   ),
@@ -713,7 +697,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
           Text(
             'Bahan-Bahan',
             style: TextStyle(
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -729,13 +713,13 @@ class DetailRecipe extends State<RecipeDetailPage> {
                   Icon(
                     Icons.circle,
                     size: 8,
-                    color: primaryColor,
+                    color: AppTheme.primaryColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     ingredient,
                     style: TextStyle(
-                      color: textDarkColor,
+                      color: AppTheme.textBrown,
                       fontSize: 14,
                     ),
                   ),
@@ -758,7 +742,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
           Text(
             '${recipe['steps'].length} Langkah Mudah',
             style: TextStyle(
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -771,7 +755,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: index % 2 == 0 ? primaryColor : lightTeal,
+                  color: index % 2 == 0 ? AppTheme.primaryColor : AppTheme.searchBarColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -782,13 +766,13 @@ class DetailRecipe extends State<RecipeDetailPage> {
                       height: 24,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: index % 2 == 0 ? lightTeal : primaryColor,
+                        color: index % 2 == 0 ? AppTheme.searchBarColor : AppTheme.primaryColor,
                       ),
                       child: Center(
                         child: Text(
                           '${index + 1}',
                           style: TextStyle(
-                            color: index % 2 == 0 ? primaryColor : Colors.white,
+                            color: index % 2 == 0 ? AppTheme.primaryColor : Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -800,7 +784,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                       child: Text(
                         recipe['steps'][index],
                         style: TextStyle(
-                          color: index % 2 == 0 ? Colors.white : primaryColor,
+                          color: index % 2 == 0 ? Colors.white : AppTheme.primaryColor,
                           fontSize: 14,
                           height: 1.5,
                         ),
@@ -825,7 +809,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
           Text(
             'Ulasan',
             style: TextStyle(
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
@@ -839,7 +823,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
                 padding: const EdgeInsets.only(right: 8),
                 child: Image.asset(
                   'images/star.png',
-                  color: primaryColor,
+                  color: AppTheme.primaryColor,
                   width: 32,
                   height: 32,
                 ),
@@ -856,7 +840,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
-          color: lightTeal.withOpacity(0.5),
+          color: AppTheme.searchBarColor.withOpacity(0.5),
           borderRadius: BorderRadius.circular(24),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -865,7 +849,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
             IconButton(
               icon: Icon(
                 Icons.add_circle,
-                color: primaryColor,
+                color: AppTheme.primaryColor,
               ),
               onPressed: () {},
             ),
@@ -881,7 +865,7 @@ class DetailRecipe extends State<RecipeDetailPage> {
             IconButton(
               icon: Image.asset(
                 'images/send_button.png',
-                color: primaryColor,
+                color: AppTheme.primaryColor,
                 width: 24,
                 height: 24,
               ),
@@ -904,14 +888,14 @@ class DetailRecipe extends State<RecipeDetailPage> {
             Text(
               'Lihat Semua Ulasan & Diskusi Resep',
               style: TextStyle(
-                color: primaryColor,
+                color: AppTheme.primaryColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
             ),
             Icon(
               Icons.arrow_forward_ios,
-              color: primaryColor,
+              color: AppTheme.primaryColor,
               size: 16,
             ),
           ],
