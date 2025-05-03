@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'RecipeCardWidget.dart';
 
-// Definsi gaya teks yang digunakan di aplikasi.
 class ResepAndaPage extends StatelessWidget {
   final TextStyle headerStyle = const TextStyle(
     fontSize: 20,

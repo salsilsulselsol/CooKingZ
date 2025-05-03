@@ -556,7 +556,7 @@ Widget _buildFoodCard(Map<String, dynamic> food) {
         children: [
           GestureDetector(
             onTap: () {
-              Navigator.pushNamed(context, '/makanan_favorit', arguments: 'Manis');
+              Navigator.pushNamed(context, '/makanan-favorit', arguments: 'Manis');
             },
             child: _buildCategoryCard(
               'Manis', 
@@ -566,7 +566,7 @@ Widget _buildFoodCard(Map<String, dynamic> food) {
           ),
           GestureDetector(
             onTap: () {
-              Navigator.pushNamed(context, '/makanan_favorit', arguments: 'Asin');
+              Navigator.pushNamed(context, '/makanan-favorit', arguments: 'Asin');
             },
             child: _buildCategoryCard(
               'Asin', 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:masak2/kategori/sub_category_page.dart'; // Import the existing SubCategoryPage
+import 'package:masak2/view/kategori/sub_category_page.dart'; // Import the existing SubCategoryPage
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});

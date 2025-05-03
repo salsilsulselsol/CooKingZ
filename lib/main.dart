@@ -2,49 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 // Onboarding
-import 'onboarding/introduction_screen.dart';
-import 'onboarding/level_preference_allergy.dart';
+import 'view/onboarding/introduction_screen.dart';
+import 'view/onboarding/level_preference_allergy.dart';
 
 // Auth
-import 'auth/login_page.dart';
-import 'auth/register_page.dart';
-import 'auth/forgot_password.dart';
+import 'view/auth/login_page.dart';
+import 'view/auth/register_page.dart';
+import 'view/auth/forgot_password.dart';
 
 // Kategori
-import 'kategori/category_page.dart';
-import 'kategori/sub_category_page.dart';
+import 'view/kategori/category_page.dart';
+import 'view/kategori/sub_category_page.dart';
 
 // Community
-import 'community/community_page.dart';
-import 'community/review_page.dart';
+import 'view/community/community_page.dart';
+import 'view/community/review_page.dart';
 
 // Home
-import 'home/home_page.dart';
-import 'home/notification_page.dart';
-import 'home/resep_schedule.dart';
-import 'home/popup_search.dart';
-import 'home/popup_filter.dart';
-import 'home/pengguna_terbaik.dart';
-import 'home/resep_trending.dart';
-import 'home/hasil_pencarian.dart';
+import 'view/home/home_page.dart';
+import 'view/home/notification_page.dart';
+import 'view/home/resep_schedule.dart';
+import 'view/home/popup_search.dart';
+import 'view/home/popup_filter.dart';
+import 'view/home/pengguna_terbaik.dart';
+import 'view/home/resep_trending.dart';
+import 'view/home/hasil_pencarian.dart';
 
 // Profile - Profil
-import 'profile/profil/profil_utama.dart';
-import 'profile/profil/bagikan_profil.dart';
-import 'profile/profil/edit_profil.dart';
-import 'profile/profil/mengikuti_pengikut.dart';
-import 'profile/profil/makanan_favorit.dart';
-import 'profile/profil/tambah_resep.dart';
-import 'profile/profil/edit_resep.dart';
+import 'view/profile/profil/profil_utama.dart';
+import 'view/profile/profil/bagikan_profil.dart';
+import 'view/profile/profil/edit_profil.dart';
+import 'view/profile/profil/mengikuti_pengikut.dart';
+import 'view/profile/profil/makanan_favorit.dart';
+import 'view/profile/profil/tambah_resep.dart';
+import 'view/profile/profil/edit_resep.dart';
 
 // Profile - Pengaturan
-import 'profile/Pengaturan/pengaturan_utama.dart';
-import 'profile/Pengaturan/pengaturan_notifikasi.dart';
-import 'profile/Pengaturan/pusat_bantuan.dart';
+import 'view/profile/Pengaturan/pengaturan_utama.dart';
+import 'view/profile/Pengaturan/pengaturan_notifikasi.dart';
+import 'view/profile/Pengaturan/pusat_bantuan.dart';
 
 // Recipe
-import 'recipe/resep_detail_page.dart';
-import 'recipe/MyRecipePage.dart';
+import 'view/recipe/resep_detail_page.dart';
+import 'view/recipe/MyRecipePage.dart';
 
 // Menu (utamanya jika halaman utama ada di file ini)
 import 'menu.dart';
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF206153)),
         useMaterial3: true,
       ),
-      initialRoute: '/resep-schedule',
+      initialRoute: '/hasil-pencarian',
       routes: {
         // Onboarding & Auth
         '/': (context) => const HomeScreen(),
