@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:masak2/view/kategori/sub_category_page.dart'; // Import the existing SubCategoryPage
+import 'package:masak2/view/kategori/sub_category_page.dart';
+import 'package:masak2/view/component/bottom_navbar.dart';
+import 'package:masak2/view/component/header_b_n_s.dart'; // Import custom header component
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
@@ -47,83 +49,33 @@ class _CategoryPageState extends State<CategoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _buildCategoryGrid(),
-            ),
-            // _buildBottomNavigationBar(),
-          ],
-        ),
-      ),
+    // Menggunakan BottomNavbar di dalam build method untuk memastikan
+    // CategoryPage selalu muncul dengan bottom navbar
+    return BottomNavbar(
+      _buildMainContent(),
     );
   }
 
-  // Header dengan judul dan tombol navigasi
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Tombol kembali dengan image asset
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 30,
-              height: 30,
-              padding: const EdgeInsets.all(3),
-              child: Image.asset(
-                'images/arrow.png',
-                width: 24,
-                height: 24,
-              ),
+  // Widget yang berisi konten utama dari CategoryPage
+  Widget _buildMainContent() {
+    return Scaffold(
+      extendBody: true, // Tambahkan ini untuk membuat body meluas ke bawah navbar
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false, // Tambahkan ini agar content bisa mengisi area di bawah
+        child: Column(
+          children: [
+            // Menggunakan CustomHeader component dengan handler langsung di dalamnya
+            CustomHeader(
+              title: 'Kategori',
+              titleColor: primaryColor,
+              // Tidak perlu lagi menyediakan callback karena handler sudah ada di CustomHeader
             ),
-          ),
-
-          // Judul halaman
-          Text(
-            'Kategori',
-            style: TextStyle(
-              color: primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
+            Expanded(
+              child: _buildCategoryGrid(),
             ),
-          ),
-
-          // Tombol-tombol di kanan
-          Row(
-            children: [
-              // Tombol notifikasi
-              Container(
-                width: 30,
-                height: 30,
-                margin: const EdgeInsets.only(right: 10),
-                child: Image.asset(
-                  'images/notif.png',
-                  width: 28,
-                  height: 28,
-                ),
-              ),
-
-              // Tombol pencarian
-              Container(
-                width: 30,
-                height: 30,
-                child: Image.asset(
-                  'images/search.png',
-                  width: 28,
-                  height: 28,
-
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -166,6 +118,8 @@ class _CategoryPageState extends State<CategoryPage> {
               Expanded(child: _buildSmallCategory(_categories[6])),
             ],
           ),
+          // Tambahkan padding tambahan di bagian bawah untuk memberikan ruang bagi navbar
+          const SizedBox(height: 90),
         ],
       ),
     );
@@ -178,7 +132,8 @@ class _CategoryPageState extends State<CategoryPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const SubCategoryPage(),
+            // Juga memanggil bottom navbar di SubCategoryPage untuk konsistensi
+            builder: (context) => BottomNavbar(const SubCategoryPage()),
           ),
         );
       },
@@ -222,7 +177,8 @@ class _CategoryPageState extends State<CategoryPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const SubCategoryPage(),
+            // Juga memanggil bottom navbar di SubCategoryPage untuk konsistensi
+            builder: (context) => BottomNavbar(const SubCategoryPage()),
           ),
         );
       },
@@ -255,41 +211,6 @@ class _CategoryPageState extends State<CategoryPage> {
           ),
         ],
       ),
-    );
-  }
-
-  // Bottom navigation bar
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      height: 60,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x1A000000),  // Colors.black with 10% opacity
-            spreadRadius: 1,
-            blurRadius: 5,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildNavBarItem(Icons.home, true),
-          _buildNavBarItem(Icons.chat_bubble_outline, false),
-          _buildNavBarItem(Icons.layers, false),
-          _buildNavBarItem(Icons.person_outline, false),
-        ],
-      ),
-    );
-  }
-
-  // Item untuk bottom navigation bar
-  Widget _buildNavBarItem(IconData icon, bool isActive) {
-    return Icon(
-      icon,
-      color: isActive ? primaryColor : Colors.grey,
-      size: 28,
     );
   }
 }
