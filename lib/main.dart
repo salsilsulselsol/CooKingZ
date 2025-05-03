@@ -84,7 +84,7 @@ class MyApp extends StatelessWidget {
 
         // Komunitas
         '/komunitas': (context) => const AppWithNavbar(KomunitasPage()),
-        '/review': (context) => const AppWithNavbar(ReviewPage()),
+        '/review': (context) => const ReviewPage(),
 
         // Home & Fitur
         '/beranda': (context) => const HomePage(),
@@ -108,8 +108,8 @@ class MyApp extends StatelessWidget {
         '/pusat-bantuan': (context) => const AppWithNavbar(PusatBantuan()),
 
         // Resep
-        '/tambah-resep': (context) => const AppWithNavbar(BuatResep()),
-        '/edit-resep': (context) => const AppWithNavbar(EditResep()),
+        '/tambah-resep': (context) => const BuatResep(),
+        '/edit-resep': (context) => const EditResep(),
         '/detail-resep': (context) => const RecipeDetailPage(),
         '/resep-anda': (context) => const AppWithNavbar(ResepAndaPage()),
 
