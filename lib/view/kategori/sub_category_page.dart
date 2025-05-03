@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/header_b_n_s.dart';
-import 'package:masak2/models/food_model.dart'; // Import the Food model
-import 'package:masak2/view/component/food_card_widget.dart'; // Import the FoodCard widget
+import 'package:masak2/models/food_model.dart';
+import 'package:masak2/view/component/food_card_widget.dart';
+import 'package:masak2/view/component/category_tab.dart'; // Import the new widget
 
 class SubCategoryPage extends StatefulWidget {
   const SubCategoryPage({super.key});
@@ -110,58 +111,22 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
               title: 'Sarapan',
               titleColor: primaryColor,
             ),
-            _buildTabBar(),
+            // Using the new CategoryTabBar widget
+            CategoryTabBar(
+              categories: _categories,
+              selectedIndex: _selectedCategoryIndex,
+              onCategorySelected: (index) {
+                setState(() {
+                  _selectedCategoryIndex = index;
+                });
+              },
+              primaryColor: primaryColor,
+            ),
             Expanded(
               child: _buildFoodGridView(),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Tab bar untuk kategori makanan
-  Widget _buildTabBar() {
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedCategoryIndex = index;
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: _selectedCategoryIndex == index
-                    ? primaryColor
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: primaryColor,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  _categories[index],
-                  style: TextStyle(
-                    color: _selectedCategoryIndex == index
-                        ? Colors.white
-                        : primaryColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
