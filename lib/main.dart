@@ -21,7 +21,7 @@ import 'view/community/review_page.dart';
 // Home
 import 'view/home/home_page.dart';
 import 'view/home/notification_page.dart';
-import 'view/home/resep_schedule.dart';
+import 'view/home/penjadwalan_page.dart';
 import 'view/home/popup_search.dart';
 import 'view/home/popup_filter.dart';
 import 'view/home/pengguna_terbaik.dart';

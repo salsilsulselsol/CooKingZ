@@ -19,7 +19,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Telur Gulung',
       'description': 'Telur dengan Roti Kanada',
       'image': 'images/telur_gulung.png',
-      'duration': '15menit',
+      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
       'price': '20RB',
       'likes': 5,
     },
@@ -27,7 +27,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Roti Telur',
       'description': 'Irisan roti yang lezat',
       'image': 'images/roti_telur.png',
-      'duration': '15menit',
+      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
       'price': '20RB',
       'likes': 5,
     },
@@ -35,7 +35,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Pudding Telur',
       'description': 'Campuran sehat untuk sarapan',
       'image': 'images/pudding_telur.png',
-      'duration': '15menit',
+      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
       'price': '20RB',
       'likes': 12,
     },
@@ -43,7 +43,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Pizza Telur',
       'description': 'Pesona pedesaan yang bertekstur dan alami',
       'image': 'images/pizza_telur.png',
-      'duration': '15menit',
+      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
       'price': '20RB',
       'likes': 7,
     },
@@ -51,7 +51,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Oatmeal Telur',
       'description': 'menggabungkan oatmeal dengan telur',
       'image': 'images/oatmeal_telur.png',
-      'duration': '34menit',
+      'cookingTime': 34, // Menggunakan cookingTime, bukan duration
       'price': '20RB',
       'likes': 34,
     },
@@ -59,7 +59,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Telur Roti Panggang',
       'description': 'Roti panggang dengan telur',
       'image': 'images/telur_roti_panggang.png',
-      'duration': '34menit',
+      'cookingTime': 34, // Menggunakan cookingTime, bukan duration
       'price': '18RB',
       'likes': 32,
     },
@@ -87,14 +87,14 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
               title: 'Hasil Pencarian',
               onBackPressed: () => Navigator.pop(context),
             ),
-            
+
             // Using SearchBarWidget component
             SearchBarWidget(
               hintText: 'Telur',
               onSubmitted: _handleSearch,
               onFilterPressed: _handleFilterPress,
             ),
-            
+
             // Using FoodGridWidget component
             Expanded(
               child: FoodGridWidget(

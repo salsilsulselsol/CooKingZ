@@ -133,7 +133,7 @@ class FoodCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppTheme.spacingXSmall),
                   Text(
-                    food.description,
+                    food.description ?? '', // Handle nullable description
                     style: AppTheme.foodDescriptionStyle,
                   ),
                 ],
@@ -152,12 +152,12 @@ class FoodCard extends StatelessWidget {
                     iconFallback: Icons.star,
                   ),
                   _buildInfoItem(
-                    text: food.duration,
+                    text: food.cookingTime != null ? '${food.cookingTime} menit' : '-', // Handle nullable cookingTime
                     iconAsset: 'images/waktu.png',
                     iconFallback: Icons.access_time,
                     isTextFirst: false,
                   ),
-                  _buildPriceItem(food.price),
+                  _buildPriceItem(food.price ?? '-'), // Handle nullable price
                 ],
               ),
             ),

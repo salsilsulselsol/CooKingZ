@@ -42,7 +42,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         name: 'Eggs Benedict',
         description: 'Muffin dengan Bacon Kanada',
         image: 'images/eggs_benedict.png',
-        duration: '45 menit',
+        cookingTime: 45, // Menggunakan cookingTime (int?)
         price: '30RB',
         likes: 12,
       ),
@@ -50,7 +50,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         name: 'French Toast',
         description: 'Irisan roti yang lezat',
         image: 'images/french_toast.png',
-        duration: '15 menit',
+        cookingTime: 15, // Menggunakan cookingTime (int?)
         price: '25RB',
         likes: 24,
       ),
@@ -58,7 +58,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         name: 'Oatmeal & Kacang',
         description: 'Campuran sehat untuk sarapan',
         image: 'images/oatmeal_kacang.png',
-        duration: '20 menit',
+        cookingTime: 20, // Menggunakan cookingTime (int?)
         price: '25RB',
         likes: 14,
       ),
@@ -66,7 +66,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         name: 'Telur Dadar',
         description: 'bertekstur dan alami',
         image: 'images/telur_dadar.png',
-        duration: '30 menit',
+        cookingTime: 30, // Menggunakan cookingTime (int?)
         price: '15RB',
         likes: 85,
       ),
@@ -74,7 +74,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         name: 'Oatmeal Stroberi',
         description: 'Siap santap dengan stroberi dan blueberry',
         image: 'images/oatmeal_stroberi.png',
-        duration: '15 menit',
+        cookingTime: 15, // Menggunakan cookingTime (int?)
         price: '25RB',
         likes: 23,
       ),
@@ -82,7 +82,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         name: 'Bruschetta',
         description: 'Roti panggang dengan topping segar',
         image: 'images/bruschetta.png',
-        duration: '30 menit',
+        cookingTime: 30, // Menggunakan cookingTime (int?)
         price: '35RB',
         likes: 42,
       ),
