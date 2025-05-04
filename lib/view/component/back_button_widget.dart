@@ -22,7 +22,7 @@ class BackButtonWidget extends StatelessWidget {
               width: 24,
               height: 24,
               child: Image.asset(
-                'images/Tombol_kembali.png',
+                'images/arrow.png',
                 fit: BoxFit.contain,
               ),
             ),
