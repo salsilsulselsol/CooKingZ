@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../component/back_button_widget.dart';
+
 class MengikutiPengikut extends StatefulWidget {
   const MengikutiPengikut({super.key});
 
@@ -167,35 +169,18 @@ final List<Map<String, dynamic>> _followersList = [
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pushNamed(context, "/home"),
-          child: Transform.translate(
-            offset: const Offset(15, 0), // Geser tombol 15px ke kanan
-            child: SizedBox(
-              width: 30, // Area klik lebih besar dari gambar
-              height: 30,
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Image.asset(
-                    'images/arrow.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-          ),
+        leading: BackButtonWidget(
+          onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           '@siti_r',
           style: TextStyle(
-            color: Color(0xFF015551),
+            color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -230,7 +215,7 @@ final List<Map<String, dynamic>> _followersList = [
               ),
             ),
           ),
-          
+
           // Tab Content
           Expanded(
             child: TabBarView(
@@ -238,7 +223,7 @@ final List<Map<String, dynamic>> _followersList = [
               children: [
                 // Following Tab
                 _buildFollowingList(),
-                
+
                 // Followers Tab
                 _buildFollowersList(),
               ],
