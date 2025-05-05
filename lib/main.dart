@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF206153)),
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      initialRoute: '/trending-resep',
       routes: {
         // Onboarding & Auth
         '/': (context) => const HomeScreen(),
@@ -93,7 +93,7 @@ class MyApp extends StatelessWidget {
         '/search': (context) => const AppWithNavbar(SearchPopup()),
         '/filter': (context) => const AppWithNavbar(FilterPopup()),
         '/pengguna-terbaik': (context) => const PenggunaTerbaik(),
-        '/trending-resep': (context) => const AppWithNavbar(TrandingResep()),
+        '/trending-resep': (context) => const AppWithNavbar(TrendingResep()),
         '/hasil-pencarian': (context) => const AppWithNavbar(HasilPencaharian()),
 
         // Profil
