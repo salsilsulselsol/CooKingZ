@@ -148,12 +148,12 @@ class FoodCard extends StatelessWidget {
                 children: [
                   _buildInfoItem(
                     text: food.likes.toString(),
-                    iconAsset: 'images/bintang.png',
+                    iconAsset: 'images/star_hijau.png',
                     iconFallback: Icons.star,
                   ),
                   _buildInfoItem(
                     text: food.cookingTime != null ? '${food.cookingTime} menit' : '-', // Handle nullable cookingTime
-                    iconAsset: 'images/waktu.png',
+                    iconAsset: 'images/time.png',
                     iconFallback: Icons.access_time,
                     isTextFirst: false,
                   ),

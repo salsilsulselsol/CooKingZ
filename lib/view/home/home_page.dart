@@ -3,7 +3,7 @@ import 'package:masak2/view/home/popup_search.dart';
 import 'package:masak2/view/component/trending_recipe_card.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/category_tab.dart';
-import 'package:masak2/theme/theme.dart'; // Import the AppTheme
+import 'package:masak2/theme/theme.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
