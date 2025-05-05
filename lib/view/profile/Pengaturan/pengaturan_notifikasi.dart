@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../component/custom_appbar.dart';
+import '../../component/header_back.dart';
 import '../../component/custom_switch.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -20,46 +20,55 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: 'Notifikasi',
-        onBackPressed: () => Navigator.pushNamed(context, "/home"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Column(
-          children: [
-            SwitchSettingRow(
-              title: 'Notifikasi Umum',
-              value: generalNotifications,
-              onChanged: (value) {
-                setState(() {
-                  generalNotifications = value;
-                });
-              },
+      body: Column(
+        children: [
+          // Header Widget
+          HeaderWidget(
+            title: 'Notifikasi',
+            onBackPressed: () => Navigator.pop(context),
+          ),
+          
+          // Body Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                children: [
+                  SwitchSettingRow(
+                    title: 'Notifikasi Umum',
+                    value: generalNotifications,
+                    onChanged: (value) {
+                      setState(() {
+                        generalNotifications = value;
+                      });
+                    },
+                  ),
+                  CustomDivider(),
+                  SwitchSettingRow(
+                    title: 'Suara',
+                    value: soundNotifications,
+                    onChanged: (value) {
+                      setState(() {
+                        soundNotifications = value;
+                      });
+                    },
+                  ),
+                  CustomDivider(),
+                  SwitchSettingRow(
+                    title: 'Getar',
+                    value: vibrationNotifications,
+                    onChanged: (value) {
+                      setState(() {
+                        vibrationNotifications = value;
+                      });
+                    },
+                  ),
+                  CustomDivider(),
+                ],
+              ),
             ),
-            CustomDivider(),
-            SwitchSettingRow(
-              title: 'Suara',
-              value: soundNotifications,
-              onChanged: (value) {
-                setState(() {
-                  soundNotifications = value;
-                });
-              },
-            ),
-            CustomDivider(),
-            SwitchSettingRow(
-              title: 'Getar',
-              value: vibrationNotifications,
-              onChanged: (value) {
-                setState(() {
-                  vibrationNotifications = value;
-                });
-              },
-            ),
-            CustomDivider(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
