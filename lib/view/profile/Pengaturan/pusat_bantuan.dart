@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../component/header_back.dart';
 
 class PusatBantuan extends StatefulWidget {
   const PusatBantuan({super.key});
@@ -10,48 +11,47 @@ class PusatBantuan extends StatefulWidget {
 class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentIndex = 0;
-  
-  // Data dummy untuk aplikasi resep masakan
+
   final List<Map<String, dynamic>> _faqData = [
     {
       'question': 'Bagaimana cara mencari resep masakan?',
       'answer':
-          'Anda bisa menggunakan fitur pencarian di halaman utama dan mengetik nama resep atau bahan yang ingin digunakan.'
+      'Anda bisa menggunakan fitur pencarian di halaman utama dan mengetik nama resep atau bahan yang ingin digunakan.'
     },
     {
       'question': 'Bagaimana cara menyimpan resep favorit?',
       'answer':
-          'Tekan ikon hati di halaman resep untuk menyimpan resep ke daftar favorit Anda.'
+      'Tekan ikon hati di halaman resep untuk menyimpan resep ke daftar favorit Anda.'
     },
     {
       'question': 'Bagaimana cara membagikan resep ke teman?',
       'answer':
-          'Di halaman resep, tekan ikon bagikan lalu pilih platform seperti WhatsApp, Instagram, atau lainnya.'
+      'Di halaman resep, tekan ikon bagikan lalu pilih platform seperti WhatsApp, Instagram, atau lainnya.'
     },
     {
       'question': 'Apakah aplikasi bisa digunakan tanpa koneksi internet?',
       'answer':
-          'Ya, Anda dapat mengakses resep yang telah disimpan ke favorit secara offline.'
+      'Ya, Anda dapat mengakses resep yang telah disimpan ke favorit secara offline.'
     },
     {
       'question': 'Bagaimana cara melihat resep terbaru setiap hari?',
       'answer':
-          'Buka tab "Resep Harian" di halaman utama untuk melihat rekomendasi resep terbaru setiap hari.'
+      'Buka tab "Resep Harian" di halaman utama untuk melihat rekomendasi resep terbaru setiap hari.'
     },
     {
       'question': 'Bisakah saya menyusun daftar belanja dari resep?',
       'answer':
-          'Ya, di setiap resep terdapat tombol untuk menambahkan bahan-bahan ke daftar belanja.'
+      'Ya, di setiap resep terdapat tombol untuk menambahkan bahan-bahan ke daftar belanja.'
     },
     {
       'question': 'Apakah saya bisa menambahkan resep buatan sendiri?',
       'answer':
-          'Tentu! Gunakan fitur "Tambah Resep" pada menu utama, lalu isi data resep dan unggah foto masakan.'
+      'Tentu! Gunakan fitur "Tambah Resep" pada menu utama, lalu isi data resep dan unggah foto masakan.'
     },
     {
       'question': 'Apakah ada fitur untuk filter resep berdasarkan diet?',
       'answer':
-          'Ya, Anda bisa menggunakan filter seperti "Vegetarian", "Bebas Gluten", atau "Rendah Kalori" di menu pencarian.'
+      'Ya, Anda bisa menggunakan filter seperti "Vegetarian", "Bebas Gluten", atau "Rendah Kalori" di menu pencarian.'
     },
   ];
 
@@ -59,22 +59,22 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
     {
       'question': 'Bagaimana cara membuat akun di aplikasi ini?',
       'answer':
-          'Pilih tombol "Daftar" pada halaman awal dan isi informasi yang diminta seperti email dan kata sandi.'
+      'Pilih tombol "Daftar" pada halaman awal dan isi informasi yang diminta seperti email dan kata sandi.'
     },
     {
       'question': 'Bagaimana cara mengganti nama pengguna?',
       'answer':
-          'Masuk ke menu Profil, ketuk ikon edit di sebelah nama Anda, lalu masukkan nama baru.'
+      'Masuk ke menu Profil, ketuk ikon edit di sebelah nama Anda, lalu masukkan nama baru.'
     },
     {
       'question': 'Bagaimana cara reset kata sandi?',
       'answer':
-          'Pada halaman login, pilih "Lupa Kata Sandi", kemudian ikuti petunjuk untuk reset melalui email.'
+      'Pada halaman login, pilih "Lupa Kata Sandi", kemudian ikuti petunjuk untuk reset melalui email.'
     },
     {
       'question': 'Apakah akun bisa terhubung dengan Google?',
       'answer':
-          'Ya, Anda dapat login atau mendaftar menggunakan akun Google untuk kemudahan akses.'
+      'Ya, Anda dapat login atau mendaftar menggunakan akun Google untuk kemudahan akses.'
     },
   ];
 
@@ -82,17 +82,17 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
     {
       'question': 'Apa itu fitur "Resep Harian"?',
       'answer':
-          'Fitur yang menampilkan resep rekomendasi setiap hari berdasarkan preferensi Anda.'
+      'Fitur yang menampilkan resep rekomendasi setiap hari berdasarkan preferensi Anda.'
     },
     {
       'question': 'Bagaimana cara membuat daftar belanja otomatis?',
       'answer':
-          'Pilih resep lalu tekan tombol "Tambahkan ke Daftar Belanja". Semua bahan akan otomatis tercatat.'
+      'Pilih resep lalu tekan tombol "Tambahkan ke Daftar Belanja". Semua bahan akan otomatis tercatat.'
     },
     {
       'question': 'Bisakah saya memberi ulasan pada resep orang lain?',
       'answer':
-          'Ya, setelah mencoba resep, Anda bisa memberi bintang dan komentar di bagian bawah halaman resep.'
+      'Ya, setelah mencoba resep, Anda bisa memberi bintang dan komentar di bagian bawah halaman resep.'
     },
   ];
 
@@ -119,7 +119,6 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
     },
   ];
 
-
   @override
   void initState() {
     super.initState();
@@ -143,48 +142,20 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pushNamed(context, "/home"),
-          child: Transform.translate(
-            offset: const Offset(15, 0),
-            child: SizedBox(
-              width: 30,
-              height: 30,
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Image.asset(
-                    'images/Tombol_kembali.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'Pusat Bantuan',
-          style: TextStyle(
-            color: Color(0xFF015551),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        toolbarHeight: 80,
-        flexibleSpace: Transform.translate(
-          offset: const Offset(0, 15),
-          child: Container(),
-        ),
-      ),
       body: Column(
         children: [
+          // Header with back button
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 24.0),
+            child: HeaderWidget(
+              title: 'Pusat Bantuan',
+              onBackPressed: () => Navigator.pop(context),
+            ),
+          ),
+
           // Tab buttons
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0),
             child: Row(
               children: [
                 Expanded(
@@ -209,6 +180,7 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
               ],
             ),
           ),
+
           // Search bar
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -228,6 +200,7 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
               ),
             ),
           ),
+
           // Content
           Expanded(
             child: TabBarView(
@@ -235,25 +208,17 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
               children: [
                 // FAQ Content
                 _buildFaqList(_faqData),
-                
+
                 // Hubungi Kami Content
                 _buildContactList(),
-                
+
                 // Akun Content
                 _buildFaqList(_accountData),
-                
+
                 // Layanan Content
                 _buildFaqList(_serviceData),
               ],
             ),
-          ),
-          // Bottom Navigation
-          Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF015551),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            height: 5, // Menambahkan height minimal agar container terlihat
           ),
         ],
       ),
@@ -262,7 +227,7 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
 
   Widget _buildTabButton(String title, int index) {
     final isSelected = _currentIndex == index;
-    
+
     return GestureDetector(
       onTap: () {
         _tabController.animateTo(index);
@@ -305,7 +270,7 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
-        color: Colors.white, // Mengatur background pertanyaan menjadi putih
+        color: Colors.white,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -318,9 +283,8 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
               fontWeight: FontWeight.w500,
             ),
           ),
-          // Menggunakan gambar sebagai trailing icon
           trailing: Image.asset(
-            'images/Tombol_lanjut.png',
+            'images/tombol_lanjut.png',
             width: 24,
             height: 24,
           ),
@@ -357,7 +321,7 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
-        color: Colors.white, // Mengatur background pertanyaan menjadi putih
+        color: Colors.white,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -375,9 +339,8 @@ class _PusatBantuanState extends State<PusatBantuan> with SingleTickerProviderSt
             ),
           ),
           subtitle: Text(subtitle),
-          // Menggunakan gambar sebagai trailing icon
           trailing: Image.asset(
-            'images/Tombol_lanjut.png',
+            'images/tombol_lanjut.png',
             width: 24,
             height: 24,
           ),
