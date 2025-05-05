@@ -25,6 +25,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
         likes: 213,
         price: '20RB',
         description: 'Croffle dengan es krim yang lezat.',
+        detailRoute: '/detail-resep',
       ),
     ),
     ScheduledFood(
@@ -38,6 +39,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
         likes: 89,
         price: '15RB',
         description: 'Telur dadar sederhana dan nikmat.',
+        detailRoute: '/detail-resep',
       ),
     ),
   ];

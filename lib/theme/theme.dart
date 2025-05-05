@@ -51,7 +51,7 @@ class AppTheme {
   static const double favoriteButtonSize = 30.0;
   static const double favoriteIconSize = 30.0;
   
-  static const double searchBarHeight = 50.0;
+  static const double searchBarHeight = 40.0;
   static const double filterButtonSize = 50.0;
   static const double backButtonSize = 30.0;
   

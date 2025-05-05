@@ -71,10 +71,11 @@ class _RecipeRecommendationsBottomSheetState
                         ),
                       ),
                       Container(
+                        padding: const EdgeInsets.only(left: 10),
                         child: Image.asset(
                           'images/search.png',
-                          width: 35,
-                          height: 35,
+                          width: 30,
+                          height: 30,
                         ),
                       ),
                     ],

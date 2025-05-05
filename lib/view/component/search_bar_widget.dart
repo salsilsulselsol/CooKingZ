@@ -1,81 +1,78 @@
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
+import '../home/popup_filter.dart'; // pastikan path ini sesuai struktur folder kamu
 
 class SearchBarWidget extends StatelessWidget {
   final String hintText;
-  final Function(String) onSubmitted;
-  final Function()? onFilterPressed;
+  final Function(String)? onSubmitted;
   final TextEditingController? controller;
   final bool autofocus;
 
   const SearchBarWidget({
     Key? key,
-    this.hintText = 'Search...',
-    required this.onSubmitted,
-    this.onFilterPressed,
+    this.hintText = 'Cari',
+    this.onSubmitted,
     this.controller,
-    this.autofocus = false,
+    this.autofocus = false, required void Function() onFilterPressed,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Search Field
+        // Search Input Field
         Expanded(
-          flex: 5,
           child: Container(
-            margin: AppTheme.marginSearchBar,
+            height: AppTheme.searchBarHeight,
             decoration: BoxDecoration(
               color: AppTheme.searchBarColor,
               borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
-              boxShadow: [AppTheme.boxShadowSmall],
             ),
-            child: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: AppTheme.searchHintStyle,
-                suffixIcon: Image.asset(
+            padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingXLarge),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    onSubmitted: onSubmitted,
+                    autofocus: autofocus,
+                    decoration: InputDecoration(
+                      hintText: hintText,
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+                Image.asset(
                   'images/search.png',
-                  width: AppTheme.iconSizeMedium,
-                  height: AppTheme.iconSizeMedium,
+                  width: 30,
+                  height: 30,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.search, color: Colors.white, size: 20);
+                    return const Icon(Icons.search, color: Colors.white);
                   },
                 ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: AppTheme.paddingSearchBar.vertical / 2,
-                  horizontal: AppTheme.paddingSearchBar.horizontal + 10,
-                ),
-                border: InputBorder.none,
-              ),
-              autofocus: autofocus,
-              onSubmitted: onSubmitted,
+              ],
             ),
           ),
         ),
+        SizedBox(width: AppTheme.spacingMedium),
         // Filter Button
         GestureDetector(
-          onTap: onFilterPressed,
+          onTap: () {
+            showFilterDialog(context);
+          },
           child: Container(
-            margin: AppTheme.marginFilterButton,
-            width: AppTheme.filterButtonSize,
-            height: AppTheme.filterButtonSize,
             decoration: BoxDecoration(
               color: AppTheme.primaryColor,
-              borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+              borderRadius: BorderRadius.circular(AppTheme.filterButtonSize / 2),
             ),
-            child: Center(
-              child: Image.asset(
-                'images/filter.png',
-                width: AppTheme.iconSizeLarge,
-                height: AppTheme.iconSizeLarge,
-                color: Colors.white,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.filter_list, color: Colors.white, size: 24);
-                },
-              ),
+            padding: EdgeInsets.all(AppTheme.spacingMedium),
+            child: Icon(
+              Icons.filter_alt,
+              color: AppTheme.backgroundColor,
+              size: AppTheme.iconSizeMedium,
             ),
           ),
         ),

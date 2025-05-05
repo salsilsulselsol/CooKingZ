@@ -582,23 +582,23 @@ class _AllergyQuestionnairePageState extends State<AllergyQuestionnairePage> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navigate to next page
+                      Navigator.pushNamed(context, '/beranda');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFB3E0DA),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
+                      backgroundColor: const Color(0xFFB3E0DA),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       ),
                       child: const Text(
-                        'Selanjutnya',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF1F1F1F),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      'Selanjutnya',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF1F1F1F),
+                        fontWeight: FontWeight.w600,
+                      ),
                       ),
                     ),
                   ),

@@ -199,6 +199,7 @@ class _HomePageState extends State<HomePage> {
           favorites: '213',
           duration: '15menit',
           price: '20RB',
+          detailRoute: '/detail-resep',
         ),
       ],
     );

@@ -3,6 +3,7 @@ import '../../theme/theme.dart';
 import '../component/grid_2_builder.dart';
 import '../component/header_back.dart';
 import '../component/search_bar_widget.dart';
+import '../home/popup_filter.dart'; // Import filter dialog
 import '../../models/food_model.dart';
 
 class HasilPencaharian extends StatefulWidget {
@@ -13,13 +14,15 @@ class HasilPencaharian extends StatefulWidget {
 }
 
 class _SearchResultsPageState extends State<HasilPencaharian> {
+  final TextEditingController _searchController = TextEditingController();
+
   // Data makanan untuk hasil pencarian (contoh data)
   final List<Map<String, dynamic>> _searchResultsData = [
     {
       'name': 'Telur Gulung',
       'description': 'Telur dengan Roti Kanada',
       'image': 'images/telur_gulung.png',
-      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
+      'cookingTime': 15,
       'price': '20RB',
       'likes': 5,
     },
@@ -27,7 +30,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Roti Telur',
       'description': 'Irisan roti yang lezat',
       'image': 'images/roti_telur.png',
-      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
+      'cookingTime': 15,
       'price': '20RB',
       'likes': 5,
     },
@@ -35,7 +38,7 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Pudding Telur',
       'description': 'Campuran sehat untuk sarapan',
       'image': 'images/pudding_telur.png',
-      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
+      'cookingTime': 15,
       'price': '20RB',
       'likes': 12,
     },
@@ -43,15 +46,15 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Pizza Telur',
       'description': 'Pesona pedesaan yang bertekstur dan alami',
       'image': 'images/pizza_telur.png',
-      'cookingTime': 15, // Menggunakan cookingTime, bukan duration
+      'cookingTime': 15,
       'price': '20RB',
       'likes': 7,
     },
     {
       'name': 'Oatmeal Telur',
-      'description': 'menggabungkan oatmeal dengan telur',
+      'description': 'Menggabungkan oatmeal dengan telur',
       'image': 'images/oatmeal_telur.png',
-      'cookingTime': 34, // Menggunakan cookingTime, bukan duration
+      'cookingTime': 34,
       'price': '20RB',
       'likes': 34,
     },
@@ -59,19 +62,18 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       'name': 'Telur Roti Panggang',
       'description': 'Roti panggang dengan telur',
       'image': 'images/telur_roti_panggang.png',
-      'cookingTime': 34, // Menggunakan cookingTime, bukan duration
+      'cookingTime': 34,
       'price': '18RB',
       'likes': 32,
     },
   ];
 
-  // Konversi data Map ke List<Food>
+  // Konversi ke List<Food>
   late List<Food> _searchResults;
 
   @override
   void initState() {
     super.initState();
-    // Konversi data Map ke objek Food saat widget diinisialisasi
     _searchResults = _searchResultsData.map((item) => Food.fromMap(item)).toList();
   }
 
@@ -82,20 +84,24 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
       body: SafeArea(
         child: Column(
           children: [
-            // Using HeaderWidget component
+            // Header
             HeaderWidget(
               title: 'Hasil Pencarian',
               onBackPressed: () => Navigator.pop(context),
             ),
 
-            // Using SearchBarWidget component
-            SearchBarWidget(
-              hintText: 'Telur',
-              onSubmitted: _handleSearch,
-              onFilterPressed: _handleFilterPress,
+            // Search Bar + Filter
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SearchBarWidget(
+                hintText: 'Telur',
+                controller: _searchController,
+                onSubmitted: _handleSearch,
+                onFilterPressed: _handleFilterPress,
+              ),
             ),
 
-            // Using FoodGridWidget component
+            // Grid hasil pencarian
             Expanded(
               child: FoodGridWidget(
                 foods: _searchResults,
@@ -109,45 +115,37 @@ class _SearchResultsPageState extends State<HasilPencaharian> {
     );
   }
 
-  // Handler untuk pencarian
+  // Fungsi pencarian
   void _handleSearch(String query) {
-    // Implementasi pencarian
     print('Searching for: $query');
-    // Contoh implementasi:
-    // setState(() {
-    //   _searchResults = _allFoodItems
-    //       .where((food) =>
-    //           food.name.toLowerCase().contains(query.toLowerCase()) ||
-    //           food.description.toLowerCase().contains(query.toLowerCase()))
-    //       .toList();
-    // });
+    setState(() {
+      _searchResults = _searchResultsData
+          .map((item) => Food.fromMap(item))
+          .where((food) =>
+              food.name.toLowerCase().contains(query.toLowerCase()) ||
+              (food.description?.toLowerCase().contains(query.toLowerCase()) ?? false))
+          .toList();
+    });
   }
 
-  // Handler untuk filter button
+  // Fungsi filter
   void _handleFilterPress() {
     print('Filter button pressed');
-    // Implementasi filter
-    // Contoh: Tampilkan bottom sheet untuk filter
+    showFilterDialog(context);
   }
 
-  // Handler untuk tombol favorit
+  // Fungsi favorit
   void _handleFavoritePress(int index) {
     print('Favorite pressed for ${_searchResults[index].name}');
-    // Implementasi favorite
-    // setState(() {
-    //   // Toggle favorite state or add to favorites list
-    // });
   }
 
-  // Handler untuk tap pada card
+  // Fungsi detail resep
   void _handleCardTap(int index) {
     print('Card pressed for ${_searchResults[index].name}');
-    // Navigasi ke halaman detail
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => FoodDetailPage(food: _searchResults[index]),
-    //   ),
-    // );
+    Navigator.pushNamed(
+      context,
+      '/detail-resep',
+      arguments: _searchResults[index],
+    );
   }
 }

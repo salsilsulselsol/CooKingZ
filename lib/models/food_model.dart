@@ -8,6 +8,7 @@ class Food {
   final int? likes;
   final String? price;
   final String? difficulty;
+  final String? detailRoute;
 
   Food({
     this.id,
@@ -19,6 +20,7 @@ class Food {
     this.likes,
     this.price,
     this.difficulty,
+    this.detailRoute,
   });
 
   factory Food.fromMap(Map<String, dynamic> map) {

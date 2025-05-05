@@ -174,7 +174,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
                 child: const Text(
-                  "Kembali Ke Beranda",
+                  "Kembali Ke Login",
                   style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
               ),

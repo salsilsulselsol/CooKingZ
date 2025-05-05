@@ -28,15 +28,14 @@ class FoodCardJadwal extends StatelessWidget {
         child: Stack(
           children: [
             InkWell(
-              onTap: () {
-                // Navigate to food detail page using the food object
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(
-                //     builder: (context) => FoodDetailPage(food: food),
-                //   ),
-                // );
-              },
+                onTap: () {
+                  // Navigate to food detail page using the food object
+                  Navigator.pushNamed(
+                    context,
+                    '/detail-resep',
+                    arguments: food,
+                  );
+                },
               child: Container(
                 height: 265,
                 decoration: BoxDecoration(
