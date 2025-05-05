@@ -23,9 +23,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       body: Column(
         children: [
           // Header Widget
-          HeaderWidget(
-            title: 'Notifikasi',
-            onBackPressed: () => Navigator.pop(context),
+          Padding(
+            padding: EdgeInsets.only(top: 24.0),
+            
+            child: HeaderWidget(
+              title: 'Nontifikasi',
+              onBackPressed: () => Navigator.pop(context),
+            ),
           ),
           
           // Body Content

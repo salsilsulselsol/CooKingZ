@@ -47,7 +47,7 @@ class BuatResep extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 margin: const EdgeInsets.symmetric(horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightTeal,
+                                    color: AppColors.accentTeal.withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 alignment: Alignment.center,
@@ -67,7 +67,7 @@ class BuatResep extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 margin: const EdgeInsets.symmetric(horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightTeal,
+                                  color: AppColors.accentTeal.withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 alignment: Alignment.center,
@@ -146,7 +146,7 @@ class BuatResep extends StatelessWidget {
                             margin: const EdgeInsets.symmetric(horizontal: 30),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.lightTeal,
+                              color: AppColors.accentTeal.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
@@ -319,7 +319,7 @@ class BuatResep extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 30),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.lightTeal,
+            color: AppColors.accentTeal.withOpacity(0.5),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Text(
@@ -349,7 +349,7 @@ class BuatResep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.lightTeal,
+                color: AppColors.accentTeal.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(
@@ -387,7 +387,7 @@ class BuatResep extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.lightTeal,
+              color: AppColors.accentTeal.withOpacity(0.5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
@@ -404,7 +404,7 @@ class BuatResep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.lightTeal,
+                color: AppColors.accentTeal.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -449,7 +449,7 @@ class BuatResep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.lightTeal,
+                color: AppColors.accentTeal.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(

@@ -47,7 +47,7 @@ class EditResep extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 margin: const EdgeInsets.symmetric(horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightTeal,
+                                  color: AppColors.accentTeal.withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 alignment: Alignment.center,
@@ -67,7 +67,7 @@ class EditResep extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 margin: const EdgeInsets.symmetric(horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightTeal,
+                                  color: AppColors.accentTeal.withOpacity(0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 alignment: Alignment.center,
@@ -93,7 +93,7 @@ class EditResep extends StatelessWidget {
                         width: double.infinity,
                         decoration: BoxDecoration(
                           image: const DecorationImage(
-                            image: AssetImage('../images/pina_colada.jpg'),
+                            image: AssetImage('images/pina_colada.jpg'),
                             fit: BoxFit.cover,
                           ),
                           borderRadius: BorderRadius.circular(16),
@@ -142,7 +142,7 @@ class EditResep extends StatelessWidget {
                             margin: const EdgeInsets.symmetric(horizontal: 30),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.lightTeal,
+                              color: AppColors.accentTeal.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
@@ -325,7 +325,7 @@ class EditResep extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 30),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.lightTeal,
+            color: AppColors.accentTeal.withOpacity(0.5),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Text(
@@ -358,7 +358,7 @@ class EditResep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.lightTeal,
+                color: AppColors.accentTeal.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(
@@ -403,7 +403,7 @@ class EditResep extends StatelessWidget {
             width: 70,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.lightTeal,
+              color: AppColors.accentTeal.withOpacity(0.5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
@@ -420,7 +420,7 @@ class EditResep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.lightTeal,
+                color: AppColors.accentTeal.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -465,7 +465,7 @@ class EditResep extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.lightTeal,
+                color: AppColors.accentTeal.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(
