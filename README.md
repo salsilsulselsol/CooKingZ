@@ -70,3 +70,7 @@ Kami telah membuat halaman menu utama sebagai entry point untuk memudahkan pengu
 - Flutter SDK: 3.19.0 atau yang lebih baru
 - Dart SDK: 3.0.0 atau yang lebih baru
 - Perangkat atau emulator dengan Android 6.0+ atau iOS 12.0+
+
+# Dokumentasi
+
+https://github.com/user-attachments/assets/51de0bd4-7071-43d5-bf06-35133481cd56
