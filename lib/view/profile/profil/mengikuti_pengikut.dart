@@ -184,7 +184,7 @@ final List<Map<String, dynamic>> _followersList = [
                   width: 24,
                   height: 24,
                   child: Image.asset(
-                    'images/Tombol_kembali.png',
+                    'images/arrow.png',
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -195,7 +195,7 @@ final List<Map<String, dynamic>> _followersList = [
         title: Text(
           '@siti_r',
           style: TextStyle(
-            color: Colors.black,
+            color: Color(0xFF015551),
             fontWeight: FontWeight.bold,
           ),
         ),

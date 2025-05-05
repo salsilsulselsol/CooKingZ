@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:masak2/view/component/header_back.dart';
 
 // Edit Profile Screen
 class EditProfil extends StatefulWidget {
@@ -26,45 +27,24 @@ class _EditProfilState extends State<EditProfil> {
     super.dispose();
   }
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-       leading: GestureDetector(
-          onTap: () => Navigator.pushNamed(context, "/home"),
-          child: Transform.translate(
-            offset: const Offset(15, 0), // Geser tombol 15px ke kanan
-            child: SizedBox(
-              width: 30, // Area klik lebih besar dari gambar
-              height: 30,
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Image.asset(
-                    'images/Tombol_kembali.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        title: Text(
-          'Edit Profil',
-          style: TextStyle(
-            color: Color(0xFF006A4E),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(kToolbarHeight),
+        child: SafeArea(
+          child: HeaderWidget(
+            title: 'Edit Profil',
+            onBackPressed: () => Navigator.pushNamed(context, "/home"),
+            // Jika Anda ingin menambahkan widget kanan, bisa ditambahkan di sini
+            // rightWidget: YourRightWidget(),
           ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(top: 20, left: 30, right: 30),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -118,7 +98,7 @@ class _EditProfilState extends State<EditProfil> {
               controller: _nameController,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.lightBlue[50],
+                fillColor: const Color(0x4D57B4BA),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
@@ -142,7 +122,7 @@ class _EditProfilState extends State<EditProfil> {
               controller: _usernameController,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.lightBlue[50],
+                fillColor: const Color(0x4D57B4BA),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
@@ -167,7 +147,7 @@ class _EditProfilState extends State<EditProfil> {
               maxLines: 3,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.lightBlue[50],
+                fillColor: const Color(0x4D57B4BA),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
@@ -191,7 +171,7 @@ class _EditProfilState extends State<EditProfil> {
               controller: _linkController,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.lightBlue[50],
+                fillColor: const Color(0x4D57B4BA),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
