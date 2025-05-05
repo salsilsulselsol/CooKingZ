@@ -134,6 +134,7 @@ class HomeScreen extends StatelessWidget {
                   ]),
                   _buildMenuSection(context, 'Pengaturan', [
                     _buildMenuItem(context, Icons.settings, 'Pengaturan', '/pengaturan-utama'),
+                    _buildMenuItem(context, Icons.notifications_none, 'Pengaturan Notifikasi', '/pengaturan-notifikasi'),
                     _buildMenuItem(context, Icons.help_outline, 'Pusat Bantuan', '/pusat-bantuan'),
                   ]),
                   _buildMenuSection(context, 'Resep', [
