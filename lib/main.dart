@@ -105,6 +105,7 @@ class MyApp extends StatelessWidget {
 
         // Pengaturan
         '/pengaturan-utama': (context) => const AppWithNavbar(PengaturanUtama()),
+        '/pengaturan-notifikasi': (context) => const AppWithNavbar(NotificationSettingsScreen()),
         '/pusat-bantuan': (context) => const AppWithNavbar(PusatBantuan()),
 
         // Resep
