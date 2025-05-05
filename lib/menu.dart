@@ -123,6 +123,7 @@ Yazid Madarizel             2305328''',
                   _buildMenuItem(context, Icons.star, 'Pengguna Terbaik', '/pengguna-terbaik'),
                   _buildMenuItem(context, Icons.trending_up, 'Trending Resep', '/tranding-resep'),
                   _buildMenuItem(context, Icons.find_in_page, 'Hasil Pencarian', '/hasil-pencarian'),
+                  _buildMenuItem(context, Icons.edit, 'Edit Profil', '/edit-profil'),
 
                   _buildMenuItem(context, Icons.abc, 'Kuesioner', '/cooking'),
                   _buildMenuItem(context, Icons.person, 'Profil', '/profil-utama'),
