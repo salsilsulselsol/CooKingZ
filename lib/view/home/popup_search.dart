@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/theme.dart'; // Import your theme
 import 'popup_filter.dart';
 
 class SearchPopup extends StatefulWidget {
@@ -16,47 +17,56 @@ class _RecipeRecommendationsBottomSheetState
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
+          bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      padding: EdgeInsets.fromLTRB(
+          AppTheme.spacingXXLarge,
+          AppTheme.spacingXLarge,
+          AppTheme.spacingXXLarge,
+          AppTheme.spacingXXLarge
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Handle bar
           Center(
             child: Container(
               width: 40,
               height: 5,
               decoration: BoxDecoration(
                 color: Colors.grey.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: AppTheme.spacingXXLarge),
+
+          // Search bar and filter button
           Row(
             children: [
+              // Search bar
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFb0dcdc),
-                    borderRadius: BorderRadius.circular(30),
+                    color: AppTheme.searchBarColor,
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  height: 50,
+                  padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingXLarge),
+                  height: AppTheme.searchBarHeight,
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: TextField(
                           decoration: InputDecoration(
                             hintText: 'Cari',
                             border: InputBorder.none,
-                            hintStyle: TextStyle(color: Color(0xFF035E53)),
+                            hintStyle: TextStyle(color: AppTheme.primaryColor),
                           ),
                         ),
                       ),
@@ -65,46 +75,47 @@ class _RecipeRecommendationsBottomSheetState
                           'images/search.png',
                           width: 35,
                           height: 35,
-
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: AppTheme.spacingMedium),
+
+              // Filter button
               GestureDetector(
                 onTap: () {
                   showFilterDialog(context);
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF035E53),
-                    borderRadius: BorderRadius.circular(50),
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(AppTheme.filterButtonSize / 2),
                   ),
-                  padding: const EdgeInsets.all(8),
-                  child: const Icon(
+                  padding: EdgeInsets.all(AppTheme.spacingMedium),
+                  child: Icon(
                     Icons.filter_alt,
-                    color: Colors.white,
-                    size: 20,
+                    color: AppTheme.backgroundColor,
+                    size: AppTheme.iconSizeMedium,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const Text(
+          SizedBox(height: AppTheme.spacingXXLarge),
+
+          // Title
+          Text(
             'Rekomendasi Resep',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF035E53),
-            ),
+            style: AppTheme.headerStyle,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppTheme.spacingXLarge),
+
+          // Category chips
           Wrap(
-            spacing: 8,
-            runSpacing: 12,
+            spacing: AppTheme.spacingMedium,
+            runSpacing: AppTheme.spacingLarge,
             children: [
               for (var category in [
                 'Soto',
@@ -120,25 +131,27 @@ class _RecipeRecommendationsBottomSheetState
                 _buildCategoryChip(category),
             ],
           ),
-          const SizedBox(height: 24),
-            ElevatedButton(
+          SizedBox(height: AppTheme.spacingXXLarge),
+
+          // Search button
+          ElevatedButton(
             onPressed: () {
               Navigator.of(context).pushNamed('/hasil-pencarian');
             },
             style: ElevatedButton.styleFrom(
-              foregroundColor: const Color(0xFF035E53),
-              backgroundColor: const Color(0xFFb0dcdc),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              foregroundColor: AppTheme.primaryColor,
+              backgroundColor: AppTheme.searchBarColor,
+              padding: EdgeInsets.symmetric(vertical: AppTheme.spacingLarge),
               shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
               ),
               elevation: 0,
             ),
             child: const Text(
               'Cari',
               style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -152,14 +165,14 @@ class _RecipeRecommendationsBottomSheetState
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      selectedColor: const Color(0xFF035E53),
-      backgroundColor: const Color(0xFFb0dcdc),
+      selectedColor: AppTheme.primaryColor,
+      backgroundColor: AppTheme.searchBarColor,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : const Color(0xFF035E53),
+        color: isSelected ? AppTheme.backgroundColor : AppTheme.primaryColor,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium, vertical: 2),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
       ),
       onSelected: (selected) {
         setState(() {
@@ -174,8 +187,7 @@ class _RecipeRecommendationsBottomSheetState
   }
 }
 
-
-// Function to show the bottom sheet
+// Function to show the popup
 void showRecipeRecommendationsTopSheet(BuildContext context) {
   showGeneralDialog(
     context: context,
@@ -190,14 +202,19 @@ void showRecipeRecommendationsTopSheet(BuildContext context) {
           color: Colors.transparent,
           child: Container(
             width: MediaQuery.of(context).size.width,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
               borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+                bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
+                bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+            padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + AppTheme.spacingXXLarge,
+                left: AppTheme.spacingXXLarge,
+                right: AppTheme.spacingXXLarge,
+                bottom: AppTheme.spacingXXLarge
+            ),
             child: SafeArea(
               bottom: false,
               child: SearchPopup(),

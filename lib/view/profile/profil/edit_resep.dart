@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../component/header_back.dart';
 
 class AppColors {
   static const Color primaryColor = Color(0xFF005A4D);
@@ -20,47 +21,17 @@ class EditResep extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with back button and title
-              SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Stack(
-                  children: [
-                    // Ikon panah di kiri
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: Image.asset(
-                          'images/arrow.png',
-                          width: 24,
-                          height: 24,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
-                    ),
-                    // Teks "Edit Resep" di tengah
-                    Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Edit Resep',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              // Using HeaderWidget for UI consistency
+              HeaderWidget(
+                title: 'Edit Resep',
+                onBackPressed: () {
+                  Navigator.pop(context);
+                },
               ),
 
               // Action buttons
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -136,17 +107,17 @@ class EditResep extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    
+
                   ],
                 ),
               ),
-              
+
               // Recipe Info Fields
               _buildInfoField('Judul', 'Pina colada'),
               _buildInfoField('Deskripsi', 'Minuman segar khas resep', lighter: true),
               _buildInfoField('Estimasi Waktu', '30 menit'),
               _buildInfoField('Harga', 'Rp 20.000'),
-              
+
               // Difficulty Dropdown
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +158,7 @@ class EditResep extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               // Tools Section (Alat-Alat)
               const Padding(
                 padding: EdgeInsets.only(left: 30.0, top: 24.0, bottom: 8.0),
@@ -199,13 +170,13 @@ class EditResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               _buildToolItem('Blender'),
               _buildToolItem('Juicer (opsional)'),
               _buildToolItem('Pisau'),
               _buildToolItem('Gelas'),
               _buildToolItem('Sendok'),
-              
+
               // Add Tool Button
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -229,7 +200,7 @@ class EditResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Ingredients Section (Bahan-Bahan)
               const Padding(
                 padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
@@ -241,13 +212,13 @@ class EditResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               _buildIngredientItem('60 ml', 'Es susu (non panas)'),
               _buildIngredientItem('15 ml', 'Jus pepaya yang sudah disaring'),
               _buildIngredientItem('30 ml', 'Sirup santan kelapa atau krim kelapa'),
               _buildIngredientItem('1-2', 'Es batu secukupnya'),
               _buildIngredientItem('1 sdm', 'Hiasan nanas & ceri untuk garnish (opsional)'),
-              
+
               // Add Ingredient Button
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -271,7 +242,7 @@ class EditResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Instructions Section (Instruksi)
               const Padding(
                 padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
@@ -283,14 +254,14 @@ class EditResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
-                _buildInstructionItem('Siapkan blender. Masukkan rum putih, jus nanas, sirup/krim kelapa, dan campurkan es batu ke dalam blender.'),
-                _buildInstructionItem('Campurkan semua bahan hingga halus dan tercampur rata.'),
-                _buildInstructionItem('Tuangkan campuran ke dalam gelas saji.'),
-                _buildInstructionItem('Tambahkan hiasan nanas dan ceri di atasnya jika diinginkan.'),
-                _buildInstructionItem('Minuman siap disajikan. Nikmati selagi dingin!'),
-                _buildInstructionItem('Kocok minuman hingga halus.'),
-              
+
+              _buildInstructionItem('Siapkan blender. Masukkan rum putih, jus nanas, sirup/krim kelapa, dan campurkan es batu ke dalam blender.'),
+              _buildInstructionItem('Campurkan semua bahan hingga halus dan tercampur rata.'),
+              _buildInstructionItem('Tuangkan campuran ke dalam gelas saji.'),
+              _buildInstructionItem('Tambahkan hiasan nanas dan ceri di atasnya jika diinginkan.'),
+              _buildInstructionItem('Minuman siap disajikan. Nikmati selagi dingin!'),
+              _buildInstructionItem('Kocok minuman hingga halus.'),
+
               // Add Instruction Button
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -314,9 +285,9 @@ class EditResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
-              
-              
+
+
+
               const SizedBox(height: 20),
             ],
           ),
@@ -324,7 +295,7 @@ class EditResep extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildInfoField(String label, String placeholder, {bool lighter = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,7 +328,7 @@ class EditResep extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildToolItem(String text) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
@@ -371,7 +342,7 @@ class EditResep extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
-          
+
           // Tool name
           Expanded(
             child: Container(
@@ -389,7 +360,7 @@ class EditResep extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Delete button
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.black),
@@ -402,7 +373,7 @@ class EditResep extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildIngredientItem(String amount, String item) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
@@ -416,7 +387,7 @@ class EditResep extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
-          
+
           // Amount field
           Container(
             width: 70,
@@ -464,23 +435,23 @@ class EditResep extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildInstructionItem(String text) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
       child: Row(
         children: [
           // More button
-          
+
           IconButton(
-            
+
             icon: const Icon(Icons.more_vert, color: Colors.black),
             onPressed: () {},
             iconSize: 20,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
-         
+
           // Instruction text
           Expanded(
             child: Container(
@@ -498,7 +469,7 @@ class EditResep extends StatelessWidget {
               ),
             ),
           ),
-        
+
           // Delete button
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.black),

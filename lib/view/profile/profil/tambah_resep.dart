@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../component/header_back.dart';
 
 class AppColors {
   static const Color primaryColor = Color(0xFF005A4D);
@@ -20,47 +21,17 @@ class BuatResep extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with back button and title
-              SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Stack(
-                  children: [
-                    // Ikon panah di kiri
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: Image.asset(
-                          'images/arrow.png',
-                          width: 24,
-                          height: 24,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
-                    ),
-                    // Teks "Buat Resep" di tengah
-                    Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Buat Resep',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              // Menggunakan HeaderWidget untuk konsistensi UI
+              HeaderWidget(
+                title: 'Buat Resep',
+                onBackPressed: () {
+                  Navigator.pop(context);
+                },
               ),
 
               // Action buttons
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -144,13 +115,13 @@ class BuatResep extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Recipe Info Fields
               _buildInfoField('Judul', 'Nama Resep'),
               _buildInfoField('Deskripsi', 'Deskripsi Resep', lighter: true),
               _buildInfoField('Estimasi Waktu', '1 Jam, 30 Menit...'),
               _buildInfoField('Harga', 'Rp...'),
-              
+
               // Difficulty Dropdown
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +161,7 @@ class BuatResep extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               // Tools Section (Alat-Alat)
               const Padding(
                 padding: EdgeInsets.only(left: 30.0, top: 24.0, bottom: 8.0),
@@ -202,34 +173,34 @@ class BuatResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               _buildToolItem('Alat 1'),
               _buildToolItem('Alat 2'),
-              
+
               // Add Tool Button
-                Padding(
+              Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Center(
                   child: Container(
-                  width: 200,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(
-                    child: Text(
-                    '+ Tambahkan Alat',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    width: 200,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      borderRadius: BorderRadius.circular(24),
                     ),
+                    child: const Center(
+                      child: Text(
+                        '+ Tambahkan Alat',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
                   ),
                 ),
-                ),
-              
+              ),
+
               // Ingredients Section (Bahan-Bahan)
               const Padding(
                 padding: EdgeInsets.only(left: 16.0, top: 16.0, bottom: 8.0),
@@ -241,34 +212,34 @@ class BuatResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               _buildIngredientItem('Jumlah', 'Bahan...'),
               _buildIngredientItem('Jumlah', 'Bahan...'),
-              
+
               // Add Ingredient Button
-                Padding(
+              Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Center(
                   child: Container(
-                  width: 200,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(
-                    child: Text(
-                    '+ Tambahkan Bahan',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    width: 200,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      borderRadius: BorderRadius.circular(24),
                     ),
+                    child: const Center(
+                      child: Text(
+                        '+ Tambahkan Bahan',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
                   ),
                 ),
-                ),
-              
+              ),
+
               // Instructions Section (Intruksi)
               const Padding(
                 padding: EdgeInsets.only(left: 16.0, top: 16.0, bottom: 8.0),
@@ -280,41 +251,41 @@ class BuatResep extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               _buildInstructionItem('Instruksi 1'),
               _buildInstructionItem('Instruksi 2'),
               _buildInstructionItem('Instruksi 1'),
-              
+
               // Add Instruction Button
-                Padding(
+              Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Center(
                   child: Container(
-                  width: 200,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(
-                    child: Text(
-                    '+ Tambahkan Instruksi',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    width: 200,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      borderRadius: BorderRadius.circular(24),
                     ),
+                    child: const Center(
+                      child: Text(
+                        '+ Tambahkan Instruksi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
                   ),
                 ),
-                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-  
+
   Widget _buildInfoField(String label, String placeholder, {bool lighter = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,7 +318,7 @@ class BuatResep extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildToolItem(String text) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -386,7 +357,7 @@ class BuatResep extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildIngredientItem(String amount, String item) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -435,7 +406,7 @@ class BuatResep extends StatelessWidget {
           // Delete button
           Container(
             padding: const EdgeInsets.all(8),
-           
+
             child: IconButton(
               icon: const Icon(Icons.delete, color: Color.fromARGB(255, 4, 0, 0)),
               onPressed: () {},
@@ -445,7 +416,7 @@ class BuatResep extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildInstructionItem(String text) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -454,7 +425,7 @@ class BuatResep extends StatelessWidget {
           // More button
           Container(
             padding: const EdgeInsets.all(2),
-            
+
             child: IconButton(
               icon: const Icon(Icons.more_vert, color: Colors.black),
               onPressed: () {},
@@ -478,11 +449,11 @@ class BuatResep extends StatelessWidget {
               ),
             ),
           ),
-        
+
           // Delete button
           Container(
             padding: const EdgeInsets.all(2),
-            
+
             child: IconButton(
               icon: const Icon(Icons.delete, color: Colors.black),
               onPressed: () {},

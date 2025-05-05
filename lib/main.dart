@@ -84,15 +84,15 @@ class MyApp extends StatelessWidget {
 
         // Komunitas
         '/komunitas': (context) => const AppWithNavbar(KomunitasPage()),
-        '/review': (context) => const AppWithNavbar(ReviewPage()),
+        '/review': (context) => const ReviewPage(),
 
         // Home & Fitur
-        '/beranda': (context) => const AppWithNavbar(HomePage()),
+        '/beranda': (context) => const HomePage(),
         '/notif': (context) =>  AppWithNavbar(NotificationPage()),
         '/penjadwalan': (context) => const AppWithNavbar(PenjadwalanPage()),
         '/search': (context) => const AppWithNavbar(SearchPopup()),
         '/filter': (context) => const AppWithNavbar(FilterPopup()),
-        '/pengguna-terbaik': (context) => const AppWithNavbar(PenggunaTerbaik()),
+        '/pengguna-terbaik': (context) => const PenggunaTerbaik(),
         '/trending-resep': (context) => const AppWithNavbar(TrandingResep()),
         '/hasil-pencarian': (context) => const AppWithNavbar(HasilPencaharian()),
 
@@ -108,9 +108,9 @@ class MyApp extends StatelessWidget {
         '/pusat-bantuan': (context) => const AppWithNavbar(PusatBantuan()),
 
         // Resep
-        '/tambah-resep': (context) => const AppWithNavbar(BuatResep()),
-        '/edit-resep': (context) => const AppWithNavbar(EditResep()),
-        '/detail-resep': (context) => const AppWithNavbar(RecipeDetailPage()),
+        '/tambah-resep': (context) => const BuatResep(),
+        '/edit-resep': (context) => const EditResep(),
+        '/detail-resep': (context) => const RecipeDetailPage(),
         '/resep-anda': (context) => const AppWithNavbar(ResepAndaPage()),
 
         // Default route
