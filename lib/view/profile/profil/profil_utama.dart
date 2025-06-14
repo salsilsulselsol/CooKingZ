@@ -60,7 +60,7 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
   Future<UserProfile> fetchUserProfile() async {
     final baseUrl = dotenv.env['BASE_URL'];
     if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
-    final response = await http.get(Uri.parse('$baseUrl/api/users/me'));
+    final response = await http.get(Uri.parse('$baseUrl/users/me'));
     if (response.statusCode == 200) {
       return UserProfile.fromJson(json.decode(response.body));
     } else {
@@ -71,7 +71,7 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
   Future<List<Food>> fetchUserRecipes(int userId) async {
     final baseUrl = dotenv.env['BASE_URL'];
     if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
-    final response = await http.get(Uri.parse('$baseUrl/api/users/$userId/recipes'));
+    final response = await http.get(Uri.parse('$baseUrl/users/$userId/recipes'));
     if (response.statusCode == 200) {
       List<dynamic> body = json.decode(response.body);
       return body.map((dynamic item) => Food.fromMap(item as Map<String, dynamic>)).toList();
