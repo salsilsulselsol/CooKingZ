@@ -36,7 +36,6 @@ const cors = require('cors'); // Jika belum ada, pastikan Anda menginstal: npm i
 const recipeRoutes = require('./routes/recipeRoutes');
 const path = require('path'); // Diperlukan untuk path file statis
 
-const app = express();
 
 app.use(cors());
 app.use(express.json());
