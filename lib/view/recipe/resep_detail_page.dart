@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
-import 'package:masak2/view/component/header_b_l_s.dart'; // Import header yang Anda gunakan
+import 'package:masak2/view/component/header_b_l_s.dart';
 import '../../theme/theme.dart';
-import 'dart:convert'; // Untuk encode/decode JSON
-import 'package:http/http.dart' as http; // Untuk permintaan HTTP
-import 'package:flutter/foundation.dart' show kIsWeb; // Untuk cek apakah di web
-import 'package:video_player/video_player.dart'; // Import video_player
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:video_player/video_player.dart';
 
 class RecipeDetailPage extends StatefulWidget {
-  final int recipeId; // Tambahkan parameter recipeId
+  final int recipeId;
 
   const RecipeDetailPage({super.key, required this.recipeId});
 
@@ -17,29 +17,32 @@ class RecipeDetailPage extends StatefulWidget {
 }
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
-  bool _isLoading = true; // State untuk indikator loading
-  String _errorMessage = ''; // State untuk pesan error
-  Map<String, dynamic>? _fetchedRecipeData; // Data resep yang diambil dari backend
+  bool _isLoading = true;
+  String _errorMessage = '';
+  Map<String, dynamic>? _fetchedRecipeData;
 
-  bool isFollowing = false; // Contoh state untuk tombol Ikuti
-  DateTime selectedDate = DateTime.now(); // Contoh state untuk penjadwalan
+  bool isFollowing = false;
+  DateTime selectedDate = DateTime.now();
 
-  VideoPlayerController? _videoController; // Controller untuk pemutar video
+  VideoPlayerController? _videoController;
 
-  // Add these for review functionality
   final TextEditingController _commentController = TextEditingController();
-  double _currentRating = 0.0; // To store the user's selected rating
+  double _currentRating = 0.0;
+
+  // NEW: State untuk status favorit
+  bool _isFavorited = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchRecipeDetails(widget.recipeId); // Panggil fungsi untuk mengambil detail resep
+    _fetchRecipeDetails(widget.recipeId);
+    _checkFavoriteStatus(widget.recipeId); // NEW: Cek status favorit saat inisialisasi
   }
 
   @override
   void dispose() {
-    _videoController?.dispose(); // Pastikan controller video di-dispose
-    _commentController.dispose(); // Dispose the controller
+    _videoController?.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -68,7 +71,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             final String videoPath = recipeData['video_url'] as String;
             final fullVideoUrl = kIsWeb ? 'http://localhost:3000$videoPath' : 'http://10.0.2.2:3000$videoPath';
 
-            // Tambahkan print untuk debugging URL video
             print('Trying to load video from: $fullVideoUrl');
 
             _videoController = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl))
@@ -100,23 +102,81 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     }
   }
 
-  // --- NEW: Function to send schedule request ---
+  // NEW: Fungsi untuk mengecek status favorit resep
+  Future<void> _checkFavoriteStatus(int recipeId) async {
+    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
+    final String apiUrl = kIsWeb
+        ? 'http://localhost:3000/recipes/$recipeId/favorite-status?user_id=$userId'
+        : 'http://10.0.2.2:3000/recipes/$recipeId/favorite-status?user_id=$userId';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        setState(() {
+          _isFavorited = data['isFavorited'] ?? false;
+        });
+      } else {
+        print('Gagal mengecek status favorit: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      print('Error mengecek status favorit: $e');
+    }
+  }
+
+  // NEW: Fungsi untuk menambah/menghapus resep dari favorit
+  Future<void> _toggleFavorite() async {
+    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
+    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/${widget.recipeId}/favorite' : 'http://10.0.2.2:3000/recipes/${widget.recipeId}/favorite';
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        // Body tidak perlu user_id karena sudah ada di backend (hardcode atau dari auth)
+        // Namun, jika backend Anda memerlukan user_id di body, tambahkan di sini:
+        body: json.encode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        setState(() {
+          _isFavorited = data['isFavorited'] ?? !_isFavorited; // Update status favorit dari respons
+          // Perbarui jumlah likes di UI setelah toggle
+          if (_fetchedRecipeData != null) {
+            if (_isFavorited) {
+              _fetchedRecipeData!['favorites_count'] = (_fetchedRecipeData!['favorites_count'] as int? ?? 0) + 1;
+            } else {
+              _fetchedRecipeData!['favorites_count'] = (_fetchedRecipeData!['favorites_count'] as int? ?? 0) - 1;
+            }
+          }
+        });
+        _showSuccessDialog(context, 'Favorit', data['message']);
+      } else {
+        _showErrorDialog(context, 'Favorit Gagal', 'Gagal mengubah status favorit: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      _showErrorDialog(context, 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat mengubah status favorit: $e');
+      print('Error toggling favorite: $e');
+    }
+  }
+
+  // Fungsi untuk mengirim permintaan jadwal
   Future<void> _addMealSchedule() async {
-    // You'll need the actual user ID. For now, let's use a placeholder.
-    // In a real app, this would come from user session/authentication.
-    const int userId = 1; // Placeholder User ID
+    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
 
     final String apiUrl = kIsWeb ? 'http://localhost:3000/meal-schedules' : 'http://10.0.2.2:3000/meal-schedules';
-    final String formattedDate = selectedDate.toIso8601String().split('T')[0]; // YYYY-MM-DD
+    final String formattedDate = selectedDate.toIso8601String().split('T')[0]; // Format YYYY-MM-DD
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'user_id': userId, // Assuming your backend expects 'user_id'
+          'user_id': userId,
           'recipe_id': widget.recipeId,
-          'scheduled_date': formattedDate, // Assuming your backend expects 'scheduled_date'
+          'scheduled_date': formattedDate,
         }),
       );
 
@@ -137,7 +197,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     }
   }
 
-  // --- NEW: Function to send review request ---
+  // Fungsi untuk mengirim permintaan ulasan
   Future<void> _submitReview() async {
     final String comment = _commentController.text.trim();
 
@@ -150,8 +210,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       return;
     }
 
-    // You'll need the actual user ID. For now, let's use a placeholder.
-    const int userId = 1; // Placeholder User ID
+    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
 
     final String apiUrl = kIsWeb ? 'http://localhost:3000/reviews' : 'http://10.0.2.2:3000/reviews';
 
@@ -160,9 +219,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'user_id': userId, // Assuming your backend expects 'user_id'
+          'user_id': userId,
           'recipe_id': widget.recipeId,
-          'rating': _currentRating.toInt(), // Convert double to int for star rating
+          'rating': _currentRating.toInt(),
           'comment': comment,
         }),
       );
@@ -174,8 +233,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           _currentRating = 0.0; // Reset rating after submission
         });
         _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
-        // Optionally, re-fetch recipe details to update average rating and comments count
-        _fetchRecipeDetails(widget.recipeId);
+        _fetchRecipeDetails(widget.recipeId); // Re-fetch recipe details to update average rating
       } else {
         if (!mounted) return;
         _showErrorDialog(context, 'Ulasan Gagal', 'Gagal mengirim ulasan: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
@@ -190,7 +248,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tampilkan indikator loading jika data masih diambil
     if (_isLoading) {
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
@@ -200,7 +257,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       );
     }
 
-    // Tampilkan pesan error jika terjadi kesalahan
     if (_errorMessage.isNotEmpty) {
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
@@ -217,15 +273,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       );
     }
 
-    // Jika data sudah berhasil diambil, tampilkan UI resep
-    // PENTING: Gunakan safe access (?) atau default value (??) di sini
-    // Karena _fetchedRecipeData bisa saja masih null jika ada logika yang salah,
-    // atau jika response.statusCode == 200 tapi body kosong/tidak sesuai.
-    // Meskipun sudah ada cek _isLoading dan _errorMessage,
-    // ini adalah best practice untuk menghindari crash.
     final recipe = _fetchedRecipeData;
 
-    // Jika recipe masih null setelah loading selesai (misal, backend mengembalikan 200 OK tapi body kosong)
     if (recipe == null) {
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
@@ -242,8 +291,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       );
     }
 
-
-    // Konversi cooking_time (menit integer) kembali ke format "X Jam, Y Menit"
     final int cookingTimeMinutes = recipe['cooking_time'] as int? ?? 0;
     final int hours = cookingTimeMinutes ~/ 60;
     final int minutes = cookingTimeMinutes % 60;
@@ -257,7 +304,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       estimatedTimeDisplay += '$minutes Menit';
     }
 
-    // Perbaiki tampilan estimatedTime jika hanya 0 menit
     final String finalEstimatedTimeDisplay = estimatedTimeDisplay.isEmpty && cookingTimeMinutes == 0
         ? '0 Menit'
         : estimatedTimeDisplay;
@@ -269,18 +315,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         body: SafeArea(
           child: Column(
             children: [
-              // Header resep detail
               RecipeDetailHeader(
                 title: recipe['title'] as String? ?? 'Resep Tidak Ditemukan',
                 likes: recipe['favorites_count'] as int? ?? 0,
                 comments: recipe['comments_count'] as int? ?? 0,
                 onBackPressed: () => Navigator.pop(context),
-                onLikePressed: () {
-                  // Handle like button press
-                  print('Like button pressed for ${recipe['title']}');
-                },
+                onLikePressed: _toggleFavorite, // Modifikasi: Panggil fungsi toggle favorit
                 onSharePressed: () {
-                  // Handle share button press
                   print('Share button pressed for ${recipe['title']}');
                 },
               ),
@@ -289,12 +330,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Gambar resep (menggunakan image_url dari backend)
                       _buildRecipeImage(recipe['image_url'] as String?),
-                      // Bagian video (baru ditambahkan)
                       if (_videoController != null && _videoController!.value.isInitialized)
                         _buildRecipeVideo(_videoController!),
-                      // Bagian penulis (menggunakan data dari backend)
                       _buildAuthorSection(
                         recipe['user_id'] as int? ?? 0,
                         recipe['username'] as String? ?? 'Pengguna',
@@ -302,7 +340,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                         recipe['profile_picture'] as String?,
                       ),
                       _buildDivider(),
-                      // Deskripsi resep
                       _buildDescriptionSection(
                         recipe['description'] as String? ?? 'Tidak ada deskripsi tersedia.',
                         'Rp ${recipe['price']?.toString() ?? '0'}',
@@ -310,14 +347,10 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                         recipe['difficulty'] as String? ?? 'N/A',
                       ),
                       _buildScheduleButton(),
-                      // Bagian alat-alat
                       _buildToolsSection(recipe['tools'] as List<dynamic>?),
-                      // Bagian bahan-bahan
                       _buildIngredientsSection(recipe['ingredients'] as List<dynamic>?),
-                      // Bagian langkah-langkah
                       _buildStepsSection(recipe['instructions'] as List<dynamic>?),
                       _buildDivider(),
-                      // Bagian ulasan dan input komentar (menggunakan rata-rata rating)
                       _buildRatingSection(recipe['average_rating'] as double? ?? 0.0),
                       _buildCommentInput(),
                       _buildDivider(),
@@ -334,7 +367,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // --- Widget Builder yang sudah dimodifikasi untuk data dinamis ---
+  // --- Widget Builder lainnya (tidak berubah, hanya disertakan untuk kelengkapan) ---
 
   Widget _buildScheduleButton() {
     return Padding(
@@ -406,7 +439,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               child: Text('Batal', style: TextStyle(color: AppTheme.primaryColor)),
             ),
             ElevatedButton(
-              onPressed: _addMealSchedule, // Call the new function here
+              onPressed: _addMealSchedule,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
               ),
@@ -421,7 +454,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Helper untuk mendapatkan nama bulan
   String _getMonthName(int month) {
     const List<String> monthNames = [
       '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -434,10 +466,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   Widget _buildCalendar() {
     final now = DateTime.now();
     final firstDayOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
-    // Hitung offset untuk hari pertama dalam seminggu (Senin=0, Minggu=6)
     final int weekdayOffset = (firstDayOfMonth.weekday - 1 + 7) % 7;
     final int daysInMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0).day;
-    final int totalCells = daysInMonth + weekdayOffset; // Jumlah total cell yang dibutuhkan
+    final int totalCells = daysInMonth + weekdayOffset;
 
     return GridView.builder(
       shrinkWrap: true,
@@ -447,7 +478,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
       ),
-      itemCount: (totalCells / 7).ceil() * 7, // Pastikan kelipatan 7
+      itemCount: (totalCells / 7).ceil() * 7,
       itemBuilder: (context, index) {
         if (index < 7) {
           final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
@@ -462,11 +493,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           );
         }
 
-        // Hitung hari yang sebenarnya
         final int day = index - 7 - weekdayOffset + 1;
 
         if (day <= 0 || day > daysInMonth) {
-          // Sel kosong untuk hari di bulan sebelumnya/berikutnya
           return const SizedBox.shrink();
         }
 
@@ -506,8 +535,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-
-  // Generic success dialog
   void _showSuccessDialog(BuildContext context, String title1, String title2, [String? message]) {
     showDialog(
       context: context,
@@ -565,7 +592,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Generic error dialog
   void _showErrorDialog(BuildContext context, String title, String message) {
     showDialog(
       context: context,
@@ -586,18 +612,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan URL gambar dari backend
   Widget _buildRecipeImage(String? imageUrl) {
-    // Jika tidak ada gambar, tampilkan placeholder atau default
     ImageProvider imageProvider;
     String finalImageUrl = '';
 
     if (imageUrl != null && imageUrl.isNotEmpty && imageUrl != 'default_recipe_image.png') {
-      // Sesuaikan URL backend untuk gambar statis/uploads
       finalImageUrl = kIsWeb ? 'http://localhost:3000$imageUrl' : 'http://10.0.2.2:3000$imageUrl';
       imageProvider = NetworkImage(finalImageUrl);
     } else {
-      imageProvider = const AssetImage('images/default_recipe.png'); // Placeholder
+      imageProvider = const AssetImage('images/default_recipe.png');
     }
 
     return Container(
@@ -628,7 +651,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               errorBuilder: (context, error, stackTrace) {
                 print('Error loading recipe image from: $finalImageUrl - Error: $error');
                 return Image.asset(
-                  'images/default_recipe.png', // Fallback jika gambar gagal dimuat
+                  'images/default_recipe.png',
                   height: 200,
                   fit: BoxFit.cover,
                 );
@@ -648,7 +671,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _fetchedRecipeData?['title'] as String? ?? 'Nama Resep', // SAFE ACCESS
+                  _fetchedRecipeData?['title'] as String? ?? 'Nama Resep',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -657,14 +680,14 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 ),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.favorite,
+                    Icon(
+                      _isFavorited ? Icons.favorite : Icons.favorite_border, // Modifikasi: Ganti ikon berdasarkan status favorit
                       color: Colors.white,
                       size: 18,
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      (_fetchedRecipeData?['favorites_count'] as int? ?? 0).toString(), // SAFE ACCESS
+                      (_fetchedRecipeData?['favorites_count'] as int? ?? 0).toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -678,7 +701,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      (_fetchedRecipeData?['comments_count'] as int? ?? 0).toString(), // SAFE ACCESS
+                      (_fetchedRecipeData?['comments_count'] as int? ?? 0).toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -694,7 +717,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Widget baru untuk menampilkan video
   Widget _buildRecipeVideo(VideoPlayerController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -712,7 +734,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan data penulis dari backend (username, full_name, profile_picture)
   Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
     ImageProvider profileImageProvider;
     String finalProfileImageUrl = '';
@@ -721,7 +742,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
       profileImageProvider = NetworkImage(finalProfileImageUrl);
     } else {
-      profileImageProvider = const AssetImage('images/default_profile.png'); // Placeholder
+      profileImageProvider = const AssetImage('images/default_profile.png');
     }
 
     return Padding(
@@ -812,7 +833,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan data deskripsi, harga, waktu, kesulitan dari backend
   Widget _buildDescriptionSection(String description, String price, String estimatedTime, String difficulty) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -840,7 +860,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     child: Row(
                       children: [
                         const Icon(
-                          Icons.attach_money, // Mengganti ikon bintang jadi ikon uang
+                          Icons.attach_money,
                           color: Color(0xFF005A4D),
                           size: 14,
                         ),
@@ -916,9 +936,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan daftar alat dari backend
-  Widget _buildToolsSection(List<dynamic>? tools) { // PARAMETER DIUBAH MENJADI NULLABLE
-    final List<dynamic> safeTools = tools ?? []; // Jika null, gunakan list kosong
+  Widget _buildToolsSection(List<dynamic>? tools) {
+    final List<dynamic> safeTools = tools ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -934,7 +953,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
           ),
           const SizedBox(height: 8),
-          if (safeTools.isNotEmpty) // Tampilkan hanya jika ada alat
+          if (safeTools.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: safeTools
@@ -949,7 +968,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      tool?.toString() ?? 'Alat tidak diketahui', // Pastikan elemen tool juga null-safe
+                      tool?.toString() ?? 'Alat tidak diketahui',
                       style: TextStyle(
                         color: AppTheme.textBrown,
                         fontSize: 14,
@@ -970,9 +989,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan daftar bahan dari backend (objects dengan quantity, unit, name)
-  Widget _buildIngredientsSection(List<dynamic>? ingredients) { // PARAMETER DIUBAH MENJADI NULLABLE
-    final List<dynamic> safeIngredients = ingredients ?? []; // Jika null, gunakan list kosong
+  Widget _buildIngredientsSection(List<dynamic>? ingredients) {
+    final List<dynamic> safeIngredients = ingredients ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -988,12 +1006,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
           ),
           const SizedBox(height: 8),
-          if (safeIngredients.isNotEmpty) // Tampilkan hanya jika ada bahan
+          if (safeIngredients.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: safeIngredients
                   .map<Widget>((ingredient) {
-                // Pastikan ingredient adalah Map, dan propertinya juga null-safe
                 final Map<String, dynamic> ingredientMap = ingredient is Map ? ingredient as Map<String, dynamic> : {};
                 final String quantity = ingredientMap['quantity']?.toString() ?? '';
                 final String unit = ingredientMap['unit']?.toString() ?? '';
@@ -1010,7 +1027,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '$quantity $unit $name'.trim(), // Gabungkan quantity, unit, name
+                        '$quantity $unit $name'.trim(),
                         style: TextStyle(
                           color: AppTheme.textBrown,
                           fontSize: 14,
@@ -1032,9 +1049,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan daftar langkah-langkah dari backend
-  Widget _buildStepsSection(List<dynamic>? steps) { // PARAMETER DIUBAH MENJADI NULLABLE
-    final List<dynamic> safeSteps = steps ?? []; // Jika null, gunakan list kosong
+  Widget _buildStepsSection(List<dynamic>? steps) {
+    final List<dynamic> safeSteps = steps ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1042,7 +1058,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${safeSteps.length} Langkah Mudah', // Gunakan safeSteps.length
+            '${safeSteps.length} Langkah Mudah',
             style: TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
@@ -1050,10 +1066,10 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (safeSteps.isNotEmpty) // Tampilkan hanya jika ada langkah
+          if (safeSteps.isNotEmpty)
             Column(
               children: List.generate(
-                safeSteps.length, // Gunakan safeSteps.length
+                safeSteps.length,
                     (index) => Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
@@ -1085,7 +1101,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          safeSteps[index]?.toString() ?? 'Langkah tidak diketahui', // Pastikan elemen juga null-safe
+                          safeSteps[index]?.toString() ?? 'Langkah tidak diketahui',
                           style: TextStyle(
                             color: index % 2 == 0 ? Colors.white : AppTheme.primaryColor,
                             fontSize: 14,
@@ -1108,7 +1124,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // Menggunakan rata-rata rating dari backend
   Widget _buildRatingSection(double averageRating) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1131,13 +1146,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   (index) => GestureDetector(
                 onTap: () {
                   setState(() {
-                    _currentRating = (index + 1).toDouble(); // Set rating based on tapped star
+                    _currentRating = (index + 1).toDouble();
                   });
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Icon(
-                    // Fill star if index is less than current rating
                     index < _currentRating ? Icons.star : Icons.star_border,
                     color: AppTheme.primaryColor,
                     size: 32,
@@ -1158,7 +1172,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Rata-rata Ulasan: ${averageRating.toStringAsFixed(1)} dari 5', // Tampilkan rata-rata rating
+            'Rata-rata Ulasan: ${averageRating.toStringAsFixed(1)} dari 5',
             style: TextStyle(
               color: AppTheme.textBrown,
               fontSize: 14,
@@ -1186,20 +1200,18 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 color: AppTheme.primaryColor,
               ),
               onPressed: () {
-                // You can add functionality here, e.g., attach media
                 print('Add comment media button pressed');
               },
             ),
             Expanded(
               child: TextField(
-                controller: _commentController, // Assign the controller
+                controller: _commentController,
                 decoration: const InputDecoration(
                   hintText: 'Tuliskan ulasan anda...',
                   hintStyle: TextStyle(color: Colors.grey),
                   border: InputBorder.none,
                 ),
                 onSubmitted: (value) {
-                  // Optional: submit on enter key
                   _submitReview();
                 },
               ),
@@ -1211,7 +1223,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 width: 24,
                 height: 24,
               ),
-              onPressed: _submitReview, // Call the new function here
+              onPressed: _submitReview,
             ),
           ],
         ),
@@ -1249,7 +1261,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 }
 
-// Widget untuk kontrol play/pause video
 class _PlayPauseOverlay extends StatelessWidget {
   const _PlayPauseOverlay({required this.controller});
 
