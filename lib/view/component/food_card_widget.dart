@@ -1,7 +1,5 @@
-// lib/view/component/food_card_widget.dart
-
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // <-- Pastikan import ini ada
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../theme/theme.dart';
 import '../../models/food_model.dart';
 
@@ -21,81 +19,63 @@ class FoodCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onCardTap,
-      child: IntrinsicHeight(
-        child: Container(
-          margin: AppTheme.marginFoodCard,
-          width: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              _buildFoodImage(), // Perubahan ada di dalam widget ini
-              _buildFoodInfo(),  // dan widget ini
-            ],
-          ),
+      child: Container(
+        margin: AppTheme.marginFoodCard,
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildFoodImage(),
+            _buildFoodInfo(),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildFoodImage() {
-    Widget imageWidget;
-    final String imagePath = food.image;
+    // ==========================================================
+    // **PERUBAHAN UTAMA ADA DI SINI**
+    // Kita hanya cek apakah path gambar tidak kosong.
+    // ==========================================================
+    final bool hasImage = food.image.isNotEmpty;
+    final String? imageUrl = hasImage ? '${dotenv.env['BASE_URL']}${food.image}' : null;
 
-    // Logika untuk memilih sumber gambar (TIDAK DIUBAH)
-    if (imagePath.contains('/uploads/')) {
-      final baseUrl = dotenv.env['BASE_URL'];
-      if (baseUrl == null) {
-        imageWidget = const Center(child: Text('.env error'));
-      } else {
-        final imageUrl = '$baseUrl$imagePath';
-        imageWidget = Image.network(
-          imageUrl,
-          height: 1000,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              height: AppTheme.foodCardImageHeight,
-              color: Colors.grey[200],
-              child: Icon(Icons.broken_image, color: Colors.grey[600], size: 40),
-            );
-          },
-        );
-      }
-    } else {
-      imageWidget = Image.asset(
-        'images/$imagePath',
-        height: 1000,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            height: AppTheme.foodCardImageHeight,
-            color: Colors.grey[200],
-            child: Icon(Icons.image_not_supported, color: Colors.grey[600], size: 40),
-          );
-        },
-      );
-    }
-    
-    // Logika untuk teks rating
-    // Jika rating null atau 0, tampilkan '-', selain itu tampilkan angkanya.
     final String ratingText = (food.rating == null || food.rating == 0) ? '-' : food.rating!.toStringAsFixed(1);
 
-    // Layout asli Anda dipertahankan, hanya menambahkan Positioned baru untuk rating
     return Container(
       height: AppTheme.foodCardImageHeight,
       width: double.infinity,
-      alignment: Alignment.topRight,
       child: Stack(
+        fit: StackFit.expand,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-            child: imageWidget, // <-- Menggunakan widget gambar yang sudah dipilih
+            child: Container(
+              color: Colors.grey[200],
+              child: hasImage && imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.0,
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(Icons.broken_image, color: Colors.grey[600], size: 40);
+                      },
+                    )
+                  : Icon(Icons.image_not_supported, color: Colors.grey[600], size: 40),
+            ),
           ),
           
-          // Tombol favorit pojok kanan atas (KODE ASLI ANDA, TIDAK DIUBAH)
           Positioned(
             top: AppTheme.spacingMedium,
             right: AppTheme.spacingMedium,
@@ -118,9 +98,6 @@ class FoodCard extends StatelessWidget {
             ),
           ),
           
-          // ==========================================================
-          // **PERUBAHAN 1: MENAMBAHKAN RATING DI POJOK KIRI ATAS**
-          // ==========================================================
           Positioned(
             top: AppTheme.spacingMedium,
             left: AppTheme.spacingMedium,
@@ -174,6 +151,8 @@ class FoodCard extends StatelessWidget {
                   Text(
                     food.name,
                     style: AppTheme.foodTitleStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AppTheme.spacingXSmall),
                   Text(
@@ -191,14 +170,11 @@ class FoodCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // ====================================================================
-                  // **PERUBAHAN 2: MENGUBAH BINTANG HIJAU MENJADI IKON LOVE DI KIRI**
-                  // ====================================================================
                   _buildInfoItem(
                     text: (food.likes ?? 0).toString(),
-                    iconAsset: '', // Dikosongkan agar memakai iconFallback
-                    iconFallback: Icons.favorite, // Menggunakan ikon love dari Flutter
-                    isTextFirst: false, // Posisi ikon di sebelah kiri teks
+                    iconAsset: '',
+                    iconFallback: Icons.favorite,
+                    isTextFirst: false,
                   ),
                   _buildInfoItem(
                     text: food.cookingTime != null ? '${food.cookingTime} menit' : '-',
@@ -216,18 +192,24 @@ class FoodCard extends StatelessWidget {
     );
   }
 
-  // Widget _buildInfoItem tidak diubah sama sekali
   Widget _buildInfoItem({ required String text, required String iconAsset, required IconData iconFallback, bool isTextFirst = true }) {
     final textWidget = Text(text, style: AppTheme.foodInfoStyle);
-    final iconWidget = Image.asset(
-      iconAsset,
-      width: AppTheme.iconSizeSmall,
-      height: AppTheme.iconSizeSmall,
-      color: AppTheme.accentTeal,
-      errorBuilder: (context, error, stackTrace) {
-        return Icon(iconFallback, color: AppTheme.accentTeal, size: AppTheme.iconSizeSmall);
-      },
-    );
+    
+    Widget iconWidget;
+    if (iconAsset.isNotEmpty) {
+      iconWidget = Image.asset(
+        iconAsset,
+        width: AppTheme.iconSizeSmall,
+        height: AppTheme.iconSizeSmall,
+        color: AppTheme.accentTeal,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(iconFallback, color: AppTheme.accentTeal, size: AppTheme.iconSizeSmall);
+        },
+      );
+    } else {
+      iconWidget = Icon(iconFallback, color: AppTheme.accentTeal, size: AppTheme.iconSizeSmall);
+    }
+
     return Row(
       children: isTextFirst
           ? [textWidget, const SizedBox(width: AppTheme.spacingSmall), iconWidget]
@@ -235,7 +217,6 @@ class FoodCard extends StatelessWidget {
     );
   }
 
-  // Widget _buildPriceItem tidak diubah sama sekali
   Widget _buildPriceItem(String price) {
     return Row(
       children: [

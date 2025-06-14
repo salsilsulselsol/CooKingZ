@@ -11,7 +11,13 @@ const userController = require('../controllers/userController');
 // Rute untuk mendapatkan profil pengguna yang sedang login
 router.get('/me', userController.getMyProfile);
 
-// Rute BARU untuk mendapatkan resep milik seorang user berdasarkan ID
+// Rute untuk mendapatkan resep favorit pengguna yang sedang login
+router.get('/me/favorites', userController.getMyFavoriteRecipes);
+
+// Rute untuk mendapatkan profil pengguna berdasarkan ID
+router.get('/:id', userController.getUserById);
+
+// Rute untuk mendapatkan resep milik seorang user berdasarkan ID
 router.get('/:id/recipes', userController.getUserRecipes);
 
 module.exports = router;
