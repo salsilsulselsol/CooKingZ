@@ -173,3 +173,59 @@ exports.getUserById = async (req, res) => {
     res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
   }
 };
+
+// Fungsi untuk memperbarui profil pengguna yang sedang login
+exports.updateMyProfile = async (req, res) => {
+  // Untuk sementara kita hardcode ID pengguna = 1.
+  // Ganti dengan `const userId = req.user.id;` setelah otentikasi siap.
+  const userId = 1; 
+
+  const { fullName, username, bio } = req.body;
+
+  // Objek untuk menampung field yang akan di-update
+  const fieldsToUpdate = {};
+
+  // Hanya tambahkan field ke objek jika nilainya ada (tidak null atau undefined)
+  if (fullName !== undefined) fieldsToUpdate.full_name = fullName;
+  if (username !== undefined) fieldsToUpdate.username = username;
+  if (bio !== undefined) fieldsToUpdate.bio = bio;
+
+  // Cek jika ada file gambar yang di-upload
+  if (req.file) {
+    fieldsToUpdate.profile_picture = '/uploads/' + req.file.filename;
+  }
+
+  // Cek jika tidak ada data sama sekali untuk di-update
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    return res.status(400).json({ message: 'Tidak ada data untuk diperbarui.' });
+  }
+
+  // Membangun query SET secara dinamis
+  // Contoh: SET `full_name` = ?, `bio` = ?
+  const setClause = Object.keys(fieldsToUpdate)
+    .map(key => `${key} = ?`)
+    .join(', ');
+
+  // Mengambil nilai-nilai yang akan di-update
+  const values = [...Object.values(fieldsToUpdate), userId];
+  
+  const query = `UPDATE users SET ${setClause} WHERE id = ?`;
+
+  try {
+    const [result] = await db.query(query, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan, update gagal.' });
+    }
+
+    res.status(200).json({ message: 'Profil berhasil diperbarui!' });
+
+  } catch (error) {
+    // Tangani kemungkinan error duplikat username
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'Username sudah digunakan. Silakan pilih yang lain.' });
+    }
+    console.error('Error saat update profil:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server saat update profil.' });
+  }
+};

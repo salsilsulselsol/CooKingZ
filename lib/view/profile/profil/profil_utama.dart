@@ -30,14 +30,17 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isDataLoaded) {
-      // --- MODE TESTING: Menggunakan hardcode ID '2' ---
-      // Ganti angka '2' dengan null untuk kembali ke mode normal (melihat profil sendiri dari navigator)
-      // final arguments = ModalRoute.of(context)?.settings.arguments;
-      final arguments = null;
-
+      // ==========================================================
+      // **KEMBALIKAN KE KODE ASLI**
+      // Mengambil ID dari argumen navigasi.
+      // Jika tidak ada argumen (null), maka ini adalah profil sendiri.
+      // ==========================================================
+      final arguments = ModalRoute.of(context)?.settings.arguments;
+      
       _userId = arguments as int?;
       _isMyProfile = (_userId == null);
 
+      // ... sisa kodenya tidak perlu diubah ...
       _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this);
       _tabController.addListener(() {
         if (mounted) setState(() {});
@@ -46,7 +49,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
       _loadAllData();
       _isDataLoaded = true;
     }
-  }
+}
 
   void _loadAllData() {
     futureUserProfile = fetchUserProfile(_userId);
