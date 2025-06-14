@@ -5,11 +5,15 @@ const pool = require('./db'); // Pastikan db.js sudah berjalan dan terkoneksi
 const registerRoutes = require('./routes/registerRoutes');
 const recipeRoutes = require('./routes/recipeRoutes');
 const path = require('path'); // Diperlukan untuk path file statis
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Gunakan rute profil pengguna
+app.use('/api/users', userRoutes);
 
 // Setel direktori 'uploads' sebagai folder statis yang dapat diakses publik.
 // Ini memungkinkan Anda mengakses gambar/video yang diunggah melalui URL seperti http://localhost:3000/uploads/namafile.png

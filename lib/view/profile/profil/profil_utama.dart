@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../component/grid_2_builder.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
+
+// **FIX**: Impor ini sekarang akan memanggil kelas 'FoodGridWidget' yang benar dari file ini
+import '../../component/grid_2_builder.dart'; 
 import '../../../models/food_model.dart';
+import '../../../models/user_profile_model.dart';
+import '../../../theme/theme.dart';
+import 'tambah_resep.dart'; // File ini berisi kelas 'BuatResep'
+import 'edit_profil.dart';
 
 class ProfilUtama extends StatefulWidget {
   const ProfilUtama({super.key});
@@ -10,77 +19,15 @@ class ProfilUtama extends StatefulWidget {
 
 class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  // State untuk data API
+  late Future<UserProfile> futureUserProfile;
+  late Future<List<Food>> futureUserRecipes;
 
-  // Dummy data for recipes.  Using the Food model.
-  final List<Food> _recipes = [
-    Food(
-      id: 1,
-      name: 'Udang Krispi',
-      description: 'Digoreng dengan tepung',
-      image: 'images/udang_krispi.jpg',
-      cookingTime: 15,
-      price: '20RB',
-      likes: 34,
-    ),
-    Food(
-      id: 2,
-      name: 'Sayap Ayam Kecap',
-      description: 'Dimasak dengan kecap',
-      image: 'images/sayap_ayam_kecap.jpg',
-      cookingTime: 15,
-      price: '20RB',
-      likes: 5,
-    ),
-    Food(
-      id: 3,
-      name: 'Macarons',
-      description: 'Manis, fluffy, dan Pink',
-      image: 'images/macarons.jpg',
-      cookingTime: 15,
-      price: '20RB',
-      likes: 96,
-    ),
-    Food(
-      id: 4,
-      name: 'Pina Colada',
-      description: 'Minuman segar khas tropis',
-      image: 'images/pina_colada.jpg',
-      cookingTime: 5,
-      price: '20RB',
-      likes: 5,
-    ),
-    Food(
-      id: 5,
-      name: 'Spring Rolls',
-      description: 'Delicate and full of flavor',
-      image: 'images/spring_rolls.jpg',
-      cookingTime: 30,
-      price: '30RB',
-      likes: 4,
-    ),
-    Food(
-      id: 6,
-      name: 'French Toast',
-      description: 'Delicious slice of bread',
-      image: 'images/french_toast.jpg',
-      cookingTime: 25,
-      price: '20RB',
-      likes: 4,
-    ),
-  ];
-
-    // For the Favorite Tab
+  // Data dummy hanya untuk tab favorit (sesuai kode asli Anda)
   final List<Map<String, String>> _favoriteCategories = [
-    {
-      'name': 'Manis',
-      'image': 'images/manis.png',
-      'description': 'Kumpulan resep makanan dan minuman manis',
-    },
-    {
-      'name': 'Asin',
-      'image': 'images/asin.png',
-      'description': 'Kumpulan resep makanan dan minuman asin',
-    },
+    {'name': 'Manis', 'image': 'images/manis.png', 'description': 'Kumpulan resep makanan dan minuman manis'},
+    {'name': 'Asin', 'image': 'images/asin.png', 'description': 'Kumpulan resep makanan dan minuman asin'},
   ];
 
   @override
@@ -88,8 +35,49 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      setState(() {});
+      if (mounted) setState(() {});
     });
+    _loadAllData();
+  }
+
+  void _loadAllData() {
+    futureUserProfile = fetchUserProfile();
+    futureUserProfile.then((user) {
+      if (mounted) {
+        setState(() {
+          futureUserRecipes = fetchUserRecipes(user.id);
+        });
+      }
+    }).catchError((error) {
+      if (mounted) {
+        setState(() {
+          futureUserRecipes = Future.error('Profil gagal dimuat, resep tidak bisa diambil.');
+        });
+      }
+    });
+  }
+  
+  Future<UserProfile> fetchUserProfile() async {
+    final baseUrl = dotenv.env['BASE_URL'];
+    if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
+    final response = await http.get(Uri.parse('$baseUrl/api/users/me'));
+    if (response.statusCode == 200) {
+      return UserProfile.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Gagal memuat profil (Status: ${response.statusCode})');
+    }
+  }
+
+  Future<List<Food>> fetchUserRecipes(int userId) async {
+    final baseUrl = dotenv.env['BASE_URL'];
+    if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
+    final response = await http.get(Uri.parse('$baseUrl/api/users/$userId/recipes'));
+    if (response.statusCode == 200) {
+      List<dynamic> body = json.decode(response.body);
+      return body.map((dynamic item) => Food.fromMap(item as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Gagal memuat resep');
+    }
   }
 
   @override
@@ -101,106 +89,121 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top section - Profile header
-            _buildProfileHeader(),
-            // Stats section
-            _buildStatsSection(),
-            // Tab Bar
-            _buildTabBar(),
-            // Tab Content
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // Use the FoodGridWidget here
-                  _buildRecipeGrid(),
-                  _buildFavoriteGrid(),
-                ],
-              ),
-            ),
-          ],
-        ),
+      body: FutureBuilder<UserProfile>(
+        future: futureUserProfile,
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (userSnapshot.hasError) {
+            return Center(child: Text("Error: ${userSnapshot.error}"));
+          }
+          if (userSnapshot.hasData) {
+            return _buildProfileBody(userSnapshot.data!);
+          }
+          return const Center(child: Text("Tidak ada data profil."));
+        },
       ),
     );
   }
+  
+  Widget _buildProfileBody(UserProfile user) {
+    return SafeArea(
+      child: Column(
+        children: [
+          _buildProfileHeader(user),
+          _buildStatsSection(user),
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                FutureBuilder<List<Food>>(
+                  future: futureUserRecipes,
+                  builder: (context, recipeSnapshot) {
+                    if (recipeSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (recipeSnapshot.hasError) {
+                      return Center(child: Text('${recipeSnapshot.error}'));
+                    }
+                    if (recipeSnapshot.hasData && recipeSnapshot.data!.isNotEmpty) {
+                      return _buildRecipeGrid(recipeSnapshot.data!);
+                    }
+                    return const Center(child: Text("Anda belum punya resep."));
+                  }
+                ),
+                _buildFavoriteGrid(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Semua widget di bawah ini sekarang menggunakan data dinamis
+  // dan struktur asli dari kode yang Anda berikan.
+  
+  Widget _buildProfileHeader(UserProfile user) {
+    // **LOGIKA BARU UNTUK GAMBAR PROFIL**
+    ImageProvider profileImage;
+    final String? profilePicPath = user.profilePicture;
 
-  // Profile header
-  Widget _buildProfileHeader() {
+    // Jika path mengandung /uploads/, gunakan NetworkImage
+    if (profilePicPath != null && profilePicPath.contains('/uploads/')) {
+      final baseUrl = dotenv.env['BASE_URL']!;
+      profileImage = NetworkImage('$baseUrl$profilePicPath');
+    } 
+    // Jika tidak, gunakan aset lokal sebagai default
+    else {
+      // Ganti 'default_avatar.png' jika nama file Anda berbeda
+      profileImage = const AssetImage('images/default_avatar.png'); 
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profile image
-          Container(
-            width: 74,
-            height: 74,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                image: AssetImage('images/pp_profil.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          CircleAvatar( // Menggunakan CircleAvatar agar lebih rapi
+            radius: 37,
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: profileImage, // Gunakan ImageProvider yang sudah ditentukan
+            onBackgroundImageError: (e, s) { // Fallback jika NetworkImage gagal
+              print('Gagal memuat gambar profil: $e');
+            },
+            child: (profileImage == null) ? const Icon(Icons.person, size: 37) : null,
           ),
           const SizedBox(width: 16),
-          // Name, description, and action buttons
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Row untuk nama + tombol aksi
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Nama
-                    const Expanded(
-                      child: Text(
-                        'Siti Rahayu',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    // Tombol +
-                    Container(
-                      width: 30,
-                      height: 30,
-                      margin: const EdgeInsets.only(right: 2),
+                    Expanded(child: Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+                    SizedBox(
+                      width: 30, height: 30,
                       child: IconButton(
                         icon: Image.asset('images/tambah.png', width: 28, height: 28),
-                        onPressed: () {},
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BuatResep())),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
                       ),
                     ),
-                    // Tombol titik tiga
-                    Container(
-                      width: 30,
-                      height: 30,
+                    const SizedBox(width: 2),
+                    SizedBox(
+                      width: 30, height: 30,
                       child: IconButton(
                         icon: Image.asset('images/garis_tiga.png', width: 28, height: 28),
-                        onPressed: () {},
+                        onPressed: () => Navigator.pushNamed(context, "/pengaturan"),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                // Deskripsi
-                const Text(
-                  'Penulis resep terbaik mencoba dan berbagi resep baru dengan dunia.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                  maxLines: 2,
-                ),
+                Text(user.bio ?? 'Bio belum diatur.', style: const TextStyle(fontSize: 12, color: Colors.grey), maxLines: 2),
               ],
             ),
           ),
@@ -209,8 +212,7 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
     );
   }
 
-  // Stats Profil
-  Widget _buildStatsSection() {
+  Widget _buildStatsSection(UserProfile user) {
     return Column(
       children: [
         Padding(
@@ -219,43 +221,25 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, "/edit_profil");
-                  },
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfil())),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0A6859),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                    backgroundColor: const Color(0xFF0A6859), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    minimumSize: const Size(double.infinity, 20),
                   ),
-                  child: const Text(
-                    'Edit Profil',
-                    style: TextStyle(fontSize: 13),
-                  ),
+                  child: const Text('Edit Profil', style: TextStyle(fontSize: 13)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, "/bagikan_profil");
-                  },
+                  onPressed: () => Navigator.pushNamed(context, "/bagikan_profil"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0A6859),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                    backgroundColor: const Color(0xFF0A6859), foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    minimumSize: const Size(double.infinity, 20),
                   ),
-                  child: const Text(
-                    'Bagikan Profil',
-                    style: TextStyle(fontSize: 13),
-                  ),
+                  child: const Text('Bagikan Profil', style: TextStyle(fontSize: 13)),
                 ),
               ),
             ],
@@ -266,35 +250,23 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.symmetric(vertical: 5),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: const Color(0xFF0A6859),
-              width: 1,
-            ),
+            border: Border.all(color: const Color(0xFF0A6859), width: 1),
             borderRadius: BorderRadius.circular(25),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               GestureDetector(
-                onTap: () {
-                  _tabController.animateTo(0);
-                },
-                child: _buildStatCounter('60', 'Resep'),
-              ),
+                onTap: () => _tabController.animateTo(0),
+                child: _buildStatCounter(user.recipeCount.toString(), 'Resep')),
               _buildDivider(),
               GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/follow', arguments: 0);
-                },
-                child: _buildStatCounter('120', 'Mengikuti'),
-              ),
+                onTap: () => Navigator.pushNamed(context, '/follow', arguments: 0),
+                child: _buildStatCounter(user.followingCount.toString(), 'Mengikuti')),
               _buildDivider(),
               GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/follow', arguments: 1);
-                },
-                child: _buildStatCounter('250', 'Pengikut'),
-              ),
+                onTap: () => Navigator.pushNamed(context, '/follow', arguments: 1),
+                child: _buildStatCounter(user.followersCount.toString(), 'Pengikut')),
             ],
           ),
         ),
@@ -306,69 +278,36 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
   Widget _buildStatCounter(String count, String label) {
     return Column(
       children: [
-        Text(
-          count,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(count, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color.fromARGB(255, 8, 8, 8),
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 8, 8, 8))),
       ],
     );
   }
 
-  // Pembatas di stats profil
   Widget _buildDivider() {
-    return Container(
-      height: 30,
-      width: 1,
-      color: const Color(0xFF0A6859),
-    );
+    return Container(height: 30, width: 1, color: const Color(0xFF0A6859));
   }
 
   Widget _buildTabBar() {
     return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.shade300,
-            width: 1,
-          ),
-        ),
-      ),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1))),
       child: TabBar(
         controller: _tabController,
         indicatorColor: const Color(0xFF0A6859),
         labelColor: const Color(0xFF0A6859),
         unselectedLabelColor: Colors.grey,
-        tabs: const [
-          Tab(text: 'Resep'),
-          Tab(text: 'Favorit'),
-        ],
+        tabs: const [Tab(text: 'Resep'), Tab(text: 'Favorit')],
       ),
     );
   }
 
-  // Use FoodGridWidget
-    Widget _buildRecipeGrid() {
+  // **FIX**: Memanggil FoodGridWidget (dari file grid_2_builder.dart) dengan benar
+  Widget _buildRecipeGrid(List<Food> recipes) {
     return FoodGridWidget(
-      foods: _recipes,
-      onFavoritePressed: (index) {
-        // Handler doang buat nanti
-        print('Favorite pressed for recipe at index: $index');
-      },
-      onCardTap: (index) {
-        // Handler doang buat nanti
-        print('Card tapped for recipe at index: $index');
-      },
+      foods: recipes,
+      onFavoritePressed: (index) { print('Favorite pressed for recipe at index: $index'); },
+      onCardTap: (index) { print('Card tapped for recipe at index: $index'); },
     );
   }
 
@@ -376,26 +315,10 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
     return SingleChildScrollView(
       child: Column(
         children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.pushNamed(context, '/makanan-favorit', arguments: 'Manis');
-            },
-            child: _buildCategoryCard(
-              _favoriteCategories[0]['name']!,
-              _favoriteCategories[0]['image']!,
-              _favoriteCategories[0]['description']!,
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              Navigator.pushNamed(context, '/makanan-favorit', arguments: 'Asin');
-            },
-            child: _buildCategoryCard(
-              _favoriteCategories[1]['name']!,
-              _favoriteCategories[1]['image']!,
-              _favoriteCategories[1]['description']!,
-            ),
-          ),
+          ..._favoriteCategories.map((category) => GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/makanan-favorit', arguments: category['name']),
+            child: _buildCategoryCard(category['name']!, category['image']!, category['description']!),
+          )),
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: ElevatedButton.icon(
@@ -415,33 +338,20 @@ class _ProfilUtamaState extends State with SingleTickerProviderStateMixin {
   }
 
   Widget _buildCategoryCard(String title, String imageUrl, String description) {
-  return Container(
-    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.asset(
-            imageUrl,
-            height: 103,
-            width: 356,
-            fit: BoxFit.cover,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(imageUrl, height: 103, width: 356, fit: BoxFit.cover),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(5.0),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.all(5.0),
+            child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 }

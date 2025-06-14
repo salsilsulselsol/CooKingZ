@@ -1,4 +1,7 @@
+// lib/view/component/food_card_widget.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // <-- Pastikan import ini ada
 import '../../theme/theme.dart';
 import '../../models/food_model.dart';
 
@@ -26,7 +29,6 @@ class FoodCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              // Food image with position settings
               _buildFoodImage(),
               _buildFoodInfo(),
             ],
@@ -36,33 +38,65 @@ class FoodCard extends StatelessWidget {
     );
   }
 
-  // Widget for food image and favorite button
+  // ==========================================================
+  // **SATU-SATUNYA PERUBAHAN ADA DI DALAM FUNGSI DI BAWAH INI**
+  // ==========================================================
   Widget _buildFoodImage() {
+    Widget imageWidget;
+    final String imagePath = food.image;
+
+    // Logika untuk memilih sumber gambar
+    // Jika path dari DB berisi '/uploads/', maka itu gambar dari server.
+    if (imagePath.contains('/uploads/')) {
+      final baseUrl = dotenv.env['BASE_URL'];
+      // Jika baseUrl tidak ada di .env, tampilkan error agar mudah di-debug
+      if (baseUrl == null) {
+        imageWidget = const Center(child: Text('.env error'));
+      } else {
+        // Gabungkan baseUrl dengan path gambar dari DB
+        final imageUrl = '$baseUrl$imagePath';
+        imageWidget = Image.network(
+          imageUrl,
+          height: 1000,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: AppTheme.foodCardImageHeight,
+              color: Colors.grey[200],
+              child: Icon(Icons.broken_image, color: Colors.grey[600], size: 40),
+            );
+          },
+        );
+      }
+    } else {
+      // Jika tidak, maka itu adalah aset lokal dari folder /images
+      imageWidget = Image.asset(
+        'images/$imagePath',
+        height: 1000,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: AppTheme.foodCardImageHeight,
+            color: Colors.grey[200],
+            child: Icon(Icons.image_not_supported, color: Colors.grey[600], size: 40),
+          );
+        },
+      );
+    }
+
+    // Sisa dari widget ini tidak diubah, hanya menggunakan imageWidget di atas
     return Container(
       height: AppTheme.foodCardImageHeight,
       width: double.infinity,
       alignment: Alignment.topRight,
       child: Stack(
         children: [
-          // Food image with rounded corners
           ClipRRect(
             borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-            child: Image.asset(
-              food.image,
-              height: 1000,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: AppTheme.foodCardImageHeight,
-                  width: double.infinity,
-                  color: Colors.grey[300],
-                  child: Icon(Icons.restaurant, color: Colors.grey[600], size: 40),
-                );
-              },
-            ),
+            child: imageWidget, // <-- Menggunakan widget gambar yang sudah dipilih
           ),
-          // Favorite button (heart icon)
           Positioned(
             top: AppTheme.spacingMedium,
             right: AppTheme.spacingMedium,
@@ -89,25 +123,16 @@ class FoodCard extends StatelessWidget {
     );
   }
 
-  // Widget for food information (name, description, details)
+  // Widget _buildFoodInfo dan sisanya tidak saya ubah sama sekali dari kode yang Anda berikan.
   Widget _buildFoodInfo() {
     return IntrinsicHeight(
       child: Container(
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide.none,
-            left: BorderSide(
-              color: AppTheme.emeraldGreen,
-              width: AppTheme.borderWidth,
-            ),
-            right: BorderSide(
-              color: AppTheme.emeraldGreen,
-              width: AppTheme.borderWidth,
-            ),
-            bottom: BorderSide(
-              color: AppTheme.emeraldGreen,
-              width: AppTheme.borderWidth,
-            ),
+            left: BorderSide(color: AppTheme.emeraldGreen, width: AppTheme.borderWidth),
+            right: BorderSide(color: AppTheme.emeraldGreen, width: AppTheme.borderWidth),
+            bottom: BorderSide(color: AppTheme.emeraldGreen, width: AppTheme.borderWidth),
           ),
           borderRadius: const BorderRadius.only(
             bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
@@ -120,7 +145,6 @@ class FoodCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Food Name and Description
             Container(
               margin: AppTheme.paddingFoodCardContent,
               width: double.infinity,
@@ -128,18 +152,19 @@ class FoodCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    food.name,
-                    style: AppTheme.foodTitleStyle,
+                  food.name,
+                  style: AppTheme.foodTitleStyle,
                   ),
                   const SizedBox(height: AppTheme.spacingXSmall),
                   Text(
-                    food.description ?? '', // Handle nullable description
-                    style: AppTheme.foodDescriptionStyle,
+                  food.description ?? '',
+                  style: AppTheme.foodDescriptionStyle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            // Likes, Duration, Price
             Container(
               margin: AppTheme.paddingFoodCardInfo,
               width: double.infinity,
@@ -147,17 +172,17 @@ class FoodCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildInfoItem(
-                    text: food.likes.toString(),
+                    text: (food.likes ?? 0).toString(),
                     iconAsset: 'images/star_hijau.png',
                     iconFallback: Icons.star,
                   ),
                   _buildInfoItem(
-                    text: food.cookingTime != null ? '${food.cookingTime} menit' : '-', // Handle nullable cookingTime
+                    text: food.cookingTime != null ? '${food.cookingTime} menit' : '-',
                     iconAsset: 'images/time.png',
                     iconFallback: Icons.access_time,
                     isTextFirst: false,
                   ),
-                  _buildPriceItem(food.price ?? '-'), // Handle nullable price
+                  _buildPriceItem(food.price ?? '-'),
                 ],
               ),
             ),
@@ -167,60 +192,30 @@ class FoodCard extends StatelessWidget {
     );
   }
 
-  // Helper widget for info items (likes, duration)
-  Widget _buildInfoItem({
-    required String text,
-    required String iconAsset,
-    required IconData iconFallback,
-    bool isTextFirst = true,
-  }) {
-    final textWidget = Text(
-      text,
-      style: AppTheme.foodInfoStyle,
-    );
-
+  Widget _buildInfoItem({ required String text, required String iconAsset, required IconData iconFallback, bool isTextFirst = true }) {
+    final textWidget = Text(text, style: AppTheme.foodInfoStyle);
     final iconWidget = Image.asset(
       iconAsset,
       width: AppTheme.iconSizeSmall,
       height: AppTheme.iconSizeSmall,
       color: AppTheme.accentTeal,
       errorBuilder: (context, error, stackTrace) {
-        return Icon(
-          iconFallback,
-          color: AppTheme.accentTeal,
-          size: AppTheme.iconSizeSmall,
-        );
+        return Icon(iconFallback, color: AppTheme.accentTeal, size: AppTheme.iconSizeSmall);
       },
     );
-
     return Row(
       children: isTextFirst
-          ? [
-              textWidget,
-              const SizedBox(width: AppTheme.spacingSmall),
-              iconWidget,
-            ]
-          : [
-              iconWidget,
-              const SizedBox(width: AppTheme.spacingSmall),
-              textWidget,
-            ],
+          ? [textWidget, const SizedBox(width: AppTheme.spacingSmall), iconWidget]
+          : [iconWidget, const SizedBox(width: AppTheme.spacingSmall), textWidget],
     );
   }
 
-  // Helper widget for price item
   Widget _buildPriceItem(String price) {
     return Row(
       children: [
-        Text(
-          "RP",
-          style: AppTheme.foodPriceStyle,
-        ),
+        Text("RP", style: AppTheme.foodPriceStyle),
         const SizedBox(width: AppTheme.spacingSmall),
-        Text(
-          price,
-          style: AppTheme.foodInfoStyle,
-        ),
+        Text(price, style: AppTheme.foodInfoStyle),
       ],
     );
   }

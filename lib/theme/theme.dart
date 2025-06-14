@@ -94,7 +94,7 @@ class AppTheme {
   // Grid
   static const int gridCrossAxisCount = 2;
   static const double gridCrossAxisSpacing = 0.50;
-  static const double gridMainAxisSpacing = 5.0;
+  static const double gridMainAxisSpacing = 6.0;
   static const double gridChildAspectRatio = 3 / 3.5;
 
   // Recipe Card

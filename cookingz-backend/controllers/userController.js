@@ -1,0 +1,88 @@
+// File: cookingz-backend/controllers/userController.js
+
+const db = require('../db');
+
+// Fungsi untuk mendapatkan profil pengguna yang sedang login ('me')
+exports.getMyProfile = async (req, res) => {
+  // Asumsi: ID pengguna didapat dari middleware otentikasi (misal: JWT)
+  // Untuk sekarang, kita akan hardcode user ID 1 untuk pengujian.
+  // Ganti baris ini dengan `const userId = req.user.id;` setelah otentikasi siap.
+  const userId = 1; 
+
+  if (!userId) {
+    return res.status(401).json({ message: 'Akses ditolak. Tidak ada pengguna yang terautentikasi.' });
+  }
+
+  try {
+    // 1. Ambil data dasar pengguna dari tabel 'users'
+    const userQuery = 'SELECT id, username, full_name, email, cooking_level, bio, profile_picture FROM users WHERE id = ?';
+    const [users] = await db.query(userQuery, [userId]);
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
+    }
+
+    const userProfile = users[0];
+
+    // 2. Hitung jumlah resep yang dimiliki pengguna
+    const recipesCountQuery = 'SELECT COUNT(*) as recipe_count FROM recipes WHERE user_id = ?';
+    const [recipeResult] = await db.query(recipesCountQuery, [userId]);
+    userProfile.recipe_count = recipeResult[0].recipe_count;
+
+    // 3. Hitung jumlah pengikut (followers)
+    const followersCountQuery = 'SELECT COUNT(*) as followers_count FROM user_followers WHERE following_id = ?';
+    const [followersResult] = await db.query(followersCountQuery, [userId]);
+    userProfile.followers_count = followersResult[0].followers_count;
+
+    // 4. Hitung jumlah yang diikuti (following)
+    const followingCountQuery = 'SELECT COUNT(*) as following_count FROM user_followers WHERE follower_id = ?';
+    const [followingResult] = await db.query(followingCountQuery, [userId]);
+    userProfile.following_count = followingResult[0].following_count;
+    
+    // Kirim respons dengan data profil yang sudah digabungkan
+    res.status(200).json(userProfile);
+
+  } catch (error) {
+    console.error('Error saat mengambil profil:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+  }
+};
+
+// Fungsi BARU untuk mendapatkan semua resep milik seorang pengguna
+exports.getUserRecipes = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const query = `
+      SELECT 
+        r.id, 
+        r.title AS name, 
+        r.description, 
+        r.image_url AS image, 
+        r.cooking_time AS cookingTime, 
+        r.difficulty,
+        CAST(r.price AS CHAR) as price,
+        r.favorites_count AS likes,
+        (SELECT AVG(rating) FROM reviews WHERE recipe_id = r.id) AS rating
+      FROM recipes AS r
+      WHERE r.user_id = ?
+    `;
+
+    const [recipes] = await db.query(query, [userId]);
+    
+    // Konversi semua tipe data ke tipe yang benar (angka) sebelum mengirim JSON
+    const recipesTyped = recipes.map(recipe => ({
+      ...recipe,
+      id: parseInt(recipe.id, 10),
+      cookingTime: recipe.cookingTime ? parseInt(recipe.cookingTime, 10) : null,
+      likes: recipe.likes ? parseInt(recipe.likes, 10) : null,
+      rating: recipe.rating ? parseFloat(recipe.rating) : null
+    }));
+
+    res.status(200).json(recipesTyped);
+
+  } catch (error) {
+    console.error('Error saat mengambil resep pengguna:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server saat mengambil resep.' });
+  }
+};
