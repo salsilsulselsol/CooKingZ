@@ -29,8 +29,8 @@ class FoodCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              _buildFoodImage(),
-              _buildFoodInfo(),
+              _buildFoodImage(), // Perubahan ada di dalam widget ini
+              _buildFoodInfo(),  // dan widget ini
             ],
           ),
         ),
@@ -38,22 +38,16 @@ class FoodCard extends StatelessWidget {
     );
   }
 
-  // ==========================================================
-  // **SATU-SATUNYA PERUBAHAN ADA DI DALAM FUNGSI DI BAWAH INI**
-  // ==========================================================
   Widget _buildFoodImage() {
     Widget imageWidget;
     final String imagePath = food.image;
 
-    // Logika untuk memilih sumber gambar
-    // Jika path dari DB berisi '/uploads/', maka itu gambar dari server.
+    // Logika untuk memilih sumber gambar (TIDAK DIUBAH)
     if (imagePath.contains('/uploads/')) {
       final baseUrl = dotenv.env['BASE_URL'];
-      // Jika baseUrl tidak ada di .env, tampilkan error agar mudah di-debug
       if (baseUrl == null) {
         imageWidget = const Center(child: Text('.env error'));
       } else {
-        // Gabungkan baseUrl dengan path gambar dari DB
         final imageUrl = '$baseUrl$imagePath';
         imageWidget = Image.network(
           imageUrl,
@@ -70,7 +64,6 @@ class FoodCard extends StatelessWidget {
         );
       }
     } else {
-      // Jika tidak, maka itu adalah aset lokal dari folder /images
       imageWidget = Image.asset(
         'images/$imagePath',
         height: 1000,
@@ -85,8 +78,12 @@ class FoodCard extends StatelessWidget {
         },
       );
     }
+    
+    // Logika untuk teks rating
+    // Jika rating null atau 0, tampilkan '-', selain itu tampilkan angkanya.
+    final String ratingText = (food.rating == null || food.rating == 0) ? '-' : food.rating!.toStringAsFixed(1);
 
-    // Sisa dari widget ini tidak diubah, hanya menggunakan imageWidget di atas
+    // Layout asli Anda dipertahankan, hanya menambahkan Positioned baru untuk rating
     return Container(
       height: AppTheme.foodCardImageHeight,
       width: double.infinity,
@@ -97,6 +94,8 @@ class FoodCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
             child: imageWidget, // <-- Menggunakan widget gambar yang sudah dipilih
           ),
+          
+          // Tombol favorit pojok kanan atas (KODE ASLI ANDA, TIDAK DIUBAH)
           Positioned(
             top: AppTheme.spacingMedium,
             right: AppTheme.spacingMedium,
@@ -118,12 +117,33 @@ class FoodCard extends StatelessWidget {
               ),
             ),
           ),
+          
+          // ==========================================================
+          // **PERUBAHAN 1: MENAMBAHKAN RATING DI POJOK KIRI ATAS**
+          // ==========================================================
+          Positioned(
+            top: AppTheme.spacingMedium,
+            left: AppTheme.spacingMedium,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.star, color: Colors.yellow, size: 14),
+                  const SizedBox(width: 4),
+                  Text(ratingText, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // Widget _buildFoodInfo dan sisanya tidak saya ubah sama sekali dari kode yang Anda berikan.
   Widget _buildFoodInfo() {
     return IntrinsicHeight(
       child: Container(
@@ -152,15 +172,15 @@ class FoodCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                  food.name,
-                  style: AppTheme.foodTitleStyle,
+                    food.name,
+                    style: AppTheme.foodTitleStyle,
                   ),
                   const SizedBox(height: AppTheme.spacingXSmall),
                   Text(
-                  food.description ?? '',
-                  style: AppTheme.foodDescriptionStyle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                    food.description ?? '',
+                    style: AppTheme.foodDescriptionStyle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -171,10 +191,14 @@ class FoodCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // ====================================================================
+                  // **PERUBAHAN 2: MENGUBAH BINTANG HIJAU MENJADI IKON LOVE DI KIRI**
+                  // ====================================================================
                   _buildInfoItem(
                     text: (food.likes ?? 0).toString(),
-                    iconAsset: 'images/star_hijau.png',
-                    iconFallback: Icons.star,
+                    iconAsset: '', // Dikosongkan agar memakai iconFallback
+                    iconFallback: Icons.favorite, // Menggunakan ikon love dari Flutter
+                    isTextFirst: false, // Posisi ikon di sebelah kiri teks
                   ),
                   _buildInfoItem(
                     text: food.cookingTime != null ? '${food.cookingTime} menit' : '-',
@@ -192,6 +216,7 @@ class FoodCard extends StatelessWidget {
     );
   }
 
+  // Widget _buildInfoItem tidak diubah sama sekali
   Widget _buildInfoItem({ required String text, required String iconAsset, required IconData iconFallback, bool isTextFirst = true }) {
     final textWidget = Text(text, style: AppTheme.foodInfoStyle);
     final iconWidget = Image.asset(
@@ -210,6 +235,7 @@ class FoodCard extends StatelessWidget {
     );
   }
 
+  // Widget _buildPriceItem tidak diubah sama sekali
   Widget _buildPriceItem(String price) {
     return Row(
       children: [
