@@ -49,8 +49,7 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // URL ke endpoint registrasi di backend Anda
-    final String apiUrl = 'http://192.168.1.4:3000/register';
+    final String apiUrl = 'http://localhost:3000/register';
 
     try {
       final response = await http.post(

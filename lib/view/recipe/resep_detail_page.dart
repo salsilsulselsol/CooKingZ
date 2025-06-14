@@ -1,68 +1,125 @@
 import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
-import 'package:masak2/view/component/header_b_l_s.dart'; // Import the new header
+import 'package:masak2/view/component/header_b_l_s.dart'; // Import header yang Anda gunakan
 import '../../theme/theme.dart';
+import 'dart:convert'; // Untuk encode/decode JSON
+import 'package:http/http.dart' as http; // Untuk permintaan HTTP
+import 'package:flutter/foundation.dart' show kIsWeb; // Untuk cek apakah di web
 
 class RecipeDetailPage extends StatefulWidget {
-  const RecipeDetailPage({super.key});
+  final int recipeId; // Tambahkan parameter recipeId
+
+  const RecipeDetailPage({super.key, required this.recipeId});
 
   @override
   State<RecipeDetailPage> createState() => _RecipeDetailPageState();
 }
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
-  // Sample recipe data
-  final Map<String, dynamic> recipe = {
-    'name': 'Croffle Ice Cream',
-    'likes': 48,
-    'comments': 41,
-    'author': '@xylefbrian',
-    'authorName': 'William Smith',
-    'description': 'Croffle Ice Cream adalah kombinasi croffle (croissant + '
-        'Croffle) dengan es krim dingin, disajikan dengan saus '
-        'cokelat atau sirup maple, serta taburan gula halus. '
-        'Sempurna untuk camilan manis yang menggugah selera!',
-    'points': 'RP 20 RB',
-    'difficulty': null,
-    'tools': [
-      'Wajan',
-      'Spatula',
-      'Pisau',
-      'Piring',
-    ],
-    'ingredients': [
-      '2 lembar croissant',
-      '1 butir telur',
-      '1 sdm susu cair',
-      '1 sdt gula pasir',
-      '1/4 sdt vanila bubuk',
-      'Minyak goreng untuk menggoreng',
-    ],
-    'steps': [
-      'Potong croissant jadi dua, celupkan ke campuran telur, susu, gula, dan vanila. Goreng hingga kecokelatan, lalu tiriskan.',
-      'Letakkan croffle di piring saji, susun saling bersilangan agar terlihat menarik.',
-      'Campurkan bahan kering: Ayak bubuk kako, tepung terigu, dan garam dalam wadah terpisah, lalu tambahkan ke campuran mentega dan aduk hingga rata.',
-      'Siram dengan saus cokelat atau sirup maple, lalu taburi gula halus. Tambahkan kacang panggang jika suka.',
-      'Sajikan segera selagi hangat, nikmati perpaduan renyah dan dingin!',
-    ],
-  };
+  bool _isLoading = true; // State untuk indikator loading
+  String _errorMessage = ''; // State untuk pesan error
+  Map<String, dynamic>? _fetchedRecipeData; // Data resep yang diambil dari backend
 
-  bool isFollowing = false;
-  DateTime selectedDate = DateTime.now();
+  bool isFollowing = false; // Contoh state untuk tombol Ikuti
+  DateTime selectedDate = DateTime.now(); // Contoh state untuk penjadwalan
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecipeDetails(widget.recipeId); // Panggil fungsi untuk mengambil detail resep
+  }
+
+  // Fungsi untuk mengambil detail resep dari backend
+  Future<void> _fetchRecipeDetails(int id) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _fetchedRecipeData = null;
+    });
+
+    // Sesuaikan URL backend Anda
+    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/$id' : 'http://10.0.2.2:3000/recipes/$id';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> recipeData = json.decode(response.body);
+        setState(() {
+          _fetchedRecipeData = recipeData;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Gagal mengambil data resep: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan jaringan: $e';
+        _isLoading = false;
+      });
+      print('Error fetching recipe: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Tampilkan indikator loading jika data masih diambil
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryColor),
+        ),
+      );
+    }
+
+    // Tampilkan pesan error jika terjadi kesalahan
+    if (_errorMessage.isNotEmpty) {
+      return Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.red, fontSize: 16),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Jika data sudah berhasil diambil, tampilkan UI resep
+    final recipe = _fetchedRecipeData!; // Gunakan data yang sudah diambil
+
+    // Konversi cooking_time (menit integer) kembali ke format "X Jam, Y Menit"
+    final int cookingTimeMinutes = recipe['cooking_time'] ?? 0;
+    final int hours = cookingTimeMinutes ~/ 60;
+    final int minutes = cookingTimeMinutes % 60;
+    final String estimatedTimeDisplay = '${hours > 0 ? '$hours Jam' : ''}${hours > 0 && minutes > 0 ? ', ' : ''}${minutes > 0 ? '$minutes Menit' : ''}'.trim();
+
+    // Perbaiki tampilan estimatedTime jika hanya 0 menit
+    final String finalEstimatedTimeDisplay = estimatedTimeDisplay.isEmpty && cookingTimeMinutes == 0
+        ? '0 Menit'
+        : estimatedTimeDisplay;
+
+
     return BottomNavbar(
       Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         body: SafeArea(
           child: Column(
             children: [
+              // Header resep detail
               RecipeDetailHeader(
-                title: recipe['name'],
+                title: recipe['title'] ?? 'Resep Tidak Ditemukan', // Gunakan title dari backend
                 onBackPressed: () => Navigator.pop(context),
-                likes: recipe['likes'],
-                comments: recipe['comments'],
+                likes: recipe['favorites_count'] ?? 0, // Asumsi favorites_count dari DB
+                comments: 0, // Komentar akan diambil terpisah jika ada tabel reviews_count
                 onLikePressed: () {
                   // Handle like button press
                 },
@@ -75,15 +132,27 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildRecipeImage(),
-                      _buildAuthorSection(),
+                      // Gambar resep (menggunakan image_url dari backend)
+                      _buildRecipeImage(recipe['image_url']),
+                      // Bagian penulis (data dummy, bisa jadi perlu ambil dari tabel users)
+                      _buildAuthorSection(recipe['user_id']),
                       _buildDivider(),
-                      _buildDescriptionSection(),
+                      // Deskripsi resep
+                      _buildDescriptionSection(
+                        recipe['description'],
+                        recipe['price']?.toString() ?? 'Rp 0', // Ambil harga dari backend
+                        finalEstimatedTimeDisplay,
+                        recipe['difficulty'] ?? 'N/A', // Ambil kesulitan
+                      ),
                       _buildScheduleButton(),
-                      _buildToolsSection(),
-                      _buildIngredientsSection(),
-                      _buildStepsSection(),
+                      // Bagian alat-alat
+                      _buildToolsSection(recipe['tools']),
+                      // Bagian bahan-bahan
+                      _buildIngredientsSection(recipe['ingredients']),
+                      // Bagian langkah-langkah
+                      _buildStepsSection(recipe['instructions']),
                       _buildDivider(),
+                      // Bagian ulasan dan input komentar (data dummy)
                       _buildRatingSection(),
                       _buildCommentInput(),
                       _buildDivider(),
@@ -99,6 +168,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       ),
     );
   }
+
+  // --- Widget Builder yang sudah dimodifikasi untuk data dinamis ---
 
   Widget _buildScheduleButton() {
     return Padding(
@@ -153,7 +224,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('April 2025'),
+                const Text('April 2025'), // Ini masih statis, bisa diubah dinamis
                 const SizedBox(height: 16),
                 _buildCalendar(),
               ],
@@ -212,7 +283,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         int day = index - 7 + 1;
 
         if (day <= 0) {
-          day = 30 + day;
+          day = 30 + day; // Mengisi hari dari bulan sebelumnya jika perlu
           return Center(
             child: Text(
               day.toString(),
@@ -222,7 +293,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         }
 
         if (day > 30) {
-          day = day - 30;
+          day = day - 30; // Mengisi hari dari bulan berikutnya jika perlu
           return Center(
             child: Text(
               day.toString(),
@@ -231,12 +302,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           );
         }
 
-        bool isSelected = day == 1;
+        bool isSelected = day == selectedDate.day; // Mengecek apakah hari ini yang dipilih
 
         return InkWell(
           onTap: () {
             setState(() {
-              selectedDate = DateTime(2025, 4, day);
+              selectedDate = DateTime(2025, 4, day); // Tangani perubahan tanggal
             });
           },
           child: Container(
@@ -306,71 +377,18 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 30,
-              height: 30,
-              padding: const EdgeInsets.all(3),
-              child: Image.asset(
-                'images/arrow.png',
-                color: AppTheme.primaryColor,
-                width: 24,
-                height: 24,
-              ),
-            ),
-          ),
-          Text(
-            recipe['name'],
-            style: TextStyle(
-              color: AppTheme.primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                margin: const EdgeInsets.only(right: 8),
-                child: IconButton(
-                  icon: Image.asset(
-                    'images/love_hijau_tua.png',
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  onPressed: () {},
-                ),
-              ),
-              Container(
-                width: 30,
-                height: 30,
-                child: IconButton(
-                  icon: Image.asset(
-                    'images/share_button.png',
-                    width: 28,
-                    height: 28,
-                  ),
-                  padding: EdgeInsets.zero,
-                  onPressed: () {},
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  // Menggunakan URL gambar dari backend
+  Widget _buildRecipeImage(String? imageUrl) {
+    // Jika tidak ada gambar, tampilkan placeholder atau default
+    ImageProvider imageProvider;
+    if (imageUrl != null && imageUrl.isNotEmpty && imageUrl != 'default_recipe_image.png') {
+      // Sesuaikan URL backend untuk gambar statis/uploads
+      final fullImageUrl = kIsWeb ? 'http://localhost:3000$imageUrl' : 'http://10.0.2.2:3000$imageUrl';
+      imageProvider = NetworkImage(fullImageUrl);
+    } else {
+      imageProvider = const AssetImage('images/default_recipe.png'); // Placeholder
+    }
 
-  Widget _buildRecipeImage() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -392,10 +410,17 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
             ),
-            child: Image.asset(
-              'images/croffle.png',
+            child: Image(
+              image: imageProvider,
               height: 200,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Image.asset(
+                  'images/default_recipe.png', // Fallback jika gambar gagal dimuat
+                  height: 200,
+                  fit: BoxFit.cover,
+                );
+              },
             ),
           ),
           Container(
@@ -411,7 +436,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  recipe['name'],
+                  _fetchedRecipeData!['title'] ?? 'Nama Resep', // Gunakan title dari backend
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -427,7 +452,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      recipe['likes'].toString(),
+                      (_fetchedRecipeData!['favorites_count'] ?? 0).toString(), // Gunakan favorites_count dari backend
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -441,7 +466,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      recipe['comments'].toString(),
+                      // Jika ada hitungan komentar di DB
+                      (_fetchedRecipeData!['comments_count'] ?? 0).toString(), // Asumsi ada comments_count
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -457,7 +483,19 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildAuthorSection() {
+  // Menggunakan data penulis dari backend (asumsi user_id ada)
+  Widget _buildAuthorSection(int userId) {
+    // Anda mungkin perlu membuat API endpoint terpisah untuk detail pengguna
+    // untuk mendapatkan 'author' dan 'authorName' dari user_id ini.
+    // Untuk demo ini, saya akan menggunakan placeholder.
+    String authorUsername = '@user${userId}';
+    String authorFullName = 'Pengguna ${userId}';
+
+    // Jika Anda punya data users di _fetchedRecipeData (misal, di-JOIN di backend)
+    // authorUsername = recipe['username'] ?? '';
+    // authorFullName = recipe['full_name'] ?? '';
+
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -467,14 +505,14 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             children: [
               const CircleAvatar(
                 radius: 24,
-                backgroundImage: AssetImage('images/xyfebrian.png'),
+                backgroundImage: AssetImage('images/default_profile.png'), // Placeholder
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    recipe['author'],
+                    authorUsername,
                     style: TextStyle(
                       color: AppTheme.primaryColor,
                       fontWeight: FontWeight.bold,
@@ -482,7 +520,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     ),
                   ),
                   Text(
-                    recipe['authorName'],
+                    authorFullName,
                     style: TextStyle(
                       color: AppTheme.textBrown,
                       fontSize: 14,
@@ -540,7 +578,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildDescriptionSection() {
+  // Menggunakan data deskripsi, harga, waktu, kesulitan dari backend
+  Widget _buildDescriptionSection(String description, String price, String estimatedTime, String difficulty) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -568,12 +607,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       children: [
                         const Icon(
                           Icons.star,
-                          color: Colors.white,
+                          color: Colors.white, // Warna bintang bisa disesuaikan
                           size: 14,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          recipe['points'],
+                          price, // Menggunakan harga dari backend
                           style: const TextStyle(
                             color: Color(0xFF005A4D),
                             fontSize: 12,
@@ -599,7 +638,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '15 menit',
+                          estimatedTime, // Menggunakan estimasi waktu dari backend
                           style: TextStyle(
                             color: AppTheme.primaryColor,
                             fontSize: 12,
@@ -616,9 +655,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       color: AppTheme.accentTeal,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      'Mudah',
-                      style: TextStyle(
+                    child: Text(
+                      difficulty, // Menggunakan kesulitan dari backend
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -631,7 +670,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            recipe['description'],
+            description, // Menggunakan deskripsi dari backend
             style: TextStyle(
               color: AppTheme.textBrown,
               fontSize: 14,
@@ -643,7 +682,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildToolsSection() {
+  // Menggunakan daftar alat dari backend
+  Widget _buildToolsSection(List<dynamic> tools) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -660,7 +700,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           const SizedBox(height: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: (recipe['tools'] as List<String>)
+            children: tools
                 .map<Widget>((tool) => Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
@@ -672,7 +712,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    tool,
+                    tool.toString(), // Alat dikirim sebagai list of strings dari backend
                     style: TextStyle(
                       color: AppTheme.textBrown,
                       fontSize: 14,
@@ -688,7 +728,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildIngredientsSection() {
+  // Menggunakan daftar bahan dari backend (objects dengan quantity, unit, name)
+  Widget _buildIngredientsSection(List<dynamic> ingredients) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -705,7 +746,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           const SizedBox(height: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: (recipe['ingredients'] as List<String>)
+            children: ingredients
                 .map<Widget>((ingredient) => Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
@@ -717,7 +758,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    ingredient,
+                    '${ingredient['quantity']} ${ingredient['unit']} ${ingredient['name']}', // Gabungkan quantity, unit, name
                     style: TextStyle(
                       color: AppTheme.textBrown,
                       fontSize: 14,
@@ -733,14 +774,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildStepsSection() {
+  // Menggunakan daftar langkah-langkah dari backend
+  Widget _buildStepsSection(List<dynamic> steps) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${recipe['steps'].length} Langkah Mudah',
+            '${steps.length} Langkah Mudah',
             style: TextStyle(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.bold,
@@ -750,7 +792,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           const SizedBox(height: 12),
           Column(
             children: List.generate(
-              recipe['steps'].length,
+              steps.length,
                   (index) => Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
@@ -782,7 +824,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        recipe['steps'][index],
+                        steps[index].toString(), // Langkah dikirim sebagai list of strings
                         style: TextStyle(
                           color: index % 2 == 0 ? Colors.white : AppTheme.primaryColor,
                           fontSize: 14,
@@ -822,7 +864,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   (index) => Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Image.asset(
-                  'images/star.png',
+                  'images/star.png', // Gambar bintang statis
                   color: AppTheme.primaryColor,
                   width: 32,
                   height: 32,

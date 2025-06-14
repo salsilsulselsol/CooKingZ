@@ -43,7 +43,7 @@ import 'view/profile/Pengaturan/pengaturan_notifikasi.dart';
 import 'view/profile/Pengaturan/pusat_bantuan.dart';
 
 // Recipe
-import 'view/recipe/resep_detail_page.dart';
+// import 'view/recipe/resep_detail_page.dart';
 import 'view/recipe/resep_anda_page.dart';
 
 // Menu (utamanya jika halaman utama ada di file ini)
@@ -110,18 +110,68 @@ class MyApp extends StatelessWidget {
 
         // Resep
         '/tambah-resep': (context) => const BuatResep(),
-        '/edit-resep': (context) => const EditResep(),
-        '/detail-resep': (context) => const RecipeDetailPage(),
+        // '/edit-resep': (context) => const EditResep(),
+        // '/detail-resep': (context) => const RecipeDetailPage(),
         '/resep-anda': (context) => const AppWithNavbar(ResepAndaPage()),
 
         // Default route
         '/resep-schedule': (context) => const AppWithNavbar(PenjadwalanPage()),
+      },
+
+      onGenerateRoute: (settings) {
+        // Jika nama rute kosong, tidak perlu diproses di sini
+        if (settings.name == null) {
+          return null;
+        }
+
+        // Parse URI untuk menangani path segments (misal: #/edit-resep/123)
+        final uri = Uri.parse(settings.name!);
+
+        // CASE 1: Rute '/edit-resep' dipanggil dengan path parameter (misal: /edit-resep/123)
+        // Ini berguna jika Anda mengetik langsung di browser atau menggunakan deep linking
+        if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'edit-resep') {
+          if (uri.pathSegments.length == 2) { // Memastikan ada ID setelah '/edit-resep/'
+            final String? idString = uri.pathSegments[1];
+            final int? recipeId = int.tryParse(idString ?? '');
+            if (recipeId != null) {
+              return MaterialPageRoute(
+                builder: (context) => AppWithNavbar(EditResep(recipeId: recipeId)),
+                settings: settings, // Penting: Teruskan settings untuk kompatibilitas navigasi
+              );
+            }
+          }
+          // Jika ID tidak valid atau format path salah (misal: /edit-resep/abc atau /edit-resep/)
+          return MaterialPageRoute(builder: (context) => const Text('Error: ID Resep tidak valid atau tidak ditemukan di URL. Format yang benar: /edit-resep/ID_RESEP'));
+        }
+
+        // CASE 2: Rute '/edit-resep' dipanggil dengan arguments (dari Navigator.pushNamed)
+        // Contoh: Navigator.pushNamed(context, '/edit-resep', arguments: 123);
+        // Ini adalah cara umum untuk navigasi internal antar halaman Flutter
+        if (settings.name == '/edit-resep') {
+          final args = settings.arguments;
+          if (args is int) { // Memastikan argumen yang diteruskan adalah integer (recipeId)
+            return MaterialPageRoute(
+              builder: (context) => AppWithNavbar(EditResep(recipeId: args)),
+              settings: settings,
+            );
+          } else {
+            // Ini menangkap kasus error yang Anda alami: Navigator.pushNamed('/edit-resep') tanpa argumen
+            // atau dengan argumen yang tidak valid (bukan int).
+            return MaterialPageRoute(builder: (context) => const Text('Error: ID Resep wajib diberikan untuk halaman /edit-resep. Navigasi: Navigator.pushNamed(context, "/edit-resep", arguments: yourRecipeId);'));
+          }
+        }
+
+        // Untuk rute lain yang tidak ditangani secara eksplisit di onGenerateRoute,
+        // kembalikan null agar MaterialApp mencari di 'routes' map.
+        return null;
       },
       
     );
   }
   
 }
+
+
 
 
 
