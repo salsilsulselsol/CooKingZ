@@ -229,3 +229,114 @@ exports.updateMyProfile = async (req, res) => {
     res.status(500).json({ message: 'Terjadi kesalahan pada server saat update profil.' });
   }
 };
+
+// Fungsi untuk mengambil daftar FOLLOWING (yang di-follow oleh user :id)
+exports.getFollowingList = async (req, res) => {
+  try {
+    const profileUserId = req.params.id; // ID profil yang sedang dilihat
+    const loggedInUserId = 1; // ID pengguna yang login (hardcode untuk testing)
+
+    // Query dimodifikasi untuk menambahkan status 'isFollowedByMe'
+    const query = `
+      SELECT 
+        u.id, u.username, u.full_name, u.profile_picture,
+        -- Cek apakah ada relasi follow dari pengguna login ke setiap user (u.id) di daftar ini
+        CASE WHEN EXISTS (
+          SELECT 1 FROM user_followers 
+          WHERE follower_id = ? AND following_id = u.id
+        ) THEN 1 ELSE 0 END AS isFollowedByMe
+      FROM users u
+      JOIN user_followers uf ON u.id = uf.following_id
+      WHERE uf.follower_id = ?
+    `;
+    const [following] = await db.query(query, [loggedInUserId, profileUserId]);
+    res.status(200).json(following);
+  } catch (error) {
+    console.error('Error saat mengambil daftar following:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+  }
+};
+
+// Fungsi untuk mengambil daftar FOLLOWERS dari user :id
+exports.getFollowersList = async (req, res) => {
+  try {
+    const profileUserId = req.params.id; // ID profil yang sedang dilihat
+    const loggedInUserId = 1; // ID pengguna yang login (hardcode)
+
+    // Query dimodifikasi untuk menambahkan status 'isFollowedByMe'
+    const query = `
+      SELECT 
+        u.id, u.username, u.full_name, u.profile_picture,
+        -- Cek apakah ada relasi follow dari pengguna login ke setiap user (u.id) di daftar ini
+        CASE WHEN EXISTS (
+          SELECT 1 FROM user_followers 
+          WHERE follower_id = ? AND following_id = u.id
+        ) THEN 1 ELSE 0 END AS isFollowedByMe
+      FROM users u
+      JOIN user_followers uf ON u.id = uf.follower_id
+      WHERE uf.following_id = ?
+    `;
+    const [followers] = await db.query(query, [loggedInUserId, profileUserId]);
+    res.status(200).json(followers);
+  } catch (error) {
+    console.error('Error saat mengambil daftar followers:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+  }
+};
+
+// Fungsi untuk follow seorang pengguna
+exports.followUser = async (req, res) => {
+  // Untuk sementara, pengguna yang login di-hardcode ID-nya = 1
+  // Nantinya, ini harus didapat dari token otentikasi: const loggedInUserId = req.user.id;
+  const loggedInUserId = 1;
+  
+  // ID pengguna yang akan di-follow, didapat dari parameter URL
+  const userToFollowId = req.params.id;
+
+  // Mencegah pengguna mem-follow diri sendiri
+  if (loggedInUserId == userToFollowId) {
+    return res.status(400).json({ message: 'Anda tidak bisa mengikuti diri sendiri.' });
+  }
+
+  try {
+    // Query untuk menambahkan relasi follow ke dalam tabel user_followers
+    const query = 'INSERT INTO user_followers (follower_id, following_id) VALUES (?, ?)';
+    await db.query(query, [loggedInUserId, userToFollowId]);
+
+    res.status(200).json({ message: `Anda sekarang mengikuti pengguna dengan ID ${userToFollowId}` });
+
+  } catch (error) {
+    // Tangani jika relasi sudah ada (mencegah duplikat)
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'Anda sudah mengikuti pengguna ini.' });
+    }
+    console.error('Error saat follow user:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+  }
+};
+
+// Fungsi untuk unfollow seorang pengguna
+exports.unfollowUser = async (req, res) => {
+  // Hardcode ID pengguna yang login
+  const loggedInUserId = 1; 
+  
+  // ID pengguna yang akan di-unfollow
+  const userToUnfollowId = req.params.id;
+
+  try {
+    // Query untuk menghapus relasi follow dari tabel
+    const query = 'DELETE FROM user_followers WHERE follower_id = ? AND following_id = ?';
+    const [result] = await db.query(query, [loggedInUserId, userToUnfollowId]);
+
+    // Cek apakah ada baris yang terhapus
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Anda tidak sedang mengikuti pengguna ini, tidak ada yang di-unfollow.' });
+    }
+
+    res.status(200).json({ message: `Anda berhenti mengikuti pengguna dengan ID ${userToUnfollowId}` });
+
+  } catch (error) {
+    console.error('Error saat unfollow user:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+  }
+};

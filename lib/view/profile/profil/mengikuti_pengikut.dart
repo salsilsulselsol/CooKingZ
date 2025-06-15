@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-
-import '../../component/back_button_widget.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
+import 'package:masak2/view/component/back_button_widget.dart';
+import '../../../models/follower_user_model.dart'; 
 
 class MengikutiPengikut extends StatefulWidget {
   const MengikutiPengikut({super.key});
@@ -12,521 +15,248 @@ class MengikutiPengikut extends StatefulWidget {
 class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+
+  List<FollowerUser> _followingList = [];
+  List<FollowerUser> _followersList = [];
+  bool _isLoadingFollowing = true;
+  bool _isLoadingFollowers = true;
   
-  final List<Map<String, dynamic>> _followingList = [
-  {
-    'username': '@bagus_pratama',
-    'name': 'Bagus Pratama',
-    'image': 'images/bagas.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@chef_maya',
-    'name': 'Maya Cinta',
-    'image': 'images/maya.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@danaos',
-    'name': 'Danaos',
-    'image': 'images/daniel.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@johuol',
-    'name': 'Johuol',
-    'image': 'images/joshua.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@yudapratama',
-    'name': 'Yuda Pratama',
-    'image': 'images/yuda.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@entin_cio',
-    'name': 'Entin Cio',
-    'image': 'images/entin_cio.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@ristarian',
-    'name': 'Ristari Abrar',
-    'image': 'images/rizki.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@daniel_santoso',
-    'name': 'Daniel Santoso',
-    'image': 'images/daniel.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@ridwansahra',
-    'name': 'Riri Sahrini',
-    'image': 'images/melisa.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@ayyu',
-    'name': 'Ayu Lestari',
-    'image': 'images/ayu.png',
-    'isFollowing': true,
-  },
-];
+  // Asumsi profil yang dilihat adalah profil kita sendiri (ID 1)
+  final int _profileUserId = 1; 
+  String _profileUsername = 'memuat...';
+  // Asumsi pengguna yang sedang login adalah ID 1
+  final int _loggedInUserId = 1; 
+  
+  bool _hasMadeChanges = false;
 
-final List<Map<String, dynamic>> _followersList = [
-  {
-    'username': '@sitisanti_',
-    'name': 'Siti Santi',
-    'image': 'images/siti.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@melisa_ayu',
-    'name': 'Melisa Ayu',
-    'image': 'images/melisa.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@alexitiari',
-    'name': 'Alexa Tiari',
-    'image': 'images/anisa.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@katiyanahmi',
-    'name': 'Katiya Rahma',
-    'image': 'images/kafiya.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@indrani',
-    'name': 'Indrani Shaukat',
-    'image': 'images/indiana.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@mega_oki',
-    'name': 'Mega Oktaviani',
-    'image': 'images/megan.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@ratuninsa',
-    'name': 'Ratu Annisa',
-    'image': 'images/ratuanisa.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@lovexp',
-    'name': 'Yunni Aprilia',
-    'image': 'images/viarel.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@alfahartono',
-    'name': 'Alif Hartono',
-    'image': 'images/rudi.png',
-    'isFollowing': true,
-  },
-  {
-    'username': '@nolyena_',
-    'name': 'Nadia Riyani',
-    'image': 'images/nadya.png',
-    'isFollowing': true,
-  },
-];
-
-
-   @override
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Ambil index tab dari arguments (default 0 = Mengikuti)
+    // Inisialisasi TabController dengan index awal dari argumen navigasi
     final int initialIndex = ModalRoute.of(context)?.settings.arguments as int? ?? 0;
-
     _tabController = TabController(length: 2, vsync: this, initialIndex: initialIndex);
+    _fetchData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  // Toggle follow status
-  void _toggleFollow(int index, bool isFollower) {
-    setState(() {
-      if (isFollower) {
-        _followersList[index]['isFollowing'] = !_followersList[index]['isFollowing'];
-      } else {
-        _followingList[index]['isFollowing'] = !_followingList[index]['isFollowing'];
+  Future<void> _fetchData() async {
+    // Ambil semua data yang diperlukan saat halaman dibuka
+    _fetchUsername();
+    _fetchFollowingList();
+    _fetchFollowersList();
+  }
+
+  Future<void> _fetchUsername() async {
+    final baseUrl = dotenv.env['BASE_URL'];
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/users/$_profileUserId'));
+      if(mounted && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() { _profileUsername = data['username'] ?? 'Tidak Ditemukan'; });
       }
+    } catch(e) {
+      print("Error fetching username: $e");
+    }
+  }
+
+  Future<void> _fetchFollowingList() async {
+    if (!mounted) return;
+    setState(() => _isLoadingFollowing = true);
+    final baseUrl = dotenv.env['BASE_URL'];
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/users/$_profileUserId/following'));
+       if(mounted && response.statusCode == 200) {
+        final List<dynamic> body = json.decode(response.body);
+        setState(() {
+          _followingList = body.map((data) => FollowerUser.fromJson(data)).toList();
+        });
+      }
+    } catch(e) {
+      print("Error fetching following list: $e");
+    } finally {
+      if(mounted) setState(() => _isLoadingFollowing = false);
+    }
+  }
+
+  Future<void> _fetchFollowersList() async {
+    if (!mounted) return;
+    setState(() => _isLoadingFollowers = true);
+    final baseUrl = dotenv.env['BASE_URL'];
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/users/$_profileUserId/followers'));
+       if(mounted && response.statusCode == 200) {
+        final List<dynamic> body = json.decode(response.body);
+        setState(() {
+          _followersList = body.map((data) => FollowerUser.fromJson(data)).toList();
+        });
+      }
+    } catch(e) {
+      print("Error fetching followers list: $e");
+    } finally {
+      if(mounted) setState(() => _isLoadingFollowers = false);
+    }
+  }
+
+  Future<void> _toggleFollow(FollowerUser userToToggle) async {
+    final originalStatus = userToToggle.isFollowing;
+    
+    // Optimistic UI update
+    setState(() {
+      userToToggle.isFollowing = !originalStatus;
     });
+
+    final baseUrl = dotenv.env['BASE_URL'];
+    final action = userToToggle.isFollowing ? 'follow' : 'unfollow';
+    final url = Uri.parse('$baseUrl/users/${userToToggle.id}/$action');
+    
+    try {
+      // Panggil API
+      final response = await http.post(url);
+      if (response.statusCode != 200) {
+        throw Exception('Gagal follow/unfollow user');
+      }
+      // Jika berhasil, tandai bahwa ada perubahan
+      _hasMadeChanges = true;
+    } catch (e) {
+       // Jika gagal, kembalikan state UI ke semula
+       if(mounted) {
+        setState(() {
+          userToToggle.isFollowing = originalStatus;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal, periksa koneksi Anda.'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-     return Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 0.5,
         leading: BackButtonWidget(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(_hasMadeChanges),
         ),
         title: Text(
-          '@siti_r',
-          style: TextStyle(
-            color: Color(0xFF015551),
-            fontWeight: FontWeight.bold,
-          ),
+          '@$_profileUsername',
+          style: const TextStyle(color: Color(0xFF015551), fontWeight: FontWeight.bold),
         ),
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.black,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.black,
+          indicatorColor: const Color(0xFF006257),
+          indicatorWeight: 3,
           tabs: [
-            Tab(text: '120 Mengikuti'),
-            Tab(text: '250 Pengikut'),
+            Tab(text: '${_followingList.length} Mengikuti'),
+            Tab(text: '${_followersList.length} Pengikut'),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.lightBlue[50],
-                hintText: 'Cari',
-                hintStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
+      body: WillPopScope(
+        onWillPop: () async {
+          Navigator.of(context).pop(_hasMadeChanges);
+          return true;
+        },
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Cari',
+                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
               ),
             ),
-          ),
-
-          // Tab Content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // Following Tab
-                _buildFollowingList(),
-
-                // Followers Tab
-                _buildFollowersList(),
-              ],
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildUserListView(list: _followingList, isLoading: _isLoadingFollowing),
+                  _buildUserListView(list: _followersList, isLoading: _isLoadingFollowers),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFollowingList() {
-    return Stack(
-      children: [
-        ListView.builder(
-          itemCount: _followingList.length,
-          itemBuilder: (context, index) {
-            final user = _followingList[index];
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  // Profile Image
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundImage: AssetImage(user['image']),
-                  ),
-                  const SizedBox(width: 12),
-                  
-                  // User Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user['username'],
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          user['name'],
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Following Button
-                  ElevatedButton(
-                    onPressed: () => _toggleFollow(index, false),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF006257),
-                      minimumSize: Size(100, 36),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: Text(
-                      'Mengikuti',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  
-                  // More Options
-                  IconButton(
-                    icon: Icon(Icons.more_vert, color: Colors.grey),
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        isScrollControlled: true,
-                        builder: (context) {
-                          return Stack(
-                            children: [
-                              // Blurred Background
-                              GestureDetector(
-                                onTap: () => Navigator.pop(context),
-                                child: Container(
-                                  color: Colors.black.withOpacity(0.5),
-                                ),
-                              ),
-                              // Bottom Sheet Content
-                                Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Container(
-                                  height: MediaQuery.of(context).size.height * 0.7,
-                                  decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(20),
-                                  ),
-                                  ),
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Row(
-                                    children: [
-                                      CircleAvatar(
-                                      radius: 20,
-                                      backgroundImage: AssetImage(user['image']),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                      user['username'],
-                                      style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
-                                    ),
-                                    Divider(),
-                                    _buildSettingsOption(
-                                    'Atur notifikasi',
-                                    Icons.notifications_none,
-                                    onTap: () {},
-                                    ),
-                                    _buildSettingsOption(
-                                    'Notifikasi',
-                                    Icons.notifications,
-                                    hasSwitch: true,
-                                    value: true,
-                                    onChanged: (value) {},
-                                    ),
-                                    
-                                    _buildSettingsOption(
-                                    'Bisukan notifikasi',
-                                    Icons.volume_off,
-                                    hasSwitch: true,
-                                    value: true,
-                                    onChanged: (value) {},
-                                    ),
-                                    _buildSettingsOption(
-                                    'Publikasi',
-                                    Icons.public,
-                                    hasSwitch: true,
-                                    value: true,
-                                    onChanged: (value) {},
-                                    ),
-                                    _buildSettingsOption(
-                                    'Blokir Akun',
-                                    Icons.block,
-                                    hasSwitch: true,
-                                    value: false,
-                
-                                    ),
-                                    _buildSettingsOption(
-                                    'Laporkan',
-                                    Icons.flag_outlined,
-                                    onTap: () {},
-                                    ),
-                                  ],
-                                  ),
-                                ),
-                                ),
-                              ],
-                              );
-                            },
-                            );
-                          },
-                          ),
-                        ],
-                        ),
-                      );
-                      },
-                    ),
-                    ],
-                  );
-                  }
-
-  Widget _buildFollowersList() {
+  Widget _buildUserListView({required List<FollowerUser> list, required bool isLoading}) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (list.isEmpty) {
+      return const Center(child: Text('Daftar kosong.'));
+    }
     return ListView.builder(
-      itemCount: _followersList.length,
+      itemCount: list.length,
       itemBuilder: (context, index) {
-        final follower = _followersList[index];
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              // Profile Image
-              CircleAvatar(
-              radius: 24,
-              backgroundImage: AssetImage(follower['image']),
-              ),
-              const SizedBox(width: 12),
-              
-              // User Info
-              Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                Text(
-                  follower['username'],
-                  style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  ),
-                ),
-                Text(
-                  follower['name'],
-                  style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                  ),
-                ),
-                ],
-              ),
-              ),
-              
-              // Follow/Unfollow Button
-              ElevatedButton(
-              onPressed: () => _toggleFollow(index, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: follower['isFollowing'] 
-                ? const Color(0xFF006257) 
-                : Colors.white,
-                side: BorderSide(
-                color: const Color(0xFF006257),
-                width: 1,
-                ),
-                minimumSize: Size(80, 36),
-                shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: Text(
-                follower['isFollowing'] ? 'Mengikuti' : 'Ikuti',
-                style: TextStyle(
-                color: follower['isFollowing'] ? Colors.white : const Color(0xFF006257),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                ),
-              ),
-              ),
-              const SizedBox(width: 8),
-              
-              // Remove Button
-              ElevatedButton(
-              onPressed: () {
-                setState(() {
-                _followersList.removeAt(index);
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                minimumSize: Size(80, 36),
-                shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: Text(
-                'Hapus',
-                style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                ),
-              ),
-              ),
-            ],
-            
-          ),
-        );
+        final user = list[index];
+        return _buildUserTile(user);
       },
     );
   }
 
-  Widget _buildSettingsOption(String title, IconData icon, {
-    bool hasSwitch = false, 
-    bool value = false,
-    Function()? onTap,
-    Function(bool)? onChanged,
-  }) {
-    return InkWell(
-      onTap: hasSwitch ? null : onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: Colors.black54),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-            if (hasSwitch)
-              Switch(
-                value: value,
-                onChanged: onChanged,
-                activeColor: const Color(0xFF006257),
-                activeTrackColor: const Color(0xFF006257).withOpacity(0.4),
-              ),
-          ],
-        ),
+  Widget _buildUserTile(FollowerUser user) {
+    final baseUrl = dotenv.env['BASE_URL'] ?? '';
+    final imagePath = user.profilePicture?.startsWith('/') ?? false
+        ? user.profilePicture
+        : '/${user.profilePicture}';
+
+    return ListTile(
+      leading: CircleAvatar(
+        radius: 24,
+        backgroundImage: (user.profilePicture != null && user.profilePicture!.isNotEmpty)
+            ? NetworkImage('$baseUrl$imagePath')
+            : const AssetImage('images/default_avatar.png') as ImageProvider,
       ),
+      title: Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      subtitle: Text('@${user.username}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      trailing: _buildFollowButton(user),
+    );
+  }
+  
+  Widget _buildFollowButton(FollowerUser user) {
+    // Jangan tampilkan tombol untuk profil kita sendiri jika muncul di list
+    if (user.id == _loggedInUserId) {
+      return const SizedBox(width: 48); // Beri ruang kosong agar sejajar
+    }
+    return ElevatedButton(
+      onPressed: () => _toggleFollow(user),
+      style: ElevatedButton.styleFrom(
+        foregroundColor: user.isFollowing ? Colors.black : Colors.white,
+        backgroundColor: user.isFollowing ? Colors.grey[200] : const Color(0xFF006257),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: user.isFollowing 
+              ? BorderSide(color: Colors.grey[400]!)
+              : BorderSide.none,
+        ),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), 
+      ),
+      child: Text(user.isFollowing ? 'Mengikuti' : 'Ikuti'),
     );
   }
 }

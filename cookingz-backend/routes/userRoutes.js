@@ -21,6 +21,15 @@ router.get('/:id', userController.getUserById);
 // Rute untuk mendapatkan resep milik seorang user berdasarkan ID
 router.get('/:id/recipes', userController.getUserRecipes);
 
+// Rute untuk mendapatkan daftar pengguna yang DIIKUTI oleh user dengan :id
+router.get('/:id/following', userController.getFollowingList);
+
+// Rute untuk mendapatkan daftar PENGGIKUT dari user dengan :id
+router.get('/:id/followers', userController.getFollowersList);
+
+router.post('/:id/follow', userController.followUser);
+router.post('/:id/unfollow', userController.unfollowUser);
+
 // Rute untuk memperbarui profil pengguna yang sedang login
 router.put('/me', upload.single('profile_picture'), userController.updateMyProfile);
 
