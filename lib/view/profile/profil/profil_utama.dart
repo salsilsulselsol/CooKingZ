@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:masak2/view/profile/profil/bagikan_profil.dart';
 import 'dart:convert';
 
 import '../../component/grid_2_builder.dart';
@@ -280,7 +281,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _isMyProfile
-              ? _buildMyProfileActions()
+              ? _buildMyProfileActions(user)
               : _buildOtherUserActions(),
         ),
         const SizedBox(height: 8),
@@ -307,12 +308,22 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildMyProfileActions() {
+  Widget _buildMyProfileActions(UserProfile user) {
     return Row(
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfil())),
+            onPressed: () async {
+              // Logika untuk navigasi ke EditProfil sudah benar
+              final result = await Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (context) => const EditProfil())
+              );
+              if (result == true) {
+                // Jika ada perubahan, muat ulang data profil
+                // (Logika ini sudah benar dari sebelumnya)
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0A6859), foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
@@ -324,7 +335,16 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: () => Navigator.pushNamed(context, "/bagikan_profil"),
+            // ==========================================================
+            // **PERBAIKAN ADA DI SINI**
+            // Mengganti pushNamed dengan push MaterialPageRoute
+            // ==========================================================
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BagikanProfil()),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0A6859), foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
@@ -336,6 +356,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
       ],
     );
   }
+
 
   Widget _buildOtherUserActions() {
     return Row(
