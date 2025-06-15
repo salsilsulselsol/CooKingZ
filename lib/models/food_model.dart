@@ -50,4 +50,19 @@ class Food {
       'difficulty': difficulty,
     };
   }
+
+  factory Food.fromJson(Map<String, dynamic> json) {
+    return Food(
+      id: json['id'],
+      name: json['name'],
+      rating: (json['rating'] as num?)?.toDouble(),
+      // Handle null untuk rating
+      cookingTime: json['cookingTime'],
+      price: json['price'],
+      image: json['image'],
+      likes: json['likes'],
+      // Handle null untuk likes
+      description: json['description'],
+    );
+  }
 }
