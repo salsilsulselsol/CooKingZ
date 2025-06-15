@@ -3,101 +3,75 @@ import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/header_b_n_s.dart';
 import 'package:masak2/models/food_model.dart';
 import 'package:masak2/view/component/food_card_widget.dart';
-import 'package:masak2/view/component/category_tab.dart'; // Import the new widget
+import 'package:masak2/view/component/category_tab.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SubCategoryPage extends StatefulWidget {
-  const SubCategoryPage({super.key});
+  final String categoryName;
+  final int categoryId;
+
+  const SubCategoryPage({
+    super.key,
+    required this.categoryName,
+    required this.categoryId,
+  });
 
   @override
   State<SubCategoryPage> createState() => _SubCategoryPageState();
 }
 
 class _SubCategoryPageState extends State<SubCategoryPage> {
-  // Define app colors
   final Color primaryColor = const Color(0xFF005A4D);
   final Color accentTeal = const Color(0xFF57B4BA);
   final Color emeraldGreen = const Color(0xFF015551);
 
-  // Lista navigasi tab (di bawah 'Sarapan')
   final List<String> _categories = [
-    'Sarapan',
-    'Makan Siang',
-    'Makan Malam',
-    'Vegan',
-    'Halal',
+    'Terbaru',
+    'Populer',
+    'Rating Tinggi',
   ];
 
-  // Index tab yang aktif
   int _selectedCategoryIndex = 0;
 
-  // Data makanan untuk kategori sarapan - converted to Food objects
-  late List<Food> _breakfastFoods;
+  late Future<List<Food>> _foodsFuture;
+
+  final String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 
   @override
   void initState() {
     super.initState();
-    // Initialize the breakfast foods list with Food objects
-    _breakfastFoods = [
-      Food(
-        name: 'Eggs Benedict',
-        description: 'Muffin dengan Bacon Kanada',
-        image: 'images/eggs_benedict.png',
-        cookingTime: 45, // Menggunakan cookingTime (int?)
-        price: '30RB',
-        likes: 12,
-      ),
-      Food(
-        name: 'French Toast',
-        description: 'Irisan roti yang lezat',
-        image: 'images/french_toast.png',
-        cookingTime: 15, // Menggunakan cookingTime (int?)
-        price: '25RB',
-        likes: 24,
-      ),
-      Food(
-        name: 'Oatmeal & Kacang',
-        description: 'Campuran sehat untuk sarapan',
-        image: 'images/oatmeal_kacang.png',
-        cookingTime: 20, // Menggunakan cookingTime (int?)
-        price: '25RB',
-        likes: 14,
-      ),
-      Food(
-        name: 'Telur Dadar',
-        description: 'bertekstur dan alami',
-        image: 'images/telur_dadar.png',
-        cookingTime: 30, // Menggunakan cookingTime (int?)
-        price: '15RB',
-        likes: 85,
-      ),
-      Food(
-        name: 'Oatmeal Stroberi',
-        description: 'Siap santap dengan stroberi dan blueberry',
-        image: 'images/oatmeal_stroberi.png',
-        cookingTime: 15, // Menggunakan cookingTime (int?)
-        price: '25RB',
-        likes: 23,
-      ),
-      Food(
-        name: 'Bruschetta',
-        description: 'Roti panggang dengan topping segar',
-        image: 'images/bruschetta.png',
-        cookingTime: 30, // Menggunakan cookingTime (int?)
-        price: '35RB',
-        likes: 42,
-      ),
-    ];
+    // Panggil fungsi untuk mengambil resep dari CategoryController via endpoint baru
+    _foodsFuture = _fetchRecipesByCategoryId(widget.categoryId);
   }
+
+  // Fungsi untuk mengambil resep dari backend menggunakan endpoint CategoryController
+  Future<List<Food>> _fetchRecipesByCategoryId(int categoryId) async {
+    try {
+      // Panggil endpoint /categories/:categoryId/recipes
+      final response = await http.get(Uri.parse('$_baseUrl/categories/$categoryId/recipes'));
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Food.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load recipes for category $categoryId: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching recipes: $e');
+      throw Exception('Failed to connect to the server or parse data. Error: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    // Menggunakan BottomNavbar untuk konsistensi dengan CategoryPage
     return BottomNavbar(
       _buildMainContent(),
     );
   }
 
-  // Widget yang berisi konten utama
   Widget _buildMainContent() {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -106,12 +80,10 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
         bottom: false,
         child: Column(
           children: [
-            // Menggunakan CustomHeader yang sudah diupdate
             CustomHeader(
-              title: 'Sarapan',
+              title: widget.categoryName,
               titleColor: primaryColor,
             ),
-            // Using the new CategoryTabBar widget
             CategoryTabBar(
               categories: _categories,
               selectedIndex: _selectedCategoryIndex,
@@ -123,7 +95,21 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
               primaryColor: primaryColor,
             ),
             Expanded(
-              child: _buildFoodGridView(),
+              child: FutureBuilder<List<Food>>(
+                future: _foodsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('Tidak ada resep ditemukan untuk kategori ${widget.categoryName}.'));
+                  } else {
+                    final foods = snapshot.data!;
+                    return _buildFoodGridView(foods);
+                  }
+                },
+              ),
             ),
           ],
         ),
@@ -131,30 +117,24 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
     );
   }
 
-  // Grid view for food items - now using the FoodCard widget
-  Widget _buildFoodGridView() {
+  Widget _buildFoodGridView(List<Food> foods) {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(2, 20, 2, 110), // Menambahkan padding bottom 90px agar konten tidak tertutup oleh navbar
+      padding: const EdgeInsets.fromLTRB(2, 20, 2, 110),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 0.50,
         mainAxisSpacing: 5,
         childAspectRatio: 3 / 3.5,
       ),
-      itemCount: _breakfastFoods.length,
+      itemCount: foods.length,
       itemBuilder: (context, index) {
         return FoodCard(
-          food: _breakfastFoods[index],
+          food: foods[index],
           onFavoritePressed: () {
-            // Add logic for favorite button here
             setState(() {
-              // You could toggle a favorite status here
-              // Example: _breakfastFoods[index].isFavorite = !_breakfastFoods[index].isFavorite;
             });
           },
           onCardTap: () {
-            // Add navigation to detail page or other action when card is tapped
-            // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => FoodDetailPage(food: _breakfastFoods[index])));
           },
         );
       },

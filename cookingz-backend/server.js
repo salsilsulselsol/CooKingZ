@@ -6,6 +6,7 @@ const recipeRoutes = require('./routes/recipeRoutes');
 const userRoutes = require('./routes/userRoutes'); // Pastikan ini diimpor
 const favoriteRoutes = require('./routes/favoriteRoutes'); // <<<--- TAMBAHKAN INI
 const registerRoutes = require('./routes/registerRoutes'); // Asumsi Anda punya rute registrasi
+const categoryRoutes = require('./routes/categoryRoutes');
 const path = require('path');
 
 app.use(cors());
@@ -23,10 +24,12 @@ app.use('/recipes', recipeRoutes);
 // Gunakan rute pengguna
 app.use('/users', userRoutes);
 
-// Gunakan rute favorit (<<<--- TAMBAHKAN INI)
-// Menghubungkan rute favorit di bawah prefiks '/recipes'
-// Sehingga endpoint menjadi POST /recipes/:id/favorite dan GET /recipes/:id/favorite-status
+// Gunakan rute favorit
 app.use('/recipes', favoriteRoutes);
+
+// Gunakan rute category
+app.use('/categories', categoryRoutes);
+
 
 // Port server
 const PORT = process.env.PORT || 3000;

@@ -82,7 +82,7 @@ class MyApp extends StatelessWidget {
 
         // Kategori
         '/kategori': (context) => const AppWithNavbar(CategoryPage()),
-        '/sub-category': (context) => const AppWithNavbar(SubCategoryPage()),
+        // '/sub-category': (context) => const AppWithNavbar(SubCategoryPage()),
 
         // Komunitas
         '/komunitas': (context) => const AppWithNavbar(KomunitasPage()),
