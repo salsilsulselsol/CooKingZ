@@ -167,7 +167,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
 
     final String apiUrl = kIsWeb ? 'http://localhost:3000/meal-schedules' : 'http://10.0.2.2:3000/meal-schedules';
-    final String formattedDate = selectedDate.toIso8601String().split('T')[0]; // Format YYYY-MM-DD
+    final String formattedDate = selectedDate.toIso8601String().split('T')[0]; // FormatYYYY-MM-DD
 
     try {
       final response = await http.post(
@@ -472,7 +472,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
         mainAxisSpacing: 8,
@@ -613,14 +613,36 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   Widget _buildRecipeImage(String? imageUrl) {
-    ImageProvider imageProvider;
     String finalImageUrl = '';
+    Widget imageWidget;
 
-    if (imageUrl != null && imageUrl.isNotEmpty && imageUrl != 'default_recipe_image.png') {
-      finalImageUrl = kIsWeb ? 'http://localhost:3000$imageUrl' : 'http://10.0.2.2:3000$imageUrl';
-      imageProvider = NetworkImage(finalImageUrl);
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      finalImageUrl = 'images/$imageUrl';
+      imageWidget = Image.network(
+        finalImageUrl,
+        height: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading recipe image from: $finalImageUrl - Error: $error');
+          // Return an empty SizedBox or a placeholder, but NOT a default asset
+          return Container(
+            height: 200,
+            color: Colors.grey[200], // Or a transparent color
+            child: const Center(
+              child: Icon(Icons.image_not_supported, color: Colors.grey, size: 50),
+            ),
+          );
+        },
+      );
     } else {
-      imageProvider = const AssetImage('images/default_recipe.png');
+      // If imageUrl is null or empty, return an empty container or a simple placeholder
+      imageWidget = Container(
+        height: 200,
+        color: Colors.grey[200], // A light grey background to show an empty space
+        child: const Center(
+          child: Icon(Icons.image, color: Colors.grey, size: 50), // A generic image icon
+        ),
+      );
     }
 
     return Container(
@@ -644,19 +666,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
             ),
-            child: Image(
-              image: imageProvider,
-              height: 200,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                print('Error loading recipe image from: $finalImageUrl - Error: $error');
-                return Image.asset(
-                  'images/default_recipe.png',
-                  height: 200,
-                  fit: BoxFit.cover,
-                );
-              },
-            ),
+            child: imageWidget, // Use the imageWidget determined above
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -681,7 +691,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 Row(
                   children: [
                     Icon(
-                      _isFavorited ? Icons.favorite : Icons.favorite_border, // Modifikasi: Ganti ikon berdasarkan status favorit
+                      _isFavorited ? Icons.favorite : Icons.favorite_border,
                       color: Colors.white,
                       size: 18,
                     ),
@@ -735,14 +745,29 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
-    ImageProvider profileImageProvider;
     String finalProfileImageUrl = '';
+    Widget profileImageWidget; // Use a widget instead of ImageProvider
 
-    if (profilePictureUrl != null && profilePictureUrl.isNotEmpty && profilePictureUrl != 'default_profile.png') {
+    if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
       finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
-      profileImageProvider = NetworkImage(finalProfileImageUrl);
+      profileImageWidget = CircleAvatar(
+        radius: 24,
+        backgroundImage: NetworkImage(finalProfileImageUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
+        },
+      );
     } else {
-      profileImageProvider = const AssetImage('images/default_profile.png');
+      // If profilePictureUrl is null or empty, show a grey CircleAvatar with a person icon
+      profileImageWidget = CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.grey[300], // Light grey background
+        child: Icon(
+          Icons.person,
+          color: Colors.grey[600], // Darker grey icon
+          size: 30,
+        ),
+      );
     }
 
     return Padding(
@@ -752,13 +777,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundImage: profileImageProvider,
-                onBackgroundImageError: (exception, stackTrace) {
-                  print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
-                },
-              ),
+              profileImageWidget, // Use the profileImageWidget determined above
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -859,12 +878,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.attach_money,
-                          color: Color(0xFF005A4D),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
                           price,
                           style: const TextStyle(
