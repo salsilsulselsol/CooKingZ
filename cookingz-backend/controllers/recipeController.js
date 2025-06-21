@@ -69,26 +69,17 @@ const recipeController = {
     }
 
     // Konversi estimatedTime dari string ke menit (integer)
-    let cookingTimeMinutes = 0;
+    let cookingTimeMinutes;
     try {
-      const timeParts = estimatedTime.match(/(\d+)\s*Jam(?:,\s*(\d+)\s*Menit)?/i);
-      if (timeParts) {
-        const hours = parseInt(timeParts[1] || '0', 10);
-        const minutes = parseInt(timeParts[2] || '0', 10);
-        cookingTimeMinutes = (hours * 60) + minutes;
-      } else {
-        const singleMinutePart = estimatedTime.match(/(\d+)\s*Menit/i);
-        if (singleMinutePart) {
-            cookingTimeMinutes = parseInt(singleMinutePart[1], 10);
-        } else {
+        cookingTimeMinutes = parseInt(estimatedTime, 10);
+        if (isNaN(cookingTimeMinutes)) {
             recipeController._deleteUploadedFiles(imageFile, videoFile);
-            return res.status(400).json({ message: 'Format estimasi waktu tidak valid. Gunakan "X Jam, Y Menit" atau "X Menit".' });
+            return res.status(400).json({ message: 'Estimasi waktu harus berupa angka (menit).' });
         }
-      }
     } catch (e) {
-      console.error('Error parsing estimatedTime:', e);
-      recipeController._deleteUploadedFiles(imageFile, videoFile);
-      return res.status(400).json({ message: 'Terjadi kesalahan saat mengurai estimasi waktu.' });
+        console.error('Error parsing estimatedTime:', e);
+        recipeController._deleteUploadedFiles(imageFile, videoFile);
+        return res.status(400).json({ message: 'Terjadi kesalahan saat mengurai estimasi waktu.' });
     }
 
     // Konversi harga menjadi integer
@@ -258,26 +249,20 @@ const recipeController = {
     }
 
     // Konversi estimatedTime dari string ke menit (integer)
-    let cookingTimeMinutes = 0;
-    try {
-        const timeParts = estimatedTime.match(/(\d+)\s*Jam(?:,\s*(\d+)\s*Menit)?/i);
-        if (timeParts) {
-            const hours = parseInt(timeParts[1] || '0', 10);
-            const minutes = parseInt(timeParts[2] || '0', 10);
-            cookingTimeMinutes = (hours * 60) + minutes;
-        } else {
-            const singleMinutePart = estimatedTime.match(/(\d+)\s*Menit/i);
-            if (singleMinutePart) {
-                cookingTimeMinutes = parseInt(singleMinutePart[1], 10);
-            } else {
+    let cookingTimeMinutes; // Deklarasi variabel
+        try {
+            cookingTimeMinutes = parseInt(estimatedTime, 10);
+            if (isNaN(cookingTimeMinutes)) {
+                // HARUS menggunakan variabel yang benar: newImageFile, newVideoFile
                 recipeController._deleteUploadedFiles(newImageFile, newVideoFile);
-                return res.status(400).json({ message: 'Format estimasi waktu tidak valid. Gunakan "X Jam, Y Menit" atau "X Menit".' });
+                return res.status(400).json({ message: 'Estimasi waktu harus berupa angka (menit).' });
             }
+        } catch (e) {
+            console.error('Error parsing estimatedTime:', e);
+            // HARUS menggunakan variabel yang benar: newImageFile, newVideoFile
+            recipeController._deleteUploadedFiles(newImageFile, newVideoFile);
+            return res.status(400).json({ message: 'Terjadi kesalahan saat mengurai estimasi waktu.' });
         }
-    } catch (e) {
-        recipeController._deleteUploadedFiles(newImageFile, newVideoFile);
-        return res.status(400).json({ message: 'Terjadi kesalahan saat mengurai estimasi waktu.' });
-    }
 
     // Konversi harga menjadi integer
     let parsedPrice;

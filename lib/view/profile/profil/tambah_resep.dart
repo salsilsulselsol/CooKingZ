@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+// Mengimpor dua komponen kustom dari direktori lain dalam proyek.
 import '../../component/header_back.dart';
 import '../../component/bottom_navbar.dart';
-import 'dart:convert'; // Untuk encode/decode JSON
-import 'package:http/http.dart' as http; // Untuk permintaan HTTP
-import 'package:image_picker/image_picker.dart'; // Import image_picker
-import 'dart:io'; // Untuk File (khusus platform non-web)
-import 'package:flutter/foundation.dart' show kIsWeb; // Untuk cek apakah di web
-import 'package:http_parser/http_parser.dart'; // Tambahkan ini untuk MediaType.parse
+import 'dart:convert'; // Diperlukan untuk mengubah objek Dart (seperti List dan Map) menjadi string JSON (encode) dan sebaliknya (decode).
+import 'package:http/http.dart' as http; // Paket untuk membuat permintaan HTTP (GET, POST, dll.) ke server/backend.
+import 'package:image_picker/image_picker.dart'; // Paket untuk memilih gambar atau video dari galeri atau kamera perangkat.
+import 'dart:io'; // Diperlukan untuk menggunakan objek 'File', yang merepresentasikan file dalam sistem file perangkat (khusus untuk platform mobile/desktop, bukan web).
+import 'package:flutter/foundation.dart' show kIsWeb; // Sebuah konstanta boolean (`kIsWeb`) untuk memeriksa apakah aplikasi sedang berjalan di platform web.
+import 'package:http_parser/http_parser.dart'; // Diperlukan untuk membuat objek `MediaType` yang mendefinisikan tipe MIME dari file yang diunggah (misalnya, 'image/jpeg').
+import '/../models/category_model.dart';
 
+// Kelas statis untuk mendefinisikan palet warna yang konsisten di seluruh aplikasi.
 class AppColors {
   static const Color primaryColor = Color(0xFF005A4D);
   static const Color accentTeal = Color(0xFF57B4BA);
@@ -16,55 +19,119 @@ class AppColors {
   static const Color bgColor = Color(0xFFF9F9F9);
 }
 
+// `BuatResep` adalah StatefulWidget, yang berarti UI-nya dapat berubah berdasarkan interaksi pengguna atau data yang masuk.
 class BuatResep extends StatefulWidget {
   const BuatResep({super.key});
 
   @override
+  // Membuat dan mengembalikan state untuk widget ini.
   State<BuatResep> createState() => _BuatResepState();
 }
 
+// `_BuatResepState` adalah kelas State yang berisi semua logika dan state (data) untuk widget `BuatResep`.
 class _BuatResepState extends State<BuatResep> {
-  // Controllers untuk input teks
+  // --- CONTROLLERS DAN STATE VARIABLES ---
+
+  @override
+  void initState() {
+    super.initState();
+    // Panggil fungsi untuk mengambil data kategori saat widget pertama kali dibuat.
+    _fetchCategories();
+  }
+
+// --- FUNGSI BARU UNTUK MENGAMBIL KATEGORI DARI API ---
+  Future<void> _fetchCategories() async {
+    // Ganti URL ini sesuai dengan alamat IP lokal Anda jika menjalankan di emulator Android.
+    // Untuk web: 'http://localhost:3000/categories'
+    // Untuk emulator Android: 'http://10.0.2.2:3000/categories'
+    const String apiUrl = 'http://localhost:3000/categories';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        // Jika request berhasil (200 OK)
+        final List<dynamic> data = json.decode(response.body);
+        // Ubah setiap item JSON menjadi objek Category menggunakan factory constructor
+        final List<Category> categories = data.map((json) => Category.fromJson(json)).toList();
+
+        // Perbarui state dengan data yang sudah didapat
+        setState(() {
+          _fetchedCategories = categories;
+          _isLoadingCategories = false; // Loading selesai
+        });
+      } else {
+        // Jika server mengembalikan error
+        setState(() {
+          _isLoadingCategories = false; // Loading selesai (dengan error)
+        });
+        // Tampilkan pesan error di konsol atau dengan SnackBar
+        print('Gagal memuat kategori: ${response.statusCode}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal memuat kategori dari server.')),
+          );
+        }
+      }
+    } catch (e) {
+      // Jika terjadi error jaringan atau lainnya
+      setState(() {
+        _isLoadingCategories = false; // Loading selesai (dengan error)
+      });
+      print('Terjadi kesalahan saat mengambil kategori: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan jaringan: $e')),
+        );
+      }
+    }
+  }
+
+  // Controllers untuk field input teks. `TextEditingController` digunakan untuk mengelola teks dalam `TextField`.
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _estimatedTimeController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
 
-  String? _selectedDifficulty;
-  String? _selectedCategory;
+  // Variabel untuk menyimpan nilai yang dipilih dari dropdown.
+  String? _selectedDifficulty; // Menyimpan tingkat kesulitan yang dipilih, null jika belum dipilih.
+  String? _selectedCategory;   // Menyimpan nama kategori yang dipilih, null jika belum dipilih.
 
-  // Variabel untuk menyimpan file gambar dan video yang dipilih
+  // Variabel untuk menyimpan file media yang dipilih oleh pengguna. `XFile` adalah objek dari `image_picker`.
   XFile? _selectedImage;
   XFile? _selectedVideo;
 
-  // ImagePicker instance
+  // Instance dari `ImagePicker` untuk mengakses fungsionalitas pemilihan gambar/video.
   final ImagePicker _picker = ImagePicker();
 
-  // Daftar tingkat kesulitan dan kategori (bisa diambil dari API nanti jika kategori dinamis)
+  // Daftar statis untuk dropdown. Dalam aplikasi nyata, ini bisa diambil dari API.
   final List<String> _difficultyLevels = ['Mudah', 'Sedang', 'Sulit'];
-  final List<Map<String, String>> _categories = [
-    {'id': '1', 'name': 'Hidangan Utama'},
-    {'id': '2', 'name': 'Sarapan'},
-    {'id': '3', 'name': 'Makanan Ringan'},
-    {'id': '4', 'name': 'Kue & Dessert'},
-    {'id': '5', 'name': 'Minuman'},
-  ];
+
+  List<Category> _fetchedCategories = [];
+  // Variabel untuk menandai status loading
+  bool _isLoadingCategories = true;
 
 
-  // Lists untuk input dinamis
-  final List<TextEditingController> _toolControllers = [TextEditingController()];
-  final List<Map<String, TextEditingController>> _ingredientControllers = [
+  // Lists untuk field input dinamis. Setiap field akan memiliki controllernya sendiri.
+  // Ini memungkinkan pengguna untuk menambah atau mengurangi jumlah field sesuai kebutuhan.
+  final List<TextEditingController> _toolControllers = [TextEditingController()]; // Dimulai dengan satu field alat.
+  final List<Map<String, TextEditingController>> _ingredientControllers = [ // Dimulai dengan satu field bahan.
     {'quantity': TextEditingController(), 'unit': TextEditingController(), 'name': TextEditingController()}
   ];
-  final List<TextEditingController> _instructionControllers = [TextEditingController()];
+  final List<TextEditingController> _instructionControllers = [TextEditingController()]; // Dimulai dengan satu field instruksi.
+
+  // --- LIFECYCLE METHOD ---
 
   @override
   void dispose() {
+    // Metode ini dipanggil ketika widget dihapus dari pohon widget (misalnya, saat halaman ditutup).
+    // Sangat penting untuk melepaskan (dispose) semua controller untuk mencegah kebocoran memori (memory leaks).
     _titleController.dispose();
     _descriptionController.dispose();
     _estimatedTimeController.dispose();
     _priceController.dispose();
-    // Dispose semua controller dalam list
+
+    // Melepaskan semua controller dalam list dinamis.
     for (var controller in _toolControllers) controller.dispose();
     for (var controllersMap in _ingredientControllers) {
       controllersMap['quantity']?.dispose();
@@ -72,23 +139,30 @@ class _BuatResepState extends State<BuatResep> {
       controllersMap['name']?.dispose();
     }
     for (var controller in _instructionControllers) controller.dispose();
-    super.dispose();
+
+    super.dispose(); // Memanggil metode dispose dari kelas induk.
   }
 
-  // --- Fungsi untuk menambah/menghapus field dinamis ---
+  // --- FUNGSI UNTUK MENGELOLA FIELD DINAMIS ---
+  // Fungsi-fungsi ini memanipulasi list controller dan memanggil `setState`
+  // untuk memberi tahu Flutter agar membangun ulang UI dengan perubahan tersebut.
+
+  // Menambahkan satu field input alat baru.
   void _addToolField() {
     setState(() {
       _toolControllers.add(TextEditingController());
     });
   }
 
+  // Menghapus field input alat pada indeks tertentu.
   void _removeToolField(int index) {
     setState(() {
-      _toolControllers[index].dispose();
+      _toolControllers[index].dispose(); // Lepaskan controller sebelum menghapusnya dari list.
       _toolControllers.removeAt(index);
     });
   }
 
+  // Menambahkan satu set field input bahan baru.
   void _addIngredientField() {
     setState(() {
       _ingredientControllers.add({
@@ -99,8 +173,10 @@ class _BuatResepState extends State<BuatResep> {
     });
   }
 
+  // Menghapus satu set field input bahan pada indeks tertentu.
   void _removeIngredientField(int index) {
     setState(() {
+      // Lepaskan semua controller dalam map sebelum menghapus dari list.
       _ingredientControllers[index]['quantity']?.dispose();
       _ingredientControllers[index]['unit']?.dispose();
       _ingredientControllers[index]['name']?.dispose();
@@ -108,80 +184,103 @@ class _BuatResepState extends State<BuatResep> {
     });
   }
 
+  // Menambahkan satu field input instruksi baru.
   void _addInstructionField() {
     setState(() {
       _instructionControllers.add(TextEditingController());
     });
   }
 
+  // Menghapus field input instruksi pada indeks tertentu.
   void _removeInstructionField(int index) {
     setState(() {
-      _instructionControllers[index].dispose();
+      _instructionControllers[index].dispose(); // Lepaskan controller.
       _instructionControllers.removeAt(index);
     });
   }
 
-  // --- Fungsi untuk memilih gambar dan video ---
+  // --- FUNGSI UNTUK MEMILIH GAMBAR DAN VIDEO ---
+
+  // Membuka galeri untuk memilih gambar.
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      _selectedImage = image;
-    });
+    // Jika pengguna memilih gambar (image != null), perbarui state.
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+      });
+    }
   }
 
+  // Membuka galeri untuk memilih video.
   Future<void> _pickVideo() async {
     final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    setState(() {
-      _selectedVideo = video;
-    });
+    // Jika pengguna memilih video (video != null), perbarui state.
+    if (video != null) {
+      setState(() {
+        _selectedVideo = video;
+      });
+    }
   }
 
+  // Menghapus video yang telah dipilih.
   void _clearVideo() {
     setState(() {
       _selectedVideo = null;
     });
   }
 
-  // --- Fungsi untuk mengirim data resep ke backend ---
+  // --- FUNGSI UTAMA: MENGIRIM DATA RESEP KE BACKEND ---
   Future<void> _submitRecipe() async {
-    // Alamat IP backend Anda. PENTING: Sesuaikan ini!
-    // Jika menjalankan di emulator Android, gunakan 'http://10.0.2.2:3000/recipes'.
-    // Jika di iOS simulator/perangkat fisik, gunakan IP lokal Anda (misal: http://192.168.1.100:3000/recipes).
-    // Jika di browser web (di komputer yang sama dengan backend), gunakan 'http://localhost:3000/recipes'.
-    const String apiUrl = 'http://localhost:3000/recipes'; // Ubah sesuai kebutuhan Anda!
+    // URL endpoint API di backend untuk membuat resep baru.
+    // PENTING: URL ini harus disesuaikan dengan lingkungan pengembangan Anda.
+    const String apiUrl = 'http://localhost:3000/recipes'; // Contoh untuk web di mesin yang sama.
 
-    const int dummyUserId = 1; // ID pengguna sementara, ganti dengan ID pengguna yang sebenarnya dari sesi login
+    // ID pengguna sementara. Dalam aplikasi nyata, ini harus didapat dari state login/autentikasi.
+    const int dummyUserId = 1;
 
-    // Kumpulkan data teks dari controllers
+    // 1. MENGUMPULKAN DAN MEMBERSIHKAN DATA TEKS
+    // Mengambil teks dari controller dan `.trim()` untuk menghapus spasi di awal/akhir.
     final String title = _titleController.text.trim();
     final String description = _descriptionController.text.trim();
     final String estimatedTime = _estimatedTimeController.text.trim();
     final String price = _priceController.text.trim();
-    final String difficulty = _selectedDifficulty ?? '';
-    final String? categoryId = _selectedCategory != null
-        ? _categories.firstWhere((cat) => cat['name'] == _selectedCategory)['id']
+    final String difficulty = _selectedDifficulty ?? ''; // Gunakan string kosong jika null.
+
+    // Mencari ID kategori berdasarkan nama kategori yang dipilih.
+    // Mencari ID kategori berdasarkan nama kategori yang dipilih dari list dinamis.
+    final int? categoryIdAsInt = _selectedCategory != null
+        ? _fetchedCategories.firstWhere((cat) => cat.name == _selectedCategory, orElse: () => Category(id: -1, name: '')).id
         : null;
 
+    // Ubah ID menjadi String. Pastikan tidak mengirim ID -1 jika tidak ditemukan.
+    final String? categoryId = (categoryIdAsInt != null && categoryIdAsInt != -1) ? categoryIdAsInt.toString() : null;
+
+    // 2. MENGUMPULKAN DAN MENGUBAH DATA DARI LIST DINAMIS
+    // Mengubah list `TextEditingController` menjadi list `String` untuk alat.
     final List<String> tools = _toolControllers
         .map((c) => c.text.trim())
-        .where((text) => text.isNotEmpty)
+        .where((text) => text.isNotEmpty) // Hanya ambil yang tidak kosong.
         .toList();
 
+    // Mengubah list map controller bahan menjadi list map string.
     final List<Map<String, String>> ingredients = _ingredientControllers
         .map((map) => {
       'quantity': map['quantity']?.text.trim() ?? '',
       'unit': map['unit']?.text.trim() ?? '',
       'name': map['name']?.text.trim() ?? '',
     })
-        .where((map) => map['name']!.isNotEmpty && map['quantity']!.isNotEmpty && map['unit']!.isNotEmpty) // Pastikan semua bagian bahan terisi
+        .where((map) => map['name']!.isNotEmpty && map['quantity']!.isNotEmpty && map['unit']!.isNotEmpty) // Pastikan semua field bahan terisi.
         .toList();
 
+    // Mengubah list controller instruksi menjadi list string.
     final List<String> instructions = _instructionControllers
         .map((c) => c.text.trim())
-        .where((text) => text.isNotEmpty)
+        .where((text) => text.isNotEmpty) // Hanya ambil yang tidak kosong.
         .toList();
 
-    // Validasi input di frontend
+    // 3. VALIDASI INPUT DI FRONTEND
+    // Memeriksa apakah semua field yang wajib diisi sudah terisi sebelum mengirim ke server.
     if (title.isEmpty ||
         description.isEmpty ||
         estimatedTime.isEmpty ||
@@ -191,17 +290,20 @@ class _BuatResepState extends State<BuatResep> {
         tools.isEmpty ||
         ingredients.isEmpty ||
         instructions.isEmpty ||
-        _selectedImage == null) { // Gambar wajib
+        _selectedImage == null) { // Gambar wajib ada.
+      // Jika ada yang kosong, tampilkan pesan error menggunakan SnackBar.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua field (termasuk Gambar) harus diisi!')),
       );
-      return;
+      return; // Hentikan eksekusi fungsi.
     }
 
-    // Buat MultipartRequest untuk mengirim file dan data teks
+    // 4. MEMBUAT PERMINTAAN MULTIPART
+    // `MultipartRequest` digunakan karena kita akan mengirim data formulir (teks) dan file (gambar/video) secara bersamaan.
     var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
 
-    // Tambahkan field teks. Perhatikan bahwa list/map akan di-encode ke JSON string
+    // 5. MENAMBAHKAN FIELD TEKS KE REQUEST
+    // Data List dan Map harus diubah menjadi string JSON menggunakan `json.encode` agar bisa dikirim.
     request.fields['userId'] = dummyUserId.toString();
     request.fields['categoryId'] = categoryId;
     request.fields['title'] = title;
@@ -209,26 +311,26 @@ class _BuatResepState extends State<BuatResep> {
     request.fields['estimatedTime'] = estimatedTime;
     request.fields['price'] = price;
     request.fields['difficulty'] = difficulty;
-    request.fields['tools'] = json.encode(tools); // Encode list ke JSON string
-    request.fields['ingredients'] = json.encode(ingredients); // Encode list map ke JSON string
-    request.fields['instructions'] = json.encode(instructions); // Encode list ke JSON string
+    request.fields['tools'] = json.encode(tools);
+    request.fields['ingredients'] = json.encode(ingredients);
+    request.fields['instructions'] = json.encode(instructions);
 
-    // Tambahkan file gambar (wajib)
+    // 6. MENAMBAHKAN FILE GAMBAR (WAJIB)
+    // `kIsWeb` digunakan untuk membedakan logika penanganan file untuk web dan mobile.
     if (_selectedImage != null) {
-      // Dapatkan MIME type dari XFile.mimeType atau nama file
       final String? imageMimeType = _selectedImage!.mimeType;
 
       if (kIsWeb) {
-        // Untuk web, baca file sebagai bytes
+        // Untuk web: file dibaca sebagai byte array (`Uint8List`).
         final bytes = await _selectedImage!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
-          'image', // Nama field di backend (sesuai `upload.fields({name: 'image'})`)
+          'image', // Nama field ini harus sesuai dengan yang diharapkan oleh backend (misal: di multer, `upload.single('image')`).
           bytes,
           filename: _selectedImage!.name,
           contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
         ));
       } else {
-        // Untuk platform non-web (mobile/desktop), gunakan fromPath
+        // Untuk mobile/desktop: file ditambahkan menggunakan path-nya.
         request.files.add(await http.MultipartFile.fromPath(
           'image',
           _selectedImage!.path,
@@ -238,21 +340,18 @@ class _BuatResepState extends State<BuatResep> {
       }
     }
 
-    // Tambahkan file video (opsional)
+    // 7. MENAMBAHKAN FILE VIDEO (OPSIONAL)
     if (_selectedVideo != null) {
-      final String? videoMimeType = _selectedVideo!.mimeType; // Dapatkan MIME type dari XFile
-
+      final String? videoMimeType = _selectedVideo!.mimeType;
       if (kIsWeb) {
-        // Untuk web, baca file sebagai bytes
         final bytes = await _selectedVideo!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
-          'video', // Nama field di backend (sesuai `upload.fields({name: 'video'})`)
+          'video', // Nama field untuk video.
           bytes,
           filename: _selectedVideo!.name,
           contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
         ));
       } else {
-        // Untuk platform non-web, gunakan fromPath
         request.files.add(await http.MultipartFile.fromPath(
           'video',
           _selectedVideo!.path,
@@ -262,16 +361,18 @@ class _BuatResepState extends State<BuatResep> {
       }
     }
 
+    // 8. MENGIRIM REQUEST DAN MENANGANI RESPON
     try {
-      var response = await request.send(); // Mengirim request
-      var responseData = await response.stream.transform(utf8.decoder).join(); // Mengambil respons
-      var jsonResponse = json.decode(responseData); // Mengurai respons JSON
+      var response = await request.send(); // Mengirim request ke server.
+      var responseData = await response.stream.transform(utf8.decoder).join(); // Membaca data respons.
+      var jsonResponse = json.decode(responseData); // Mengurai respons JSON dari server.
 
+      // Memeriksa status code dari respons. 201 (Created) menandakan sukses.
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Resep berhasil ditambahkan! ID: ${jsonResponse['recipeId']}')),
         );
-        // Reset form setelah berhasil
+        // Jika berhasil, reset semua field di form.
         _titleController.clear();
         _descriptionController.clear();
         _estimatedTimeController.clear();
@@ -279,11 +380,11 @@ class _BuatResepState extends State<BuatResep> {
         setState(() {
           _selectedDifficulty = null;
           _selectedCategory = null;
-          _selectedImage = null; // Hapus gambar terpilih
-          _selectedVideo = null; // Hapus video terpilih
-          // Reset controller list
+          _selectedImage = null;
+          _selectedVideo = null;
+          // Reset list controller dinamis dan tambahkan satu field kosong kembali.
           _toolControllers.clear();
-          _toolControllers.add(TextEditingController()); // Tambahkan satu field kosong
+          _toolControllers.add(TextEditingController());
           _ingredientControllers.clear();
           _ingredientControllers.add({
             'quantity': TextEditingController(),
@@ -294,13 +395,13 @@ class _BuatResepState extends State<BuatResep> {
           _instructionControllers.add(TextEditingController());
         });
       } else {
-        // Tangani error dari backend
+        // Jika gagal, tampilkan pesan error dari server.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal menambahkan resep: ${jsonResponse['message'] ?? 'Terjadi kesalahan tidak dikenal'}')),
         );
       }
     } catch (e) {
-      // Tangani error jaringan atau parsing JSON
+      // Menangani error jika terjadi masalah jaringan atau saat parsing JSON.
       print('Error submitting recipe: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Terjadi kesalahan jaringan: $e')),
@@ -308,26 +409,31 @@ class _BuatResepState extends State<BuatResep> {
     }
   }
 
+  // --- UI BUILDING METHOD ---
+
   @override
   Widget build(BuildContext context) {
+    // `BottomNavbar` adalah wrapper kustom, kemungkinan untuk menampilkan navigasi bawah.
     return BottomNavbar(
       Scaffold(
         backgroundColor: AppColors.bgColor,
-        body: SafeArea(
+        body: SafeArea( // Memastikan konten tidak tumpang tindih dengan status bar atau notch.
           child: Column(
             children: [
+              // Widget header kustom dengan judul dan tombol kembali.
               HeaderWidget(
                 title: 'Buat Resep',
                 onBackPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(context); // Kembali ke halaman sebelumnya.
                 },
               ),
+              // `Expanded` membuat `SingleChildScrollView` mengisi sisa ruang yang tersedia.
               Expanded(
-                child: SingleChildScrollView(
+                child: SingleChildScrollView( // Memungkinkan konten di-scroll jika melebihi ukuran layar.
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start, // Rata kiri untuk semua anak.
                     children: [
-                      // Area Unggah Gambar (Wajib)
+                      // --- AREA UNGGAH GAMBAR (WAJIB) ---
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                         height: 200,
@@ -335,18 +441,22 @@ class _BuatResepState extends State<BuatResep> {
                         decoration: BoxDecoration(
                           color: AppColors.lightTeal.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(16),
+                          // Menampilkan gambar jika `_selectedImage` tidak null.
                           image: _selectedImage != null
-                              ? kIsWeb // Cek jika di web
+                              ? kIsWeb // Cek platform
+                          // Untuk web, `FileImage` tidak berfungsi. `_selectedImage.path` akan berisi URL blob, jadi `NetworkImage` digunakan.
                               ? DecorationImage(
-                            image: NetworkImage(_selectedImage!.path), // Untuk web, gunakan NetworkImage
+                            image: NetworkImage(_selectedImage!.path),
                             fit: BoxFit.cover,
                           )
+                          // Untuk mobile, `FileImage` digunakan untuk menampilkan gambar dari path file lokal.
                               : DecorationImage(
-                            image: FileImage(File(_selectedImage!.path)), // Untuk non-web, gunakan FileImage
+                            image: FileImage(File(_selectedImage!.path)),
                             fit: BoxFit.cover,
                           )
-                              : null,
+                              : null, // Jika null, tidak ada gambar.
                         ),
+                        // Menampilkan UI placeholder jika tidak ada gambar yang dipilih.
                         child: _selectedImage == null
                             ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -374,17 +484,18 @@ class _BuatResepState extends State<BuatResep> {
                             ),
                           ],
                         )
-                            : null,
+                            : null, // Jika gambar sudah ada, jangan tampilkan placeholder.
                       ),
-                      // Tombol Unggah/Ganti/Hapus Gambar
+                      // --- Tombol untuk memilih atau menghapus gambar ---
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 30),
                         child: Row(
                           children: [
                             Expanded(
                               child: GestureDetector(
-                                onTap: _pickImage,
+                                onTap: _pickImage, // Panggil fungsi pemilih gambar saat diketuk.
                                 child: Container(
+                                  // UI tombol.
                                   height: 35,
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -394,21 +505,20 @@ class _BuatResepState extends State<BuatResep> {
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
+                                    // Teks tombol berubah tergantung apakah gambar sudah dipilih.
                                     _selectedImage == null ? 'Pilih Gambar' : 'Ganti Gambar',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                      fontSize: 14,
-                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14),
                                   ),
                                 ),
                               ),
                             ),
+                            // Tombol hapus hanya muncul jika ada gambar yang dipilih.
                             if (_selectedImage != null)
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () { setState(() { _selectedImage = null; }); },
+                                  onTap: () { setState(() { _selectedImage = null; }); }, // Set `_selectedImage` menjadi null untuk menghapusnya.
                                   child: Container(
+                                    // UI tombol hapus.
                                     height: 35,
                                     padding: const EdgeInsets.symmetric(vertical: 8),
                                     margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -417,14 +527,7 @@ class _BuatResepState extends State<BuatResep> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     alignment: Alignment.center,
-                                    child: const Text(
-                                      'Hapus Gambar',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                    child: const Text('Hapus Gambar', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
                                   ),
                                 ),
                               ),
@@ -432,55 +535,42 @@ class _BuatResepState extends State<BuatResep> {
                         ),
                       ),
 
-                      // Area Unggah Video (Opsional)
+                      // --- AREA UNGGAH VIDEO (OPSIONAL) --- (Logikanya mirip dengan gambar)
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                        height: 100, // Ukuran lebih kecil untuk video opsional
+                        height: 100,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: AppColors.lightTeal.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(16),
                         ),
+                        // Menampilkan placeholder atau nama file video yang dipilih.
                         child: _selectedVideo == null
                             ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 40, // Ikon lebih kecil
+                              width: 40,
                               height: 40,
                               decoration: BoxDecoration(
                                 color: AppColors.emeraldGreen.withOpacity(0.5),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                Icons.videocam,
-                                size: 24,
-                                color: Colors.white,
-                              ),
+                              child: const Icon(Icons.videocam, size: 24, color: Colors.white),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Tambahkan Video Resep (Opsional)',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 14,
-                              ),
-                            ),
+                            const Text('Tambahkan Video Resep (Opsional)', style: TextStyle(color: Colors.black54, fontSize: 14)),
                           ],
                         )
                             : Center(
                           child: Text(
                             'Video Terpilih: ${_selectedVideo!.name}',
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
-                      // Tombol Unggah/Hapus Video
+                      // --- Tombol untuk memilih atau menghapus video ---
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 30),
                         child: Row(
@@ -488,7 +578,7 @@ class _BuatResepState extends State<BuatResep> {
                           children: [
                             Expanded(
                               child: GestureDetector(
-                                onTap: _pickVideo,
+                                onTap: _pickVideo, // Panggil fungsi pemilih video.
                                 child: Container(
                                   height: 35,
                                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -500,19 +590,16 @@ class _BuatResepState extends State<BuatResep> {
                                   alignment: Alignment.center,
                                   child: Text(
                                     _selectedVideo == null ? 'Pilih Video' : 'Ganti Video',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                      fontSize: 14,
-                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14),
                                   ),
                                 ),
                               ),
                             ),
+                            // Tombol hapus video hanya muncul jika ada video yang dipilih.
                             if (_selectedVideo != null)
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: _clearVideo,
+                                  onTap: _clearVideo, // Panggil fungsi untuk menghapus video.
                                   child: Container(
                                     height: 35,
                                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -522,14 +609,7 @@ class _BuatResepState extends State<BuatResep> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     alignment: Alignment.center,
-                                    child: const Text(
-                                      'Hapus Video',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                    child: const Text('Hapus Video', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
                                   ),
                                 ),
                               ),
@@ -537,26 +617,20 @@ class _BuatResepState extends State<BuatResep> {
                         ),
                       ),
 
-
-                      // Recipe Info Fields
+                      // --- FIELD INFORMASI RESEP ---
+                      // Menggunakan metode pembantu `_buildInfoField` untuk membuat UI field input yang konsisten.
                       _buildInfoField('Judul', 'Nama Resep', controller: _titleController),
                       _buildInfoField('Deskripsi', 'Deskripsi Resep', lighter: true, controller: _descriptionController),
-                      _buildInfoField('Estimasi Waktu', 'Contoh: 1 Jam, 30 Menit', controller: _estimatedTimeController),
-                      _buildInfoField('Harga', 'Contoh: 25000', controller: _priceController, keyboardType: TextInputType.number),
+                      _buildInfoField('Estimasi Waktu (menit)', '45', controller: _estimatedTimeController, keyboardType: TextInputType.number),
+                      _buildInfoField('Harga', '25000', controller: _priceController, keyboardType: TextInputType.number),
 
-                      // Difficulty Dropdown
+                      // --- DROPDOWN TINGKAT KESULITAN ---
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                            child: Text(
-                              'Tingkat Kesulitan',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: Text('Tingkat Kesulitan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                           Container(
                             margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -568,17 +642,15 @@ class _BuatResepState extends State<BuatResep> {
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 isExpanded: true,
-                                value: _selectedDifficulty,
-                                hint: const Text(
-                                  'Pilih tingkat kesulitan memasak',
-                                  style: TextStyle(color: Colors.black54),
-                                ),
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+                                value: _selectedDifficulty, // Nilai saat ini yang terpilih.
+                                hint: const Text('Pilih tingkat kesulitan memasak', style: TextStyle(color: Colors.black54)),
                                 onChanged: (String? newValue) {
+                                  // Perbarui state saat pengguna memilih item baru.
                                   setState(() {
                                     _selectedDifficulty = newValue;
                                   });
                                 },
+                                // Membuat daftar item dropdown dari list `_difficultyLevels`.
                                 items: _difficultyLevels.map<DropdownMenuItem<String>>((String value) {
                                   return DropdownMenuItem<String>(
                                     value: value,
@@ -591,19 +663,14 @@ class _BuatResepState extends State<BuatResep> {
                         ],
                       ),
 
-                      // Category Dropdown
+                      // --- DROPDOWN KATEGORI RESEP --- (Logikanya mirip dengan tingkat kesulitan)
+// --- DROPDOWN KATEGORI RESEP --- (DINAMIS)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                            child: Text(
-                              'Kategori Resep',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: Text('Kategori Resep', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                           Container(
                             margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -612,24 +679,33 @@ class _BuatResepState extends State<BuatResep> {
                               color: AppColors.accentTeal.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(24),
                             ),
-                            child: DropdownButtonHideUnderline(
+                            // Tampilkan loading indicator jika sedang fetching, atau dropdown jika sudah selesai
+                            child: _isLoadingCategories
+                                ? const Center(
+                              heightFactor: 2.0, // Memberi sedikit tinggi agar indicator terlihat baik
+                              child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primaryColor)
+                              ),
+                            )
+                                : DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: _selectedCategory,
-                                hint: const Text(
-                                  'Pilih kategori resep',
-                                  style: TextStyle(color: Colors.black54),
-                                ),
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+                                hint: const Text('Pilih kategori resep', style: TextStyle(color: Colors.black54)),
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     _selectedCategory = newValue;
                                   });
                                 },
-                                items: _categories.map<DropdownMenuItem<String>>((Map<String, String> category) {
+                                // Membuat daftar item dari list _fetchedCategories yang sudah kita ambil dari API.
+                                items: _fetchedCategories.map<DropdownMenuItem<String>>((Category category) {
                                   return DropdownMenuItem<String>(
-                                    value: category['name'],
-                                    child: Text(category['name']!),
+                                    // Nilai yang disimpan saat dipilih adalah nama kategori (String).
+                                    value: category.name,
+                                    // Teks yang ditampilkan di dropdown adalah nama kategori.
+                                    child: Text(category.name),
                                   );
                                 }).toList(),
                               ),
@@ -637,32 +713,27 @@ class _BuatResepState extends State<BuatResep> {
                           ),
                         ],
                       ),
-
-
-                      // Tools Section (Alat-Alat)
+                      // --- BAGIAN ALAT-ALAT (DINAMIS) ---
                       const Padding(
                         padding: EdgeInsets.only(left: 30.0, top: 24.0, bottom: 8.0),
-                        child: Text(
-                          'Alat-Alat',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text('Alat-Alat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
+                      // `ListView.builder` secara efisien membangun daftar widget dari list controller.
                       ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true, // Membuat ListView hanya memakan ruang yang dibutuhkan.
+                        physics: const NeverScrollableScrollPhysics(), // Menonaktifkan scroll internal karena sudah ada di `SingleChildScrollView`.
                         itemCount: _toolControllers.length,
                         itemBuilder: (context, index) {
+                          // Membangun setiap item menggunakan metode pembantu `_buildToolItem`.
                           return _buildToolItem(index, _toolControllers[index]);
                         },
                       ),
+                      // Tombol untuk menambah field alat baru.
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Center(
                           child: GestureDetector(
-                            onTap: _addToolField,
+                            onTap: _addToolField, // Panggil fungsi penambah field.
                             child: Container(
                               width: 200,
                               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -671,35 +742,24 @@ class _BuatResepState extends State<BuatResep> {
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: const Center(
-                                child: Text(
-                                  '+ Tambahkan Alat',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                child: Text('+ Tambahkan Alat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                             ),
                           ),
                         ),
                       ),
 
-                      // Ingredients Section (Bahan-Bahan)
+                      // --- BAGIAN BAHAN-BAHAN (DINAMIS) --- (Logikanya mirip dengan alat)
                       const Padding(
                         padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                        child: Text(
-                          'Bahan-Bahan',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text('Bahan-Bahan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _ingredientControllers.length,
                         itemBuilder: (context, index) {
+                          // Membangun setiap item menggunakan metode pembantu `_buildIngredientItem`.
                           return _buildIngredientItem(
                             index,
                             _ingredientControllers[index]['quantity']!,
@@ -712,7 +772,7 @@ class _BuatResepState extends State<BuatResep> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Center(
                           child: GestureDetector(
-                            onTap: _addIngredientField,
+                            onTap: _addIngredientField, // Panggil fungsi penambah field.
                             child: Container(
                               width: 200,
                               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -721,35 +781,24 @@ class _BuatResepState extends State<BuatResep> {
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: const Center(
-                                child: Text(
-                                  '+ Tambahkan Bahan',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                child: Text('+ Tambahkan Bahan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                             ),
                           ),
                         ),
                       ),
 
-                      // Instructions Section (Instruksi)
+                      // --- BAGIAN INSTRUKSI (DINAMIS) --- (Logikanya mirip dengan alat)
                       const Padding(
                         padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                        child: Text(
-                          'Instruksi',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text('Instruksi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _instructionControllers.length,
                         itemBuilder: (context, index) {
+                          // Membangun setiap item menggunakan metode pembantu `_buildInstructionItem`.
                           return _buildInstructionItem(index, _instructionControllers[index]);
                         },
                       ),
@@ -757,7 +806,7 @@ class _BuatResepState extends State<BuatResep> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Center(
                           child: GestureDetector(
-                            onTap: _addInstructionField,
+                            onTap: _addInstructionField, // Panggil fungsi penambah field.
                             child: Container(
                               width: 200,
                               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -766,26 +815,20 @@ class _BuatResepState extends State<BuatResep> {
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: const Center(
-                                child: Text(
-                                  '+ Tambahkan Instruksi',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                                child: Text('+ Tambahkan Instruksi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                               ),
                             ),
                           ),
                         ),
                       ),
 
-                      // Tombol Simpan Resep
+                      // --- TOMBOL SIMPAN RESEP ---
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _submitRecipe,
+                            onPressed: _submitRecipe, // Memicu fungsi pengiriman data saat ditekan.
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryColor,
                               padding: const EdgeInsets.symmetric(vertical: 15),
@@ -795,16 +838,13 @@ class _BuatResepState extends State<BuatResep> {
                             ),
                             child: const Text(
                               'Simpan Resep',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ),
                         ),
                       ),
 
+                      // Memberi sedikit ruang di bagian bawah agar konten tidak terlalu mepet dengan BottomNavBar.
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -817,20 +857,17 @@ class _BuatResepState extends State<BuatResep> {
     );
   }
 
-  // Metode pembangun untuk field info (judul, deskripsi, dll.)
+  // --- METODE PEMBANTU UNTUK MEMBANGUN WIDGET ---
+  // Metode-metode ini dibuat untuk mengurangi duplikasi kode dan membuat metode `build` utama lebih bersih.
+
+  // Metode untuk membangun field info umum (judul, deskripsi, dll.).
   Widget _buildInfoField(String label, String placeholder, {bool lighter = false, required TextEditingController controller, TextInputType keyboardType = TextInputType.text}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
         Container(
           width: double.infinity,
@@ -841,34 +878,34 @@ class _BuatResepState extends State<BuatResep> {
             borderRadius: BorderRadius.circular(24),
           ),
           child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
+            controller: controller, // Menggunakan controller yang diberikan.
+            keyboardType: keyboardType, // Mengatur tipe keyboard (teks, angka, dll.).
             decoration: InputDecoration(
-              hintText: placeholder,
-              hintStyle: const TextStyle(
-                color: Colors.black54,
-              ),
-              border: InputBorder.none,
+              hintText: placeholder, // Teks placeholder.
+              hintStyle: const TextStyle(color: Colors.black54),
+              border: InputBorder.none, // Menghilangkan garis bawah default.
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            maxLines: lighter ? null : 1,
+            maxLines: lighter ? null : 1, // `null` memungkinkan input multi-baris (untuk deskripsi).
           ),
         ),
       ],
     );
   }
 
-  // Metode pembangun untuk item alat
+  // Metode untuk membangun satu baris item alat.
   Widget _buildToolItem(int index, TextEditingController controller) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
+          // Ikon 'drag handle' (saat ini tidak memiliki fungsi).
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.black),
             onPressed: () {},
           ),
           const SizedBox(width: 2),
+          // Field input untuk nama alat.
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
@@ -884,24 +921,22 @@ class _BuatResepState extends State<BuatResep> {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 16),
               ),
             ),
           ),
           const SizedBox(width: 8),
+          // Tombol untuk menghapus item alat ini.
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.black),
-            onPressed: () => _removeToolField(index),
+            onPressed: () => _removeToolField(index), // Memanggil fungsi penghapus dengan indeks yang benar.
           ),
         ],
       ),
     );
   }
 
-  // Metode pembangun untuk item bahan
+  // Metode untuk membangun satu baris item bahan.
   Widget _buildIngredientItem(int index, TextEditingController quantityController, TextEditingController unitController, TextEditingController nameController) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -912,8 +947,9 @@ class _BuatResepState extends State<BuatResep> {
             onPressed: () {},
           ),
           const SizedBox(width: 2),
+          // Field untuk jumlah (Qty).
           SizedBox(
-            width: 60, // Lebar untuk jumlah
+            width: 60,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               decoration: BoxDecoration(
@@ -929,16 +965,14 @@ class _BuatResepState extends State<BuatResep> {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 16),
               ),
             ),
           ),
           const SizedBox(width: 8),
+          // Field untuk satuan (Unit).
           SizedBox(
-            width: 80, // Lebar untuk unit
+            width: 80,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               decoration: BoxDecoration(
@@ -953,14 +987,12 @@ class _BuatResepState extends State<BuatResep> {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 16),
               ),
             ),
           ),
           const SizedBox(width: 8),
+          // Field untuk nama bahan.
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
@@ -976,14 +1008,12 @@ class _BuatResepState extends State<BuatResep> {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 16),
               ),
             ),
           ),
           const SizedBox(width: 8),
+          // Tombol untuk menghapus item bahan ini.
           IconButton(
             icon: const Icon(Icons.delete, color: Color.fromARGB(255, 4, 0, 0)),
             onPressed: () => _removeIngredientField(index),
@@ -993,7 +1023,7 @@ class _BuatResepState extends State<BuatResep> {
     );
   }
 
-  // Metode pembangun untuk item instruksi
+  // Metode untuk membangun satu baris item instruksi.
   Widget _buildInstructionItem(int index, TextEditingController controller) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1019,11 +1049,8 @@ class _BuatResepState extends State<BuatResep> {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
-                maxLines: null, // Instruksi bisa multi-baris
+                style: const TextStyle(color: Colors.black, fontSize: 16),
+                maxLines: null, // Memungkinkan input instruksi yang panjang dan multi-baris.
               ),
             ),
           ),

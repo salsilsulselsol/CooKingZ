@@ -1,11 +1,10 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// lib/models/category.dart
 
 class Category {
-  final String id;
+  final int id;
   final String name;
   final String? description;
-  final String? imageUrl;
+  final String? imageUrl; // Menggunakan imageUrl agar konsisten
 
   Category({
     required this.id,
@@ -14,23 +13,14 @@ class Category {
     this.imageUrl,
   });
 
+  // Factory constructor untuk membuat instance Category dari JSON
+  // Pastikan key-nya cocok dengan JSON dari backend Anda
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
-      id: json['id'].toString(),
+      id: json['id'],
       name: json['name'],
       description: json['description'],
-      imageUrl: json['image_url'],
+      imageUrl: json['image_url'], // cocokkan dengan 'image_url' dari backend
     );
-  }
-
-  static Future<List<Category>> fetchAll(String baseUrl) async {
-    final response = await http.get(Uri.parse('$baseUrl/categories'));
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Category.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load categories');
-    }
   }
 }

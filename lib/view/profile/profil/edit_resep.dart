@@ -1,13 +1,19 @@
+// edit_resep.dart
+
 import 'package:flutter/material.dart';
-import '../../component/header_back.dart';
-import '../../component/bottom_navbar.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 
+// Impor komponen dan model yang diperlukan
+import '../../component/header_back.dart';
+import '../../component/bottom_navbar.dart';
+import '/../models/category_model.dart'; // Pastikan path ini benar
+
+// Kelas statis untuk mendefinisikan palet warna yang konsisten.
 class AppColors {
   static const Color primaryColor = Color(0xFF005A4D);
   static const Color accentTeal = Color(0xFF57B4BA);
@@ -16,8 +22,9 @@ class AppColors {
   static const Color bgColor = Color(0xFFF9F9F9);
 }
 
+// `EditResep` adalah StatefulWidget untuk mengedit resep yang ada.
 class EditResep extends StatefulWidget {
-  final int recipeId; // ID resep yang akan diedit
+  final int recipeId; // ID resep yang akan diedit.
 
   const EditResep({super.key, required this.recipeId});
 
@@ -26,50 +33,54 @@ class EditResep extends StatefulWidget {
 }
 
 class _EditResepState extends State<EditResep> {
+  // --- CONTROLLERS DAN STATE VARIABLES ---
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _estimatedTimeController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
 
   String? _selectedDifficulty;
-  String? _selectedCategory;
+  String? _selectedCategory; // Menyimpan NAMA kategori yang dipilih.
 
   XFile? _selectedImage;
   XFile? _selectedVideo;
 
+  // URL gambar & video awal dari backend untuk ditampilkan.
   String? _initialImageUrl;
   String? _initialVideoUrl;
+  // Flag untuk melacak apakah pengguna secara eksplisit menghapus gambar/video.
   bool _imageClearedByUser = false;
   bool _videoClearedByUser = false;
 
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _difficultyLevels = ['Mudah', 'Sedang', 'Sulit'];
-  final List<Map<String, String>> _categories = [
-    {'id': '1', 'name': 'Hidangan Utama'},
-    {'id': '2', 'name': 'Sarapan'},
-    {'id': '3', 'name': 'Makanan Ringan'},
-    {'id': '4', 'name': 'Kue & Dessert'},
-    {'id': '5', 'name': 'Minuman'},
-    // Tambahkan kategori default jika diperlukan
-    {'id': '999', 'name': 'Lainnya'}, // Kategori placeholder untuk kasus tidak ditemukan
-  ];
 
+  // Variabel untuk kategori dinamis dari API.
+  List<Category> _fetchedCategories = [];
+
+  // Lists untuk field input dinamis.
   final List<TextEditingController> _toolControllers = [];
   final List<Map<String, TextEditingController>> _ingredientControllers = [];
   final List<TextEditingController> _instructionControllers = [];
 
+  // State untuk loading dan error.
   bool _isLoading = true;
   String _errorMessage = '';
+
+  // --- LIFECYCLE METHODS ---
 
   @override
   void initState() {
     super.initState();
-    _fetchRecipeDetails();
+    // Memanggil fungsi untuk mengambil semua data awal (detail resep dan kategori).
+    _fetchInitialData();
   }
 
   @override
   void dispose() {
+    // Pastikan semua controller dilepaskan untuk mencegah memory leak.
     _titleController.dispose();
     _descriptionController.dispose();
     _estimatedTimeController.dispose();
@@ -84,90 +95,119 @@ class _EditResepState extends State<EditResep> {
     super.dispose();
   }
 
-  Future<void> _fetchRecipeDetails() async {
+  // --- FUNGSI PENGAMBILAN DATA ---
+
+  // Fungsi untuk mengambil detail resep yang ada dari server.
+  Future<Map<String, dynamic>> _fetchRecipeDetails() async {
+    // Sesuaikan URL berdasarkan platform jika diperlukan
+    final String apiUrl = 'http://localhost:3000/recipes/${widget.recipeId}';
+    final response = await http.get(Uri.parse(apiUrl));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal memuat detail resep: ${response.statusCode}');
+    }
+  }
+
+  // Fungsi untuk mengambil daftar kategori dari server.
+  Future<List<Category>> _fetchCategories() async {
+    const String apiUrl = 'http://localhost:3000/categories';
+    final response = await http.get(Uri.parse(apiUrl));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Category.fromJson(json)).toList();
+    } else {
+      throw Exception('Gagal memuat kategori: ${response.statusCode}');
+    }
+  }
+
+  // Fungsi utama untuk mengambil semua data awal secara bersamaan.
+  Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/${widget.recipeId}' : 'http://10.0.2.2:3000/recipes/${widget.recipeId}';
-
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> recipeData = json.decode(response.body);
+      // Menjalankan kedua proses fetch secara paralel untuk efisiensi.
+      final results = await Future.wait([
+        _fetchRecipeDetails(),
+        _fetchCategories(),
+      ]);
 
-        _titleController.text = recipeData['title'] ?? '';
-        _descriptionController.text = recipeData['description'] ?? '';
+      final Map<String, dynamic> recipeData = results[0] as Map<String, dynamic>;
+      final List<Category> categories = results[1] as List<Category>;
 
-        final int cookingTimeMinutes = recipeData['cooking_time'] ?? 0;
-        final int hours = cookingTimeMinutes ~/ 60;
-        final int minutes = cookingTimeMinutes % 60;
-        _estimatedTimeController.text = '${hours > 0 ? '$hours Jam' : ''}${hours > 0 && minutes > 0 ? ', ' : ''}${minutes > 0 ? '$minutes Menit' : ''}'.trim();
-        if (_estimatedTimeController.text.isEmpty && cookingTimeMinutes == 0) {
-          _estimatedTimeController.text = '0 Menit';
-        }
+      // --- POPULATE STATE DENGAN DATA YANG DIDAPAT (DENGAN KEY YANG SUDAH DIPERBAIKI) ---
+      _fetchedCategories = categories;
 
-        _priceController.text = (recipeData['price'] ?? 0).toString();
-        _selectedDifficulty = recipeData['difficulty'];
+      _titleController.text = recipeData['title'] ?? '';
+      _descriptionController.text = recipeData['description'] ?? '';
 
-        // --- PERBAIKAN UNTUK ERROR 'map_value_type_not_assignable' ---
-        // Pastikan orElse mengembalikan Map<String, String> yang valid
-        _selectedCategory = _categories.firstWhere(
-                (cat) => cat['id'] == (recipeData['category_id'] ?? '').toString(),
-            orElse: () => {'id': '999', 'name': 'Lainnya'} // Mengembalikan map yang valid dengan string placeholder
-        )['name'];
-        // -------------------------------------------------------------
+      // PERBAIKAN 1: Gunakan key 'cooking_time' dari backend
+      _estimatedTimeController.text = (recipeData['cooking_time'] ?? '0').toString();
 
-        _initialImageUrl = recipeData['image_url'];
-        _initialVideoUrl = recipeData['video_url'];
+      _priceController.text = (recipeData['price'] ?? 0).toString();
+      _selectedDifficulty = recipeData['difficulty'];
 
-        _toolControllers.clear();
-        final List<dynamic> tools = recipeData['tools'] ?? [];
-        for (var toolName in tools) {
-          _toolControllers.add(TextEditingController(text: toolName));
-        }
-        if (_toolControllers.isEmpty) _toolControllers.add(TextEditingController());
+      // PERBAIKAN 2: Gunakan key 'category_id' dari backend
+      final int categoryIdFromServer = recipeData['category_id'] ?? -1;
+      _selectedCategory = categories
+          .firstWhere((cat) => cat.id == categoryIdFromServer, orElse: () => Category(id: -1, name: ''))
+          .name;
+      if(_selectedCategory!.isEmpty) _selectedCategory = null;
 
-        _ingredientControllers.clear();
-        final List<dynamic> ingredients = recipeData['ingredients'] ?? [];
-        for (var ingredient in ingredients) {
-          _ingredientControllers.add({
-            'quantity': TextEditingController(text: ingredient['quantity']?.toString() ?? ''),
-            'unit': TextEditingController(text: ingredient['unit'] ?? ''),
-            'name': TextEditingController(text: ingredient['name'] ?? ''),
-          });
-        }
-        if (_ingredientControllers.isEmpty) {
-          _ingredientControllers.add({'quantity': TextEditingController(), 'unit': TextEditingController(), 'name': TextEditingController()});
-        }
 
-        _instructionControllers.clear();
-        final List<dynamic> instructions = recipeData['instructions'] ?? [];
-        for (var instructionText in instructions) {
-          _instructionControllers.add(TextEditingController(text: instructionText));
-        }
-        if (_instructionControllers.isEmpty) _instructionControllers.add(TextEditingController());
+      // PERBAIKAN 3: Gunakan key 'image_url' dari backend
+      _initialImageUrl = recipeData['image_url'];
 
-      } else {
-        _errorMessage = 'Gagal mengambil data resep: ${response.statusCode}';
+      // PERBAIKAN 4: Gunakan key 'video_url' dari backend
+      _initialVideoUrl = recipeData['video_url'];
+
+      // Mengisi controllers untuk tools, ingredients, dan instructions.
+      // (Bagian ini sudah benar karena backend mengirim 'tools', 'ingredients', 'instructions')
+      final List<dynamic> tools = recipeData['tools'] ?? [];
+      _toolControllers.clear();
+      for (var toolName in tools) {
+        _toolControllers.add(TextEditingController(text: toolName.toString()));
       }
+      if (_toolControllers.isEmpty) _toolControllers.add(TextEditingController());
+
+      final List<dynamic> ingredients = recipeData['ingredients'] ?? [];
+      _ingredientControllers.clear();
+      for (var ingredient in ingredients) {
+        _ingredientControllers.add({
+          'quantity': TextEditingController(text: ingredient['quantity']?.toString() ?? ''),
+          'unit': TextEditingController(text: ingredient['unit']?.toString() ?? ''),
+          'name': TextEditingController(text: ingredient['name']?.toString() ?? ''),
+        });
+      }
+      if (_ingredientControllers.isEmpty) {
+        _ingredientControllers.add({'quantity': TextEditingController(), 'unit': TextEditingController(), 'name': TextEditingController()});
+      }
+
+      final List<dynamic> instructions = recipeData['instructions'] ?? [];
+      _instructionControllers.clear();
+      for (var instructionText in instructions) {
+        _instructionControllers.add(TextEditingController(text: instructionText.toString()));
+      }
+      if (_instructionControllers.isEmpty) _instructionControllers.add(TextEditingController());
+
     } catch (e) {
-      _errorMessage = 'Terjadi kesalahan jaringan saat mengambil resep: $e';
-      print('Error fetching recipe: $e');
+      // Tangani error jika salah satu proses fetch gagal.
+      _errorMessage = 'Terjadi kesalahan saat memuat data: $e';
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      // Pastikan loading dihentikan setelah semua proses selesai.
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
 
-  void _addToolField() {
-    setState(() {
-      _toolControllers.add(TextEditingController());
-    });
-  }
-
+  // --- FUNGSI UNTUK MENGELOLA FIELD DINAMIS (ADD/REMOVE) ---
+  void _addToolField() => setState(() => _toolControllers.add(TextEditingController()));
   void _removeToolField(int index) {
     setState(() {
       _toolControllers[index].dispose();
@@ -175,16 +215,11 @@ class _EditResepState extends State<EditResep> {
     });
   }
 
-  void _addIngredientField() {
-    setState(() {
-      _ingredientControllers.add({
-        'quantity': TextEditingController(),
-        'unit': TextEditingController(),
-        'name': TextEditingController(),
-      });
-    });
-  }
-
+  void _addIngredientField() => setState(() => _ingredientControllers.add({
+    'quantity': TextEditingController(),
+    'unit': TextEditingController(),
+    'name': TextEditingController(),
+  }));
   void _removeIngredientField(int index) {
     setState(() {
       _ingredientControllers[index]['quantity']?.dispose();
@@ -194,12 +229,7 @@ class _EditResepState extends State<EditResep> {
     });
   }
 
-  void _addInstructionField() {
-    setState(() {
-      _instructionControllers.add(TextEditingController());
-    });
-  }
-
+  void _addInstructionField() => setState(() => _instructionControllers.add(TextEditingController()));
   void _removeInstructionField(int index) {
     setState(() {
       _instructionControllers[index].dispose();
@@ -207,54 +237,57 @@ class _EditResepState extends State<EditResep> {
     });
   }
 
+  // --- FUNGSI UNTUK MEMILIH GAMBAR DAN VIDEO ---
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      _selectedImage = image;
-      _imageClearedByUser = false; // Jika pilih gambar baru, berarti tidak dihapus
-    });
-  }
-
-  Future<void> _pickVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    setState(() {
-      _selectedVideo = video;
-      _videoClearedByUser = false; // Jika pilih video baru, berarti tidak dihapus
-    });
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+        _imageClearedByUser = false;
+      });
+    }
   }
 
   void _clearImage() {
     setState(() {
       _selectedImage = null;
-      _imageClearedByUser = true; // Tandai bahwa gambar asli dihapus
+      _imageClearedByUser = true;
     });
+  }
+
+  Future<void> _pickVideo() async {
+    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
+    if (video != null) {
+      setState(() {
+        _selectedVideo = video;
+        _videoClearedByUser = false;
+      });
+    }
   }
 
   void _clearVideo() {
     setState(() {
       _selectedVideo = null;
-      _videoClearedByUser = true; // Tandai bahwa video asli dihapus
+      _videoClearedByUser = true;
     });
   }
 
+  // --- FUNGSI UTAMA: MENGIRIM PERUBAHAN KE BACKEND ---
   Future<void> _submitEditedRecipe() async {
-    // URL untuk PUT request (menggunakan ID resep)
-    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/${widget.recipeId}' : 'http://10.0.2.2:3000/recipes/${widget.recipeId}';
+    final String apiUrl = 'http://localhost:3000/recipes/${widget.recipeId}';
 
     final String title = _titleController.text.trim();
     final String description = _descriptionController.text.trim();
     final String estimatedTime = _estimatedTimeController.text.trim();
     final String price = _priceController.text.trim();
     final String difficulty = _selectedDifficulty ?? '';
-    final String? categoryId = _selectedCategory != null
-        ? _categories.firstWhere((cat) => cat['name'] == _selectedCategory)['id']
+
+    final int? categoryIdAsInt = _selectedCategory != null
+        ? _fetchedCategories.firstWhere((cat) => cat.name == _selectedCategory, orElse: () => Category(id: -1, name: '')).id
         : null;
+    final String? categoryId = (categoryIdAsInt != null && categoryIdAsInt != -1) ? categoryIdAsInt.toString() : null;
 
-    final List<String> tools = _toolControllers
-        .map((c) => c.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
+    final List<String> tools = _toolControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
     final List<Map<String, String>> ingredients = _ingredientControllers
         .map((map) => {
       'quantity': map['quantity']?.text.trim() ?? '',
@@ -263,35 +296,19 @@ class _EditResepState extends State<EditResep> {
     })
         .where((map) => map['name']!.isNotEmpty && map['quantity']!.isNotEmpty && map['unit']!.isNotEmpty)
         .toList();
+    final List<String> instructions = _instructionControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList();
 
-    final List<String> instructions = _instructionControllers
-        .map((c) => c.text.trim())
-        .where((text) => text.isNotEmpty)
-        .toList();
-
-    // Validasi gambar wajib: Jika tidak ada gambar baru DAN gambar awal adalah default/tidak ada DAN user tidak meng-upload/mengganti
-    bool isImageMissing = (_selectedImage == null && _initialImageUrl == 'default_recipe_image.png' && !_imageClearedByUser) ||
-        (_selectedImage == null && _initialImageUrl == null && !_imageClearedByUser);
-    if (title.isEmpty ||
-        description.isEmpty ||
-        estimatedTime.isEmpty ||
-        price.isEmpty ||
-        difficulty.isEmpty ||
-        categoryId == null ||
-        tools.isEmpty ||
-        ingredients.isEmpty ||
-        instructions.isEmpty ||
-        isImageMissing) {
+    bool isImageMissing = _selectedImage == null && (_initialImageUrl == null || _initialImageUrl!.isEmpty) && _imageClearedByUser;
+    if (title.isEmpty || description.isEmpty || estimatedTime.isEmpty || price.isEmpty || difficulty.isEmpty || categoryId == null || tools.isEmpty || ingredients.isEmpty || instructions.isEmpty || isImageMissing) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua field (termasuk Gambar) harus diisi!')),
       );
       return;
     }
 
-    var request = http.MultipartRequest('PUT', Uri.parse(apiUrl)); // Menggunakan PUT untuk update
+    var request = http.MultipartRequest('PUT', Uri.parse(apiUrl));
 
-    // Tambahkan field teks
-    request.fields['categoryId'] = categoryId!; // categoryId sudah divalidasi tidak null
+    request.fields['categoryId'] = categoryId;
     request.fields['title'] = title;
     request.fields['description'] = description;
     request.fields['estimatedTime'] = estimatedTime;
@@ -301,49 +318,37 @@ class _EditResepState extends State<EditResep> {
     request.fields['ingredients'] = json.encode(ingredients);
     request.fields['instructions'] = json.encode(instructions);
 
-    // Tambahkan flag untuk memberitahu backend tentang status gambar/video
-    // 'true' jika file lama TIDAK diganti DAN TIDAK dihapus
-    // 'false' jika file baru dipilih ATAU file lama dihapus
-    request.fields['image_url_unchanged'] = (_selectedImage == null && !_imageClearedByUser).toString();
-    request.fields['video_url_unchanged'] = (_selectedVideo == null && !_videoClearedByUser).toString();
+    request.fields['image_cleared'] = _imageClearedByUser.toString();
+    request.fields['video_cleared'] = _videoClearedByUser.toString();
 
-    // Tambahkan file gambar (jika ada gambar baru dipilih)
+
     if (_selectedImage != null) {
       final String? imageMimeType = _selectedImage!.mimeType;
       if (kIsWeb) {
         final bytes = await _selectedImage!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
-          'image',
-          bytes,
-          filename: _selectedImage!.name,
+          'image', bytes, filename: _selectedImage!.name,
           contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
         ));
       } else {
         request.files.add(await http.MultipartFile.fromPath(
-          'image',
-          _selectedImage!.path,
-          filename: _selectedImage!.name,
+          'image', _selectedImage!.path, filename: _selectedImage!.name,
           contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
         ));
       }
     }
 
-    // Tambahkan file video (jika ada video baru dipilih)
     if (_selectedVideo != null) {
       final String? videoMimeType = _selectedVideo!.mimeType;
       if (kIsWeb) {
         final bytes = await _selectedVideo!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
-          'video',
-          bytes,
-          filename: _selectedVideo!.name,
+          'video', bytes, filename: _selectedVideo!.name,
           contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
         ));
       } else {
         request.files.add(await http.MultipartFile.fromPath(
-          'video',
-          _selectedVideo!.path,
-          filename: _selectedVideo!.name,
+          'video', _selectedVideo!.path, filename: _selectedVideo!.name,
           contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
         ));
       }
@@ -354,14 +359,14 @@ class _EditResepState extends State<EditResep> {
       var responseData = await response.stream.transform(utf8.decoder).join();
       var jsonResponse = json.decode(responseData);
 
-      if (response.statusCode == 200) { // HTTP 200 OK untuk update berhasil
+      if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Resep berhasil diperbarui!')),
         );
-        Navigator.pop(context, true); // Kembali ke halaman sebelumnya dengan hasil 'true'
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memperbarui resep: ${jsonResponse['message'] ?? 'Terjadi kesalahan tidak dikenal'}')),
+          SnackBar(content: Text('Gagal memperbarui resep: ${jsonResponse['message'] ?? 'Kesalahan tidak dikenal'}')),
         );
       }
     } catch (e) {
@@ -372,12 +377,15 @@ class _EditResepState extends State<EditResep> {
     }
   }
 
+
+  // --- UI BUILDING METHOD ---
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.bgColor,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: AppColors.primaryColor)),
       );
     }
 
@@ -404,17 +412,14 @@ class _EditResepState extends State<EditResep> {
           child: Column(
             children: [
               HeaderWidget(
-                title: 'Edit Resep', // Ubah judul
-                onBackPressed: () {
-                  Navigator.pop(context);
-                },
+                title: 'Edit Resep',
+                onBackPressed: () => Navigator.pop(context),
               ),
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Area Unggah Gambar (Wajib)
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                         height: 200,
@@ -422,51 +427,11 @@ class _EditResepState extends State<EditResep> {
                         decoration: BoxDecoration(
                           color: AppColors.lightTeal.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(16),
-                          image: _selectedImage != null // Jika ada gambar baru dipilih
-                              ? DecorationImage(
-                            image: kIsWeb ? NetworkImage(_selectedImage!.path) : FileImage(File(_selectedImage!.path)) as ImageProvider,
-                            fit: BoxFit.cover,
-                          )
-                              : _imageClearedByUser // Jika gambar asli dihapus
-                              ? null // Tidak ada gambar
-                              : (_initialImageUrl != null && _initialImageUrl != 'default_recipe_image.png') // Jika ada gambar awal dari backend dan bukan default
-                              ? DecorationImage(
-                            image: NetworkImage('http://localhost:3000$_initialImageUrl'), // Sesuaikan URL backend untuk gambar awal
-                            fit: BoxFit.cover,
-                          )
-                              : null, // Default jika tidak ada gambar
+                          image: _buildImageProvider(),
                         ),
-                        // Tampilkan overlay "Tambahkan Gambar" hanya jika tidak ada gambar sama sekali
-                        child: (_selectedImage == null && !_imageClearedByUser && (_initialImageUrl == null || _initialImageUrl == 'default_recipe_image.png'))
-                            ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: AppColors.emeraldGreen.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                size: 36,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Tambahkan Gambar Resep (Wajib)',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        )
-                            : null,
+                        child: _buildImagePlaceholder(),
                       ),
-                      // Tombol Unggah/Ganti/Hapus Gambar
+
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 30),
                         child: Row(
@@ -476,48 +441,26 @@ class _EditResepState extends State<EditResep> {
                                 onTap: _pickImage,
                                 child: Container(
                                   height: 35,
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
                                   margin: const EdgeInsets.symmetric(horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accentTeal.withOpacity(0.5),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
                                   alignment: Alignment.center,
                                   child: Text(
-                                    (_selectedImage == null && !_imageClearedByUser && (_initialImageUrl == null || _initialImageUrl == 'default_recipe_image.png'))
-                                        ? 'Pilih Gambar' // Belum ada gambar sama sekali
-                                        : 'Ganti Gambar', // Ada gambar (lama/baru) bisa diganti
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                      fontSize: 14,
-                                    ),
+                                    (_selectedImage == null && (_initialImageUrl == null || _imageClearedByUser)) ? 'Pilih Gambar' : 'Ganti Gambar',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14),
                                   ),
                                 ),
                               ),
                             ),
-                            // Tampilkan tombol hapus hanya jika ada gambar yang bisa dihapus (bukan null dan bukan default_image.png)
-                            if (_selectedImage != null || (_initialImageUrl != null && _initialImageUrl != 'default_recipe_image.png' && !_imageClearedByUser))
+                            if (_selectedImage != null || (_initialImageUrl != null && !_imageClearedByUser))
                               Expanded(
                                 child: GestureDetector(
                                   onTap: _clearImage,
                                   child: Container(
                                     height: 35,
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
                                     margin: const EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accentTeal.withOpacity(0.5),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                    decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
                                     alignment: Alignment.center,
-                                    child: const Text(
-                                      'Hapus Gambar',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                    child: const Text('Hapus Gambar', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
                                   ),
                                 ),
                               ),
@@ -525,57 +468,17 @@ class _EditResepState extends State<EditResep> {
                         ),
                       ),
 
-                      // Area Unggah Video (Opsional)
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                        height: 100, // Ukuran lebih kecil untuk video opsional
+                        height: 100,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: AppColors.lightTeal.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: (_selectedVideo == null && (_initialVideoUrl == null || _videoClearedByUser))
-                            ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 40, // Ikon lebih kecil
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: AppColors.emeraldGreen.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.videocam,
-                                size: 24,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Tambahkan Video Resep (Opsional)',
-                              style: TextStyle(
-                                color: Colors.black54,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        )
-                            : Center(
-                          child: Text(
-                            _selectedVideo != null
-                                ? 'Video Terpilih: ${_selectedVideo!.name}'
-                                : (_initialVideoUrl != null ? 'Video Terpilih: ${_initialVideoUrl!.split('/').last}' : 'Tidak ada video'), // Tampilkan nama file lama
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        child: _buildVideoPlaceholder(),
                       ),
-                      // Tombol Unggah/Hapus Video
+
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 30),
                         child: Row(
@@ -586,48 +489,26 @@ class _EditResepState extends State<EditResep> {
                                 onTap: _pickVideo,
                                 child: Container(
                                   height: 35,
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
                                   margin: const EdgeInsets.symmetric(horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accentTeal.withOpacity(0.5),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                  decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
                                   alignment: Alignment.center,
                                   child: Text(
-                                    (_selectedVideo == null && (_initialVideoUrl == null || _videoClearedByUser))
-                                        ? 'Pilih Video'
-                                        : 'Ganti Video',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                      fontSize: 14,
-                                    ),
+                                    (_selectedVideo == null && (_initialVideoUrl == null || _videoClearedByUser)) ? 'Pilih Video' : 'Ganti Video',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14),
                                   ),
                                 ),
                               ),
                             ),
-                            // Tampilkan tombol hapus hanya jika ada video yang bisa dihapus
                             if (_selectedVideo != null || (_initialVideoUrl != null && !_videoClearedByUser))
                               Expanded(
                                 child: GestureDetector(
                                   onTap: _clearVideo,
                                   child: Container(
                                     height: 35,
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
                                     margin: const EdgeInsets.symmetric(horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accentTeal.withOpacity(0.5),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
+                                    decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
                                     alignment: Alignment.center,
-                                    child: const Text(
-                                      'Hapus Video',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                    child: const Text('Hapus Video', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 14)),
                                   ),
                                 ),
                               ),
@@ -635,274 +516,39 @@ class _EditResepState extends State<EditResep> {
                         ),
                       ),
 
-
-                      // Recipe Info Fields
                       _buildInfoField('Judul', 'Nama Resep', controller: _titleController),
                       _buildInfoField('Deskripsi', 'Deskripsi Resep', lighter: true, controller: _descriptionController),
-                      _buildInfoField('Estimasi Waktu', 'Contoh: 1 Jam, 30 Menit', controller: _estimatedTimeController),
-                      _buildInfoField('Harga', 'Contoh: 25000', controller: _priceController, keyboardType: TextInputType.number),
+                      _buildInfoField('Estimasi Waktu (menit)', '45', controller: _estimatedTimeController, keyboardType: TextInputType.number),
+                      _buildInfoField('Harga', '25000', controller: _priceController, keyboardType: TextInputType.number),
 
-                      // Difficulty Dropdown
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                            child: Text(
-                              'Tingkat Kesulitan',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 30),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentTeal.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                isExpanded: true,
-                                value: _selectedDifficulty,
-                                hint: const Text(
-                                  'Pilih tingkat kesulitan memasak',
-                                  style: TextStyle(color: Colors.black54),
-                                ),
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedDifficulty = newValue;
-                                  });
-                                },
-                                items: _difficultyLevels.map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(value),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildDifficultyDropdown(),
 
-                      // Category Dropdown
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                            child: Text(
-                              'Kategori Resep',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 30),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentTeal.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                isExpanded: true,
-                                value: _selectedCategory,
-                                hint: const Text(
-                                  'Pilih kategori resep',
-                                  style: TextStyle(color: Colors.black54),
-                                ),
-                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedCategory = newValue;
-                                  });
-                                },
-                                items: _categories.map<DropdownMenuItem<String>>((Map<String, String> category) {
-                                  return DropdownMenuItem<String>(
-                                    value: category['name'],
-                                    child: Text(category['name']!),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildCategoryDropdown(),
 
+                      _buildDynamicSection('Alat-Alat', _toolControllers, _buildToolItem, _addToolField),
 
-                      // Tools Section (Alat-Alat)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 30.0, top: 24.0, bottom: 8.0),
-                        child: Text(
-                          'Alat-Alat',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _toolControllers.length,
-                        itemBuilder: (context, index) {
-                          return _buildToolItem(index, _toolControllers[index]);
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: GestureDetector(
-                            onTap: _addToolField,
-                            child: Container(
-                              width: 200,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryColor,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  '+ Tambahkan Alat',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      _buildDynamicSection('Bahan-Bahan', _ingredientControllers, _buildIngredientItem, _addIngredientField),
 
-                      // Ingredients Section (Bahan-Bahan)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                        child: Text(
-                          'Bahan-Bahan',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _ingredientControllers.length,
-                        itemBuilder: (context, index) {
-                          return _buildIngredientItem(
-                            index,
-                            _ingredientControllers[index]['quantity']!,
-                            _ingredientControllers[index]['unit']!,
-                            _ingredientControllers[index]['name']!,
-                          );
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: GestureDetector(
-                            onTap: _addIngredientField,
-                            child: Container(
-                              width: 200,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryColor,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  '+ Tambahkan Bahan',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      _buildDynamicSection('Instruksi', _instructionControllers, _buildInstructionItem, _addInstructionField),
 
-                      // Instructions Section (Instruksi)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-                        child: Text(
-                          'Instruksi',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _instructionControllers.length,
-                        itemBuilder: (context, index) {
-                          return _buildInstructionItem(index, _instructionControllers[index]);
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: GestureDetector(
-                            onTap: _addInstructionField,
-                            child: Container(
-                              width: 200,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryColor,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  '+ Tambahkan Instruksi',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Tombol Simpan Perubahan
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _submitEditedRecipe, // Panggil fungsi submitEditedRecipe
+                            onPressed: _submitEditedRecipe,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryColor,
                               padding: const EdgeInsets.symmetric(vertical: 15),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             child: const Text(
-                              'Simpan Perubahan', // Ubah teks tombol
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                              'Simpan Perubahan',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -915,20 +561,76 @@ class _EditResepState extends State<EditResep> {
     );
   }
 
-  // Metode pembangun untuk field info (judul, deskripsi, dll.)
+  // --- METODE PEMBANTU UNTUK MEMBANGUN UI ---
+
+  DecorationImage? _buildImageProvider() {
+    if (_selectedImage != null) {
+      return DecorationImage(
+        image: kIsWeb ? NetworkImage(_selectedImage!.path) : FileImage(File(_selectedImage!.path)) as ImageProvider,
+        fit: BoxFit.cover,
+      );
+    }
+    if (_initialImageUrl != null && _initialImageUrl!.isNotEmpty && !_imageClearedByUser) {
+      final imageUrl = _initialImageUrl!.startsWith('http') ? _initialImageUrl! : 'http://localhost:3000$_initialImageUrl';
+      return DecorationImage(
+        image: NetworkImage(imageUrl),
+        fit: BoxFit.cover,
+      );
+    }
+    return null;
+  }
+
+  Widget? _buildImagePlaceholder() {
+    if (_selectedImage == null && (_initialImageUrl == null || _initialImageUrl!.isEmpty || _imageClearedByUser)) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60, height: 60,
+            decoration: BoxDecoration(color: AppColors.emeraldGreen.withOpacity(0.5), shape: BoxShape.circle),
+            child: const Icon(Icons.camera_alt, size: 36, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          const Text('Tambahkan Gambar Resep (Wajib)', style: TextStyle(color: Colors.black54, fontSize: 16)),
+        ],
+      );
+    }
+    return null;
+  }
+
+  Widget _buildVideoPlaceholder() {
+    if (_selectedVideo == null && (_initialVideoUrl == null || _initialVideoUrl!.isEmpty || _videoClearedByUser)) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: AppColors.emeraldGreen.withOpacity(0.5), shape: BoxShape.circle),
+            child: const Icon(Icons.videocam, size: 24, color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          const Text('Tambahkan Video Resep (Opsional)', style: TextStyle(color: Colors.black54, fontSize: 14)),
+        ],
+      );
+    }
+    return Center(
+      child: Text(
+        _selectedVideo != null
+            ? 'Video Terpilih: ${_selectedVideo!.name}'
+            : 'Video Terpilih: ${_initialVideoUrl!.split('/').last}',
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   Widget _buildInfoField(String label, String placeholder, {bool lighter = false, required TextEditingController controller, TextInputType keyboardType = TextInputType.text}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
         Container(
           width: double.infinity,
@@ -943,9 +645,7 @@ class _EditResepState extends State<EditResep> {
             keyboardType: keyboardType,
             decoration: InputDecoration(
               hintText: placeholder,
-              hintStyle: const TextStyle(
-                color: Colors.black54,
-              ),
+              hintStyle: const TextStyle(color: Colors.black54),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
@@ -956,105 +656,163 @@ class _EditResepState extends State<EditResep> {
     );
   }
 
-  // Metode pembangun untuk item alat
+  Widget _buildDifficultyDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
+          child: Text('Tingkat Kesulitan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 30),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(24)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: _selectedDifficulty,
+              hint: const Text('Pilih tingkat kesulitan', style: TextStyle(color: Colors.black54)),
+              onChanged: (String? newValue) => setState(() => _selectedDifficulty = newValue),
+              items: _difficultyLevels.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(value: value, child: Text(value));
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 30.0, top: 16.0, bottom: 8.0),
+          child: Text('Kategori Resep', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 30),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(24)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: _selectedCategory,
+              hint: const Text('Pilih kategori resep', style: TextStyle(color: Colors.black54)),
+              onChanged: (String? newValue) => setState(() => _selectedCategory = newValue),
+              items: _fetchedCategories.map<DropdownMenuItem<String>>((Category category) {
+                return DropdownMenuItem<String>(
+                  value: category.name,
+                  child: Text(category.name),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDynamicSection(String title, List<dynamic> controllers, Function itemBuilder, VoidCallback onAdd) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 30.0, top: 24.0, bottom: 8.0),
+          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: controllers.length,
+          itemBuilder: (context, index) {
+            if (title == 'Bahan-Bahan') {
+              final item = controllers[index] as Map<String, TextEditingController>;
+              return _buildIngredientItem(index, item['quantity']!, item['unit']!, item['name']!);
+            } else {
+              return itemBuilder(index, controllers[index]);
+            }
+          },
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: GestureDetector(
+              onTap: onAdd,
+              child: Container(
+                width: 200,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(color: AppColors.primaryColor, borderRadius: BorderRadius.circular(24)),
+                child: Center(
+                  child: Text('+ Tambahkan ${title.split('-').first}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildToolItem(int index, TextEditingController controller) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.more_vert, color: Colors.black), onPressed: () {}),
           const SizedBox(width: 2),
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-              decoration: BoxDecoration(
-                color: AppColors.accentTeal.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(24),
-              ),
+              decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(24)),
               child: TextField(
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: 'Nama Alat ${index + 1}',
                   hintStyle: const TextStyle(color: Colors.black54),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 16),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.black),
-            onPressed: () => _removeToolField(index),
-          ),
+          IconButton(icon: const Icon(Icons.delete, color: Colors.black), onPressed: () => _removeToolField(index)),
         ],
       ),
     );
   }
 
-  // Metode pembangun untuk item bahan
   Widget _buildIngredientItem(int index, TextEditingController quantityController, TextEditingController unitController, TextEditingController nameController) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 2),
+          IconButton(icon: const Icon(Icons.more_vert, color: Colors.black), onPressed: () {}),
           SizedBox(
-            width: 60, // Lebar untuk jumlah
+            width: 60,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              decoration: BoxDecoration(
-                color: AppColors.accentTeal.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
               child: TextField(
                 controller: quantityController,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: 'Qty',
-                  hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                decoration: const InputDecoration(hintText: 'Qty', border: InputBorder.none, hintStyle: TextStyle(color: Colors.black54, fontSize: 14)),
+                style: const TextStyle(fontSize: 16),
               ),
             ),
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 80, // Lebar untuk unit
+            width: 80,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              decoration: BoxDecoration(
-                color: AppColors.accentTeal.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
               child: TextField(
                 controller: unitController,
-                decoration: InputDecoration(
-                  hintText: 'Unit',
-                  hintStyle: const TextStyle(color: Colors.black54, fontSize: 14),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                decoration: const InputDecoration(hintText: 'Unit', border: InputBorder.none, hintStyle: TextStyle(color: Colors.black54, fontSize: 14)),
+                style: const TextStyle(fontSize: 16),
               ),
             ),
           ),
@@ -1062,73 +820,44 @@ class _EditResepState extends State<EditResep> {
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-              decoration: BoxDecoration(
-                color: AppColors.accentTeal.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
               child: TextField(
                 controller: nameController,
-                decoration: InputDecoration(
-                  hintText: 'Nama Bahan ${index + 1}',
-                  hintStyle: const TextStyle(color: Colors.black54),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
+                decoration: InputDecoration(hintText: 'Nama Bahan ${index + 1}', border: InputBorder.none, hintStyle: const TextStyle(color: Colors.black54)),
+                style: const TextStyle(fontSize: 16),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Color.fromARGB(255, 4, 0, 0)),
-            onPressed: () => _removeIngredientField(index),
-          ),
+          IconButton(icon: const Icon(Icons.delete, color: Colors.black), onPressed: () => _removeIngredientField(index)),
         ],
       ),
     );
   }
 
-  // Metode pembangun untuk item instruksi
   Widget _buildInstructionItem(int index, TextEditingController controller) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.more_vert, color: Colors.black), onPressed: () {}),
           const SizedBox(width: 2),
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-              decoration: BoxDecoration(
-                color: AppColors.accentTeal.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(24),
-              ),
+              decoration: BoxDecoration(color: AppColors.accentTeal.withOpacity(0.5), borderRadius: BorderRadius.circular(24)),
               child: TextField(
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: 'Instruksi ${index + 1}',
                   hintStyle: const TextStyle(color: Colors.black54),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                ),
-                maxLines: null, // Instruksi bisa multi-baris
+                style: const TextStyle(color: Colors.black, fontSize: 16),
+                maxLines: null,
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.black),
-            onPressed: () => _removeInstructionField(index),
-          ),
+          IconButton(icon: const Icon(Icons.delete, color: Colors.black), onPressed: () => _removeInstructionField(index)),
         ],
       ),
     );
