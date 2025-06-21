@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:masak2/view/onboarding/introduction_screen.dart';
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -251,61 +253,66 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // =================== POPUP: Success ===================
   void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.black.withOpacity(0.7),
-          contentPadding: const EdgeInsets.all(40),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  size: 60,
-                  color: Color.fromARGB(255, 1, 85, 51),
-                ),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.black.withOpacity(0.7),
+        contentPadding: const EdgeInsets.all(40),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
               ),
-              const SizedBox(height: 20),
-              const Text(
-                "Daftar Akun\nBerhasil",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24,
-                ),
+              child: const Icon(
+                Icons.person_outline,
+                size: 60,
+                color: Color.fromARGB(255, 1, 85, 51),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.pushNamed(context, '/login');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF57B4BA),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Daftar Akun\nBerhasil",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Tutup dialog
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const OnboardingA(),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                ); // Navigasi ke halaman OnboardingA
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF57B4BA),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                child: const Text(
-                  "Kembali Ke Login",
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
               ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+              child: const Text(
+                "Lanjutkan",
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
   // =================== POPUP: Error ===================
   void _showErrorDialog(BuildContext context, String message) {

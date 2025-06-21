@@ -28,7 +28,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Pasang rute-rute aplikasi Anda
 app.use('/register', registerRoutes);
-app.use('/login', loginRoutes); // Jika Anda menggunakan login
+app.use('/login', loginRoutes); 
 app.use('/recipes', recipeRoutes);
 app.use('/users', userRoutes);
 app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, biasanya /favorites

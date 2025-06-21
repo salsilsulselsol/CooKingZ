@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Fungsi untuk login
+  // Fungsi untuk login dengan logika navigasi berdasarkan onboarding status
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -59,6 +59,7 @@ class _LoginPageState extends State<LoginPage> {
         // Login berhasil
         final token = responseData['token'];
         final userData = responseData['user'];
+        final bool isOnboardingCompleted = userData['onboardingCompleted'] ?? false;
 
         // Simpan token dan data user ke SharedPreferences
         final prefs = await SharedPreferences.getInstance();
@@ -74,12 +75,24 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
 
-          // Navigate ke halaman cooking
-          Navigator.pushNamedAndRemoveUntil(
-            context, 
-            '/cooking', 
-            (route) => false,
-          );
+          // Logika navigasi berdasarkan status onboarding
+          if (isOnboardingCompleted) {
+            // Jika sudah pernah onboarding, langsung ke halaman utama
+            print('DEBUG: User sudah onboarding, navigate ke /cooking');
+            Navigator.pushNamedAndRemoveUntil(
+              context, 
+              '/cooking', // atau '/home' sesuai dengan route utama Anda
+              (route) => false,
+            );
+          } else {
+            // Jika belum onboarding, ke halaman onboarding
+            print('DEBUG: User belum onboarding, navigate ke onboarding');
+            Navigator.pushNamedAndRemoveUntil(
+              context, 
+              '/beranda', // Route ke halaman onboarding
+              (route) => false,
+            );
+          }
         }
       } else {
         // Login gagal
@@ -366,10 +379,26 @@ class UserSession {
     return token != null && token.isNotEmpty;
   }
 
+  // Fungsi untuk cek apakah user sudah onboarding
+  static Future<bool> isOnboardingCompleted() async {
+    final userData = await getUserData();
+    return userData?['onboardingCompleted'] ?? false;
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('user_data');
+  }
+
+  // Fungsi untuk update status onboarding di local storage
+  static Future<void> updateOnboardingStatus(bool completed) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userData = await getUserData();
+    if (userData != null) {
+      userData['onboardingCompleted'] = completed;
+      await prefs.setString('user_data', json.encode(userData));
+    }
   }
 
   // Fungsi untuk mendapatkan header dengan token untuk API calls
@@ -419,4 +448,81 @@ class ApiService {
       headers: headers,
     );
   }
+
+  // Fungsi khusus untuk complete onboarding
+  static Future<bool> completeOnboarding() async {
+    try {
+      final response = await post('/api/complete-onboarding', {});
+      if (response.statusCode == 200) {
+        await UserSession.updateOnboardingStatus(true);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error completing onboarding: $e');
+      return false;
+    }
+  }
+}
+
+// Fungsi untuk menampilkan dialog sukses
+void _showSuccessDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.black.withOpacity(0.7),
+        contentPadding: const EdgeInsets.all(40),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: const Icon(
+                Icons.person_outline,
+                size: 60,
+                color: Color.fromARGB(255, 1, 85, 51),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Daftar Akun\nBerhasil",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Tutup dialog
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/beranda', // Ganti dengan route homepage Anda
+                  (route) => false,
+                ); // Navigasi ke halaman homepage
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF57B4BA),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+              ),
+              child: const Text(
+                "Lanjutkan",
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

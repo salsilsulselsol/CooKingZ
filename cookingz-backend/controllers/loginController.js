@@ -74,8 +74,6 @@ const loginController = {
           email: user.email,
           bio: user.bio,
           cookingLevel: user.cooking_level,
-          // Tidak ada kolom onboarding_completed di database
-          onboardingCompleted: false, // Default value atau bisa dihapus
         },
       });
 
@@ -120,9 +118,7 @@ const loginController = {
           fullName: userProfile.full_name,
           email: userProfile.email,
           bio: userProfile.bio,
-          cookingLevel: userProfile.cooking_level,
-          // Tidak ada kolom onboarding_completed di database
-          onboardingCompleted: false, // Default value atau bisa dihapus
+          cookingLevel: userProfile.cooking_level
         },
       });
     } catch (error) {
