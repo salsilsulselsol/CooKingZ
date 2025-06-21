@@ -96,8 +96,7 @@ class MyApp extends StatelessWidget {
         '/filter': (context) => const AppWithNavbar(FilterPopup()),
         '/pengguna-terbaik': (context) => const PenggunaTerbaik(),
         '/trending-resep': (context) => const AppWithNavbar(TrendingResep()),
-        '/hasil-pencarian': (context) => const AppWithNavbar(HasilPencaharian()),
-
+       
         // Profil
         '/profil-utama': (context) => const AppWithNavbar(ProfilUtama()),
         '/bagikan-profil': (context) => const AppWithNavbar(BagikanProfil()),
@@ -195,7 +194,26 @@ class MyApp extends StatelessWidget {
           }
         }
         // --- Akhir penanganan untuk /detail-resep dengan arguments ---
-
+         if (settings.name == '/hasil-pencarian') {
+          final args = settings.arguments;
+          if (args is Map<String, dynamic>) {
+           
+            return MaterialPageRoute(
+              builder: (context) {
+                 print("✅ Navigating to HasilPencaharian with args: $args");
+                return HasilPencaharian(initialSearchParams: args);
+              },
+              settings: settings,
+            );
+          } else {
+            return MaterialPageRoute(
+              builder:
+                  (context) => const Scaffold(
+                    body: Center(child: Text('Error: Parameter tidak valid.')),
+                  ),
+            );
+          }
+        }
 
         // Untuk rute lain yang tidak ditangani secara eksplisit di onGenerateRoute,
         // kembalikan null agar MaterialApp mencari di 'routes' map.

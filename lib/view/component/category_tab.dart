@@ -23,15 +23,14 @@ class CategoryTabBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
         itemBuilder: (context, index) {
+          final isSelected = selectedIndex == index;
           return GestureDetector(
             onTap: () => onCategorySelected(index),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 6),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: selectedIndex == index
-                    ? primaryColor
-                    : Colors.white,
+                color: isSelected ? primaryColor : Colors.white,
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
                   color: primaryColor,
@@ -42,9 +41,7 @@ class CategoryTabBar extends StatelessWidget {
                 child: Text(
                   categories[index],
                   style: TextStyle(
-                    color: selectedIndex == index
-                        ? Colors.white
-                        : primaryColor,
+                    color: isSelected ? Colors.white : primaryColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -56,3 +53,4 @@ class CategoryTabBar extends StatelessWidget {
     );
   }
 }
+

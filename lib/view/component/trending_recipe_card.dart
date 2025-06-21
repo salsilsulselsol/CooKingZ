@@ -9,6 +9,7 @@ class TrendingRecipeCard extends StatelessWidget {
   final String price;
   final String detailRoute;
 
+
   const TrendingRecipeCard({
     Key? key,
     required this.imagePath,
@@ -24,11 +25,12 @@ class TrendingRecipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Navigate to detail page with the recipe ID
         Navigator.pushNamed(
           context,
-          detailRoute, // Pastikan route sudah terdaftar
-          // arguments: ... jika perlu, bisa tambahkan objek resep di sini
+          detailRoute,
         );
+          
       },
       child: Column(
         children: [
@@ -38,8 +40,8 @@ class TrendingRecipeCard extends StatelessWidget {
               // Main container
               Container(
                 margin: const EdgeInsets.only(
-                  left: 30,
-                  right: 20,
+                  left: 10,
+                  right: 10,
                   top: 8,
                   bottom: 8,
                 ),
@@ -47,6 +49,7 @@ class TrendingRecipeCard extends StatelessWidget {
                   children: [
                     // Image Container
                     ClipRRect(
+                      
                       borderRadius: const BorderRadius.all(Radius.circular(12)),
                       child: Container(
                         height: 180,

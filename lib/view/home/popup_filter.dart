@@ -1,338 +1,240 @@
 import 'package:flutter/material.dart';
-import '../../theme/theme.dart'; // Import your theme
+import '../../theme/theme.dart';
 
 class FilterPopup extends StatefulWidget {
-  const FilterPopup({Key? key}) : super(key: key);
+  final Map<String, dynamic> initialParams;
+
+  const FilterPopup({Key? key, this.initialParams = const {}}) : super(key: key);
 
   @override
   State<FilterPopup> createState() => _FilterPopupDialogState();
 }
 
 class _FilterPopupDialogState extends State<FilterPopup> {
-  // Selected allergens
-  final List<String> _selectedAllergens = ['Kacang', 'Gandum'];
+  Set<String> _selectedAllergens = {};
+  String _selectedDifficulty = 'Semua';
+  double _minRating = 0.0;
+  double _maxPrice = 100000.0;
+  double _maxTime = 180.0;
 
-  // Difficulty level
-  String _selectedDifficulty = 'Sedang';
-
-  // Sliders
-  double _priceValue = 5.0; // Default halfway
-  double _timeValue = 90.0; // Default halfway (180/2)
+  @override
+  void initState() {
+    super.initState();
+    _selectedAllergens = Set<String>.from(widget.initialParams['allergens'] ?? []);
+    _selectedDifficulty = widget.initialParams['difficulty'] ?? 'Semua';
+    _minRating = widget.initialParams['min_rating'] ?? 0.0;
+    _maxPrice = widget.initialParams['max_price'] ?? 100000.0;
+    _maxTime = widget.initialParams['max_time'] ?? 180.0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Material( // <- Tambahan penting di sini
+      color: Colors.transparent,
+      child: Container(
+        padding: EdgeInsets.all(AppTheme.spacingXXLarge),
+        decoration: BoxDecoration(
+          color: AppTheme.backgroundColor,
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        ),
+        child: SingleChildScrollView( // Antisipasi overflow di layar kecil
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Filter',
-                style: AppTheme.headerStyle,
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.close,
-                  color: AppTheme.primaryColor,
-                  size: AppTheme.iconSizeLarge,
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingXLarge),
-
-          // Handle bar - visual indicator of top sheet
-          Center(
-            child: Container(
-              width: 40,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-              ),
-            ),
-          ),
-          SizedBox(height: AppTheme.spacingXXLarge),
-
-          // Allergen section
-          Row(
-            children: [
-              Icon(
-                Icons.add_circle_outline,
-                color: AppTheme.primaryColor,
-                size: AppTheme.iconSizeMedium,
-              ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                'Tambah Alergen',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textBrown,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingLarge),
-
-          // Allergen tags
-          Wrap(
-            spacing: AppTheme.spacingMedium,
-            runSpacing: AppTheme.spacingMedium,
-            children: [
-              ..._selectedAllergens.map((allergen) => _buildAllergenChip(allergen)),
-              _buildAddAllergenButton(),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingXLarge),
-
-          // Difficulty section
-          Row(
-            children: [
-              Icon(
-                Icons.add_circle_outline,
-                color: AppTheme.primaryColor,
-                size: AppTheme.iconSizeMedium,
-              ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                'Kesulitan',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textBrown,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingLarge),
-
-          // Difficulty chips
-          Row(
-            children: [
-              _buildDifficultyChip('Mudah'),
-              SizedBox(width: AppTheme.spacingMedium),
-              _buildDifficultyChip('Sedang'),
-              SizedBox(width: AppTheme.spacingMedium),
-              _buildDifficultyChip('Sulit'),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingXLarge),
-
-          // Price estimation section
-          Row(
-            children: [
-              Icon(
-                Icons.add_circle_outline,
-                color: AppTheme.primaryColor,
-                size: AppTheme.iconSizeMedium,
-              ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                'Estimasi Harga',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textBrown,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingLarge),
-
-          // Price slider
-          Row(
-            children: [
-              Container(
-                width: 5,
-                height: 24,
-                color: AppTheme.primaryColor,
-              ),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: AppTheme.searchBarColor,
-                    inactiveTrackColor: AppTheme.searchBarColor,
-                    thumbColor: AppTheme.primaryColor,
-                    overlayColor: AppTheme.primaryColor.withOpacity(0.2),
-                    trackHeight: 8.0,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Filter', style: AppTheme.headerStyle),
+                  IconButton(
+                    icon: Icon(Icons.close, color: AppTheme.primaryColor, size: AppTheme.iconSizeLarge),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
-                  child: Slider(
-                    value: _priceValue,
-                    min: 0,
-                    max: 10,
-                    onChanged: (value) {
-                      setState(() {
-                        _priceValue = value;
-                      });
-                    },
+                ],
+              ),
+              SizedBox(height: AppTheme.spacingXLarge),
+              Center(
+                child: Container(
+                  width: 40, height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
                   ),
                 ),
               ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                '10jt',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textBrown,
+              SizedBox(height: AppTheme.spacingXXLarge),
+
+              _buildFilterSectionTitle(Icons.warning, 'Alergen'),
+              SizedBox(height: AppTheme.spacingLarge),
+              Wrap(
+                spacing: AppTheme.spacingMedium,
+                runSpacing: AppTheme.spacingMedium,
+                children: [
+                  _buildAllergenChip('Kacang'),
+                  _buildAllergenChip('Gandum'),
+                  _buildAllergenChip('Susu'),
+                  _buildAllergenChip('Telur'),
+                ],
+              ),
+              SizedBox(height: AppTheme.spacingXLarge),
+
+              _buildFilterSectionTitle(Icons.star, 'Kesulitan'),
+              SizedBox(height: AppTheme.spacingLarge),
+              Row(
+                children: [
+                  _buildDifficultyChip('Mudah'),
+                  SizedBox(width: AppTheme.spacingMedium),
+                  _buildDifficultyChip('Sedang'),
+                  SizedBox(width: AppTheme.spacingMedium),
+                  _buildDifficultyChip('Sulit'),
+                ],
+              ),
+              SizedBox(height: AppTheme.spacingXLarge),
+
+              _buildFilterSectionTitle(Icons.star_half, 'Rating Minimal'),
+              Slider(
+                value: _minRating, min: 0, max: 5, divisions: 5,
+                label: _minRating.toStringAsFixed(1),
+                onChanged: (value) => setState(() => _minRating = value),
+                activeColor: AppTheme.primaryColor,
+                inactiveColor: AppTheme.searchBarColor,
+                thumbColor: AppTheme.primaryColor,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text('0', style: TextStyle(fontSize: 12)),
+                    Text('5', style: TextStyle(fontSize: 12)),
+                  ],
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingXLarge),
+              SizedBox(height: AppTheme.spacingXLarge),
 
-          // Time estimation section
-          Row(
-            children: [
-              Icon(
-                Icons.add_circle_outline,
-                color: AppTheme.primaryColor,
-                size: AppTheme.iconSizeMedium,
+              _buildFilterSectionTitle(Icons.attach_money, 'Estimasi Harga Maksimal'),
+              Slider(
+                value: _maxPrice, min: 0, max: 100000.0, divisions: 20,
+                label: _maxPrice.toStringAsFixed(0),
+                onChanged: (value) => setState(() => _maxPrice = value),
+                activeColor: AppTheme.primaryColor,
+                inactiveColor: AppTheme.searchBarColor,
+                thumbColor: AppTheme.primaryColor,
               ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                'Estimasi Waktu',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textBrown,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text('0', style: TextStyle(fontSize: 12)),
+                    Text('100K+', style: TextStyle(fontSize: 12)),
+                  ],
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: AppTheme.spacingLarge),
+              SizedBox(height: AppTheme.spacingXLarge),
 
-          // Time slider
-          Row(
-            children: [
-              Container(
-                width: 5,
-                height: 24,
-                color: AppTheme.primaryColor,
+              _buildFilterSectionTitle(Icons.access_time, 'Estimasi Waktu Memasak Maksimal (Menit)'),
+              Slider(
+                value: _maxTime, min: 0, max: 180.0, divisions: 18,
+                label: _maxTime.toStringAsFixed(0),
+                onChanged: (value) => setState(() => _maxTime = value),
+                activeColor: AppTheme.primaryColor,
+                inactiveColor: AppTheme.searchBarColor,
+                thumbColor: AppTheme.primaryColor,
               ),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: AppTheme.searchBarColor,
-                    inactiveTrackColor: AppTheme.searchBarColor,
-                    thumbColor: AppTheme.primaryColor,
-                    overlayColor: AppTheme.primaryColor.withOpacity(0.2),
-                    trackHeight: 8.0,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text('0 Menit', style: TextStyle(fontSize: 12)),
+                    Text('180+ Menit', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+              SizedBox(height: AppTheme.spacingXXLarge),
+
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    final Map<String, dynamic> filteredParams = {
+                      'allergens': _selectedAllergens.toList(),
+                      'difficulty': _selectedDifficulty == 'Semua' ? null : _selectedDifficulty,
+                      'min_rating': _minRating > 0 ? _minRating : null,
+                      'max_price': _maxPrice < 100000.0 ? _maxPrice : null,
+                      'max_time': _maxTime < 180.0 ? _maxTime : null,
+                    };
+                    filteredParams.removeWhere((key, value) => value == null || (value is List && value.isEmpty));
+                    Navigator.of(context).pop(filteredParams);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
+                    ),
                   ),
-                  child: Slider(
-                    value: _timeValue,
-                    min: 0,
-                    max: 180,
-                    onChanged: (value) {
-                      setState(() {
-                        _timeValue = value;
-                      });
-                    },
+                  child: const Text(
+                    'Terapkan Filter',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
-              SizedBox(width: AppTheme.spacingMedium),
-              Text(
-                '180Menit',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textBrown,
-                ),
-              ),
+              SizedBox(height: AppTheme.spacingLarge),
             ],
           ),
-          SizedBox(height: AppTheme.spacingXXLarge),
-
-          // Apply filter button
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // You can return the filter values here
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.searchBarColor,
-                foregroundColor: AppTheme.primaryColor,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
-                ),
-              ),
-              child: const Text(
-                'Tambahkan Filter',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-
-          // Add some bottom padding for better spacing
-          SizedBox(height: AppTheme.spacingLarge),
-        ],
+        ),
       ),
     );
   }
 
-  // Helper method to build allergen chips
+  Widget _buildFilterSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primaryColor, size: AppTheme.iconSizeMedium),
+        SizedBox(width: AppTheme.spacingMedium),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textBrown,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAllergenChip(String label) {
-    return Chip(
+    final bool isSelected = _selectedAllergens.contains(label);
+    return ChoiceChip(
       label: Text(label),
+      selected: isSelected,
+      selectedColor: AppTheme.primaryColor,
       backgroundColor: AppTheme.searchBarColor,
-      labelStyle: TextStyle(color: AppTheme.primaryColor),
-      deleteIconColor: AppTheme.primaryColor,
-      onDeleted: () {
+      labelStyle: TextStyle(
+        color: isSelected ? AppTheme.backgroundColor : AppTheme.primaryColor,
+      ),
+      padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium, vertical: 2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+      ),
+      onSelected: (selected) {
         setState(() {
-          _selectedAllergens.remove(label);
+          if (selected) {
+            _selectedAllergens.add(label);
+          } else {
+            _selectedAllergens.remove(label);
+          }
         });
       },
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
-      ),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 
-  // Helper method to build add allergen button
-  Widget _buildAddAllergenButton() {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingLarge,
-          vertical: AppTheme.spacingMedium
-      ),
-      decoration: BoxDecoration(
-        color: AppTheme.searchBarColor,
-        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Add +',
-            style: TextStyle(
-              color: AppTheme.primaryColor,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to build difficulty choice chips
   Widget _buildDifficultyChip(String label) {
     final bool isSelected = _selectedDifficulty == label;
-
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
@@ -341,7 +243,7 @@ class _FilterPopupDialogState extends State<FilterPopup> {
       labelStyle: TextStyle(
         color: isSelected ? Colors.white : AppTheme.primaryColor,
       ),
-      onSelected: (bool selected) {
+      onSelected: (selected) {
         if (selected) {
           setState(() {
             _selectedDifficulty = label;
@@ -354,60 +256,4 @@ class _FilterPopupDialogState extends State<FilterPopup> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
     );
   }
-}
-
-// Function to show the filter as a top sheet
-void showFilterDialog(BuildContext context) {
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'FilterTopSheet',
-    barrierColor: Colors.black.withOpacity(0.3),
-    transitionDuration: const Duration(milliseconds: 300),
-    pageBuilder: (context, animation, secondaryAnimation) {
-      return Align(
-        alignment: Alignment.topCenter,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(context).size.width,
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.85,
-            ),
-            decoration: BoxDecoration(
-              color: AppTheme.backgroundColor,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
-                bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
-              ),
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + AppTheme.spacingXXLarge,
-              left: AppTheme.spacingXXLarge,
-              right: AppTheme.spacingXXLarge,
-              bottom: AppTheme.spacingXXLarge,
-            ),
-            child: const SafeArea(
-              bottom: false,
-              child: SingleChildScrollView(
-                child: FilterPopup(),
-              ),
-            ),
-          ),
-        ),
-      );
-    },
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, -1), // from top
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOut,
-        )),
-        child: child,
-      );
-    },
-  );
 }

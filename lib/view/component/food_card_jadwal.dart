@@ -1,176 +1,140 @@
+// File: lib/view/component/food_card_jadwal.dart
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../models/food_model.dart'; // Import model Food
-import '../../models/scheduled_food_model.dart'; // Import model ScheduledFood
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Untuk mengakses BASE_URL
+import 'package:intl/intl.dart'; // Untuk format harga jika Anda menggunakan NumberFormat
+import '../../theme/theme.dart';
+import '../../models/scheduled_food_model.dart'; // Import model ScheduledFood yang sudah diperbarui
+
 
 class FoodCardJadwal extends StatelessWidget {
-  final ScheduledFood scheduledFood;
+  final ScheduledFood scheduledMeal; // Menerima objek ScheduledFood
+  final VoidCallback? onDelete; // Callback untuk menghapus jadwal
 
-  const FoodCardJadwal({Key? key, required this.scheduledFood}) : super(key: key);
+  const FoodCardJadwal({
+    Key? key,
+    required this.scheduledMeal,
+    this.onDelete,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final food = scheduledFood.food;
+    // Bangun URL gambar resep lengkap
+    final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:3000/uploads';
+    final String fullImageUrl = scheduledMeal.recipeImageUrl != null && scheduledMeal.recipeImageUrl!.isNotEmpty
+        ? '$baseUrl/${scheduledMeal.recipeImageUrl!}' // Pastikan tidak null jika digunakan
+        : ''; // Kosong jika null/empty
+
+    // Untuk format harga (jika diperlukan)
     final currencyFormat = NumberFormat.currency(
       locale: 'id',
-      symbol: 'RP',
+      symbol: 'RP ', // RP diikuti spasi
       decimalDigits: 0,
     );
+    // Asumsi harga ada di scheduledMeal (jika query backend mengambilnya)
+    final String formattedPrice = scheduledMeal.recipeTitle != null && scheduledMeal.recipeTitle!.contains('price') // Ini hanya placeholder, sesuaikan jika Anda ingin menampilkan harga
+      ? currencyFormat.format(double.tryParse(scheduledMeal.recipeTitle!.split('price')[1].trim()) ?? 0) // Ini contoh parsing jika price ada di title, SANGAT TIDAK DIREKOMENDASIKAN
+      : (scheduledMeal.recipeTitle ?? '').contains('RB') ? scheduledMeal.recipeTitle! : 'RP --'; // Contoh fallback.
+    // Jika harga ada di Food model, Anda perlu melewatkan Food object ke ScheduledMeal atau ambil harga dari scheduledMeal jika query backend mengembalikan harga.
+    // Untuk saat ini, saya akan menggunakan harga dari Food model yang asli jika Anda punya, atau tampilkan placeholder.
+    // Karena ScheduledFood model saat ini tidak memiliki 'price' langsung, saya akan pakai placeholder.
+    
+    // Asumsi: query backend jadwal makan TIDAK mengembalikan detail 'price' dan 'cooking_time' resep.
+    // Jika Anda ingin menampilkannya, query backend di utilityController.js perlu diperluas
+    // untuk mengambil juga r.price dan r.cooking_time, dan menambahkannya ke ScheduledFood model.
+    final String displayCookingTime = 'N/A'; // Default placeholder
+    final String displayPrice = 'N/A'; // Default placeholder
 
-    return Container(
-      margin: const EdgeInsets.only(right: 10, bottom: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF006666),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Stack(
+
+    return GestureDetector(
+      onTap: () {
+        if (scheduledMeal.recipeId != null) {
+          print('DEBUG FOOD_CARD_JADWAL: Tapped scheduled recipe ID: ${scheduledMeal.recipeId}');
+          Navigator.pushNamed(context, '/detail-resep/${scheduledMeal.recipeId}');
+        } else {
+          print('ERROR: Recipe ID is null for scheduled meal.');
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: AppTheme.spacingMedium),
+        padding: EdgeInsets.all(AppTheme.spacingMedium),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            InkWell(
-                onTap: () {
-                  // Navigate to food detail page using the food object
-                  Navigator.pushNamed(
-                    context,
-                    '/detail-resep',
-                    arguments: food,
-                  );
-                },
+            // Gambar Resep
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
               child: Container(
-                height: 265,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  children: [
-                    // Food image with favorite button
-                    Stack(
-                      alignment: Alignment.topRight,
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                          child: Image.asset(
-                            food.image,
-                            height: 150,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: GestureDetector(
-                            onTap: () {
-                              // Handle favorite button press
-                              //print('Favorite button pressed');
-                            },
-                            child: Image.asset(
-                              'images/love.png',
-                              width: 24,
-                              height: 24,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Food info
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  food.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  food.description?.replaceAll('\n', ' ') ?? '',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    '${food.likes ?? 0}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF65B0B0),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.star,
-                                    color: Color(0xFF65B0B0),
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  const Icon(
-                                    Icons.access_time,
-                                    color: Color(0xFF65B0B0),
-                                    size: 16,
-                                  ),
-                                  Text(
-                                    ' ${food.cookingTime != null ? '${food.cookingTime} menit' : ''}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF65B0B0),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                ' ${food.price ?? ''} RB',
-                                style: const TextStyle(
-                                  color: Color(0xFF65B0B0),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                width: 80,
+                height: 80,
+                color: Colors.grey[200],
+                child: fullImageUrl.isNotEmpty
+                    ? Image.network(
+                        fullImageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          print('ERROR LOADING JADWAL IMAGE: $error for URL: $fullImageUrl');
+                          return Icon(Icons.broken_image, size: 40, color: Colors.grey[600]);
+                        },
+                      )
+                    : Center(child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey[600])),
               ),
             ),
-            // Delete button
-            Positioned(
-              top: 210,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF65B0B0),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Icon(
-                  Icons.delete,
-                  color: Colors.white,
-                  size: 24,
-                ),
+            SizedBox(width: AppTheme.spacingMedium),
+            
+            // Detail Resep
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    scheduledMeal.recipeTitle ?? 'Resep Tidak Dikenal', // Nama resep dari model
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppTheme.textBrown,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: AppTheme.spacingXSmall),
+                  Text(
+                    '${scheduledMeal.mealType} - ${DateFormat('dd MMM').format(scheduledMeal.date)}', // Jenis makan + tanggal singkat
+                    style: TextStyle(fontSize: 14, color: AppTheme.primaryColor),
+                  ),
+                  SizedBox(height: AppTheme.spacingXSmall),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, size: 16, color: Colors.grey),
+                      SizedBox(width: 4),
+                      Text(displayCookingTime, style: TextStyle(fontSize: 12, color: Colors.grey)), // Waktu Masak
+                      SizedBox(width: 8),
+                      Icon(Icons.money, size: 16, color: Colors.grey),
+                      SizedBox(width: 4),
+                      Text(displayPrice, style: TextStyle(fontSize: 12, color: Colors.grey)), // Harga
+                    ],
+                  ),
+                ],
               ),
             ),
+            
+            // Tombol Hapus (opsional)
+            if (onDelete != null)
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.red),
+                onPressed: onDelete,
+              ),
           ],
         ),
       ),

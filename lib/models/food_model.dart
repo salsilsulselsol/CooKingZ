@@ -1,3 +1,10 @@
+// File: lib/models/food_model.dart
+
+import 'dart:convert';
+
+Food foodFromJson(String str) => Food.fromJson(json.decode(str));
+String foodToJson(Food data) => json.encode(data.toMap());
+
 class Food {
   final int? id;
   final String name;
@@ -34,6 +41,7 @@ class Food {
       likes: map['likes'] as int?,
       price: map['price'] as String?,
       difficulty: map['difficulty'] as String?,
+      detailRoute: map['detailRoute'] as String?,
     );
   }
 
@@ -53,16 +61,16 @@ class Food {
 
   factory Food.fromJson(Map<String, dynamic> json) {
     return Food(
-      id: json['id'],
-      name: json['name'],
-      rating: (json['rating'] as num?)?.toDouble(),
-      // Handle null untuk rating
-      cookingTime: json['cookingTime'],
-      price: json['price'],
-      image: json['image'],
-      likes: json['likes'],
-      // Handle null untuk likes
-      description: json['description'],
+      id: json['id'] as int?,
+      name: json['title']?.toString() ?? 'Resep Tanpa Nama',
+      description: json['description']?.toString(),
+      image: json['image_url']?.toString() ?? '',
+      cookingTime: (json['cooking_time'] as num?)?.toInt() ?? 0,
+      rating: double.tryParse(json['avg_rating']?.toString() ?? '') ?? 0.0,
+      likes: (json['total_reviews'] as num?)?.toInt() ?? 0,
+      price: json['price']?.toString() ?? 'Gratis',
+      difficulty: json['difficulty']?.toString(),
+      detailRoute: null,
     );
   }
 }

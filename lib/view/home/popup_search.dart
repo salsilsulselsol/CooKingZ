@@ -1,40 +1,126 @@
+// File: lib/view/home/search_popup.dart
+
 import 'package:flutter/material.dart';
-import '../../theme/theme.dart'; // Import your theme
+import '../../theme/theme.dart';
 import 'popup_filter.dart';
+import '../component/search_bar_widget.dart';
 
 class SearchPopup extends StatefulWidget {
   const SearchPopup({Key? key}) : super(key: key);
 
   @override
-  _RecipeRecommendationsBottomSheetState createState() =>
-      _RecipeRecommendationsBottomSheetState();
+  _RecipeRecommendationsBottomSheetState createState() => _RecipeRecommendationsBottomSheetState();
 }
 
-class _RecipeRecommendationsBottomSheetState
-    extends State<SearchPopup> {
+class _RecipeRecommendationsBottomSheetState extends State<SearchPopup> {
+  final TextEditingController _searchController = TextEditingController();
   Set<String> selectedCategories = {};
+  Map<String, dynamic> _filterParams = {};
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showFilterAndGetParams() async {
+    final Map<String, dynamic>? result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => FilterPopup(initialParams: _filterParams),
+    );
+
+    if (result != null) {
+      setState(() {
+        _filterParams = result;
+      });
+      print('DEBUG: Filter params received: $_filterParams');
+    }
+  }
+
+  void _performSearch([String? recommendationKeyword]) {
+    final String keyword = recommendationKeyword ?? _searchController.text;
+
+    final Map<String, dynamic> searchParams = {
+      'keyword': keyword.isNotEmpty ? keyword : null,
+      'categories': selectedCategories.isNotEmpty ? selectedCategories.toList() : null,
+      ..._filterParams,
+    };
+
+    searchParams.removeWhere((key, value) => value == null || (value is List && value.isEmpty));
+
+    print('DEBUG: Performing search with params from SearchPopup: $searchParams');
+
+    Navigator.of(context).pushNamed(
+      '/hasil-pencarian',
+      arguments: searchParams,
+    );
+  }
+
+  Widget _buildFilterSummary() {
+    if (_filterParams.isEmpty) return const SizedBox.shrink();
+
+    List<Widget> chips = [];
+
+    _filterParams.forEach((key, value) {
+      if (value == null) return;
+      String label = '';
+
+      if (key == 'allergens' && value is List) {
+        label = 'Alergen: ${(value as List).join(', ')}';
+      } else if (key == 'difficulty') {
+        label = 'Kesulitan: $value';
+      } else if (key == 'min_rating') {
+        label = 'Rating ≥ $value';
+      } else if (key == 'max_price') {
+        label = 'Harga ≤ $value';
+      } else if (key == 'max_time') {
+        label = 'Durasi ≤ $value menit';
+      } else {
+        label = '$key: $value';
+      }
+
+      chips.add(
+        Chip(
+          label: Text(label),
+          backgroundColor: AppTheme.searchBarColor,
+        ),
+      );
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Filter aktif:", style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: chips,
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
-          bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(16),
+          bottomRight: Radius.circular(16),
         ),
       ),
       padding: EdgeInsets.fromLTRB(
-          AppTheme.spacingXXLarge,
-          AppTheme.spacingXLarge,
-          AppTheme.spacingXXLarge,
-          AppTheme.spacingXXLarge
+        AppTheme.spacingXXLarge,
+        AppTheme.spacingXLarge,
+        AppTheme.spacingXXLarge,
+        AppTheme.spacingXXLarge,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Handle bar
           Center(
             child: Container(
               width: 40,
@@ -45,100 +131,37 @@ class _RecipeRecommendationsBottomSheetState
               ),
             ),
           ),
-          SizedBox(height: AppTheme.spacingXXLarge),
+          const SizedBox(height: 16),
 
-          // Search bar and filter button
-          Row(
-            children: [
-              // Search bar
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.searchBarColor,
-                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingXLarge),
-                  height: AppTheme.searchBarHeight,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: InputDecoration(
-                            hintText: 'Cari',
-                            border: InputBorder.none,
-                            hintStyle: TextStyle(color: AppTheme.primaryColor),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.only(left: 10),
-                        child: Image.asset(
-                          'images/search.png',
-                          width: 30,
-                          height: 30,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(width: AppTheme.spacingMedium),
-
-              // Filter button
-              GestureDetector(
-                onTap: () {
-                  showFilterDialog(context);
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(AppTheme.filterButtonSize / 2),
-                  ),
-                  padding: EdgeInsets.all(AppTheme.spacingMedium),
-                  child: Icon(
-                    Icons.filter_alt,
-                    color: AppTheme.backgroundColor,
-                    size: AppTheme.iconSizeMedium,
-                  ),
-                ),
-              ),
-            ],
+          SearchBarWidget(
+            controller: _searchController,
+            hintText: 'Cari resep...',
+            onSearchSubmitted: (_) => _performSearch(),
+            onFilterTap: _showFilterAndGetParams,
           ),
-          SizedBox(height: AppTheme.spacingXXLarge),
+          const SizedBox(height: 12),
 
-          // Title
-          Text(
-            'Rekomendasi Resep',
-            style: AppTheme.headerStyle,
-          ),
-          SizedBox(height: AppTheme.spacingXLarge),
+          _buildFilterSummary(),
+          const SizedBox(height: 20),
 
-          // Category chips
+          Text('Rekomendasi Resep', style: AppTheme.headerStyle),
+          const SizedBox(height: 12),
+
           Wrap(
             spacing: AppTheme.spacingMedium,
             runSpacing: AppTheme.spacingLarge,
             children: [
               for (var category in [
-                'Soto',
-                'Hamburger',
-                'Egg Rolls',
-                'Wraps',
-                'Cheesecake',
-                'Tomato Soup',
-                'Parfait',
-                'Vegan',
-                'Baked Salmon'
+                'Soto', 'Hamburger', 'Egg Rolls', 'Wraps',
+                'Cheesecake', 'Tomato Soup', 'Parfait', 'Vegan', 'Baked Salmon'
               ])
-                _buildCategoryChip(category),
+                _buildRecommendationChip(category),
             ],
           ),
-          SizedBox(height: AppTheme.spacingXXLarge),
+          const SizedBox(height: 24),
 
-          // Search button
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed('/hasil-pencarian');
-            },
+            onPressed: _performSearch,
             style: ElevatedButton.styleFrom(
               foregroundColor: AppTheme.primaryColor,
               backgroundColor: AppTheme.searchBarColor,
@@ -150,10 +173,7 @@ class _RecipeRecommendationsBottomSheetState
             ),
             child: const Text(
               'Cari',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -161,34 +181,22 @@ class _RecipeRecommendationsBottomSheetState
     );
   }
 
-  Widget _buildCategoryChip(String label) {
-    final bool isSelected = selectedCategories.contains(label);
-    return ChoiceChip(
+  Widget _buildRecommendationChip(String label) {
+    return ActionChip(
       label: Text(label),
-      selected: isSelected,
-      selectedColor: AppTheme.primaryColor,
       backgroundColor: AppTheme.searchBarColor,
-      labelStyle: TextStyle(
-        color: isSelected ? AppTheme.backgroundColor : AppTheme.primaryColor,
-      ),
-      padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingMedium, vertical: 2),
+      labelStyle: TextStyle(color: AppTheme.primaryColor),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
       ),
-      onSelected: (selected) {
-        setState(() {
-          if (selected) {
-            selectedCategories.add(label);
-          } else {
-            selectedCategories.remove(label);
-          }
-        });
+      onPressed: () {
+        _searchController.text = label;
+        _performSearch(label);
       },
     );
   }
 }
 
-// Function to show the popup
 void showRecipeRecommendationsTopSheet(BuildContext context) {
   showGeneralDialog(
     context: context,
@@ -214,9 +222,8 @@ void showRecipeRecommendationsTopSheet(BuildContext context) {
                 top: MediaQuery.of(context).padding.top + AppTheme.spacingXXLarge,
                 left: AppTheme.spacingXXLarge,
                 right: AppTheme.spacingXXLarge,
-                bottom: AppTheme.spacingXXLarge
-            ),
-            child: SafeArea(
+                bottom: AppTheme.spacingXXLarge),
+            child: const SafeArea(
               bottom: false,
               child: SearchPopup(),
             ),
@@ -227,7 +234,7 @@ void showRecipeRecommendationsTopSheet(BuildContext context) {
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
         position: Tween<Offset>(
-          begin: const Offset(0, -1), // from top
+          begin: const Offset(0, -1),
           end: Offset.zero,
         ).animate(CurvedAnimation(
           parent: animation,

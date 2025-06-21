@@ -1,65 +1,141 @@
+// File: lib/view/home/notification_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../component/notification_widget.dart'; // Import widget NotificationItem
-import '../../view/component/header_back.dart'; // Import HeaderWidget
+import 'package:http/http.dart' as http; 
+import 'dart:convert'; 
+import 'package:shared_preferences/shared_preferences.dart'; 
 
-class NotificationPage extends StatelessWidget {
-  NotificationPage({super.key});
-  // Daftar notifikasi dengan data yang sesuai
-  final List<Map<String, String>> _notifications = [
-    {
-      'title': 'Resep Baru Mingguan!',
-      'description': 'Temukan resep terbaru kami minggu ini.',
-      'time': '2 Menit Lalu',
-      'date': DateTime.now().subtract(const Duration(minutes: 2)).toString(),
-      'icon': 'images/bintang_besar.png', // Menggunakan bintang_besar.png
-    },
-    {
-      'title': 'Yuk, Masak Sekarang!',
-      'description': 'Saatnya menyiapkan makanan sehat untuk hari ini.',
-      'time': '35 Menit Lalu',
-      'date': DateTime.now().subtract(const Duration(minutes: 35)).toString(),
-      'icon': 'images/notifikasi_besar.png', // Menggunakan notifikasi_besar.png
-    },
-    {
-      'title': 'Pembaruan Baru Tersedia',
-      'description': 'Peningkatan performa dan perbaikan bug.',
-      'time': '25 April 2025',
-      'date': DateTime(2025, 4, 25).toString(),
-      'icon': 'images/notifikasi_besar.png',
-    },
-    {
-      'title': 'Pengingat',
-      'description':
-      'Jangan lupa lengkapi profilmu untuk mengakses semua fitur aplikasi.',
-      'time': '25 April 2025',
-      'date': DateTime(2025, 4, 25).toString(),
-      'icon': 'images/bintang_besar.png',
-    },
-    {
-      'title': 'Pemberitahuan Penting',
-      'description':
-      'Ingat untuk rutin mengganti kata sandi agar akunmu tetap aman.',
-      'time': '25 April 2025',
-      'date': DateTime(2025, 4, 25).toString(),
-      'icon': 'images/notifikasi_besar.png',
-    },
-    {
-      'title': 'Pembaruan Baru Tersedia',
-      'description': 'Peningkatan performa dan perbaikan bug.',
-      'time': '23 April 2025',
-      'date': DateTime(2025, 4, 23).toString(),
-      'icon': 'images/notifikasi_besar.png',
-    },
-  ];
+import '../component/notification_widget.dart'; // <<< IMPOR WIDGET NOTIFICATIONITEM
+import '../../view/component/header_back.dart'; 
+import '../../models/notification_model.dart'; // <<< IMPOR MODEL AppNotification YANG BARU
 
-  // Fungsi untuk mengelompokkan notifikasi berdasarkan hari
-  Map<String, List<Map<String, String>>> _groupNotificationsByDay() {
-    Map<String, List<Map<String, String>>> grouped = {};
-    for (var notification in _notifications) {
-      // Menggunakan format yang lebih sederhana untuk pengelompokan
-      String day =
-      DateFormat('yyyy-MM-dd').format(DateTime.parse(notification['date']!));
+class NotificationPage extends StatefulWidget {
+  const NotificationPage({super.key});
+
+  @override
+  State<NotificationPage> createState() => _NotificationPageState();
+}
+
+class _NotificationPageState extends State<NotificationPage> {
+  List<AppNotification> _notifications = []; // <<< Menggunakan AppNotification
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
+
+  final String _baseUrl = 'http://192.168.100.44:3000'; // <<< GANTI DENGAN IP BACKEND ANDA
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotifications();
+  }
+
+  Future<void> _fetchNotifications() async {
+    print('DEBUG NOTIF: Mulai fetch notifikasi...');
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Anda harus login untuk melihat notifikasi.';
+          _isLoading = false;
+        });
+        print('DEBUG NOTIF: Tidak ada token, tidak bisa fetch notifikasi.');
+        return;
+      }
+
+      final uri = Uri.parse('$_baseUrl/api/utilities/notifications');
+      print('DEBUG NOTIF: Fetching dari URL: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('DEBUG NOTIF: Status Code API: ${response.statusCode}');
+      print('DEBUG NOTIF: Response Body API: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final List<dynamic> notificationList = responseData['data'];
+
+        setState(() {
+          _notifications = notificationList.map((jsonItem) => AppNotification.fromJson(jsonItem)).toList(); // <<< Menggunakan AppNotification.fromJson
+          _isLoading = false;
+        });
+        print('DEBUG NOTIF: Notifikasi berhasil diparsing. Jumlah: ${_notifications.length}');
+      } else {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Gagal memuat notifikasi: ${response.statusCode} ${response.reasonPhrase}';
+          _isLoading = false;
+        });
+        print('[ERROR] NOTIF: Gagal memuat notifikasi: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = 'Terjadi kesalahan saat memuat notifikasi: $e';
+        _isLoading = false;
+      });
+      print('[EXCEPTION] NOTIF: Error fetching notifikasi: $e');
+    }
+  }
+
+  Future<void> _markNotificationAsRead(int notificationId) async {
+    print('DEBUG NOTIF: Menandai notifikasi ID: $notificationId sebagai sudah dibaca.');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) return;
+
+      final uri = Uri.parse('$_baseUrl/api/utilities/notifications/$notificationId/read');
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('DEBUG: Notifikasi $notificationId berhasil ditandai sudah dibaca.');
+        setState(() {
+          _notifications = _notifications.map((notif) {
+            return notif.id == notificationId ? AppNotification( // <<< Menggunakan AppNotification
+              id: notif.id,
+              userId: notif.userId,
+              message: notif.message,
+              isRead: true, 
+              createdAt: notif.createdAt,
+            ) : notif;
+          }).toList();
+        });
+      } else {
+        print('[ERROR] NOTIF: Gagal menandai notifikasi $notificationId sebagai sudah dibaca: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('[EXCEPTION] NOTIF: Error menandai notifikasi sebagai sudah dibaca: $e');
+    }
+  }
+
+  Map<String, List<AppNotification>> _groupNotificationsByDay(List<AppNotification> notifications) { // <<< Menggunakan AppNotification
+    Map<String, List<AppNotification>> grouped = {};
+    for (var notification in notifications) {
+      String day = DateFormat('yyyy-MM-dd').format(notification.createdAt);
       if (!grouped.containsKey(day)) {
         grouped[day] = [];
       }
@@ -68,87 +144,89 @@ class NotificationPage extends StatelessWidget {
     return grouped;
   }
 
-  // Fungsi untuk mendapatkan teks hari yang diformat
-  String _getDayText(String date) {
-    DateTime dateTime = DateTime.parse(date);
+  String _getDayText(String dateKey) {
+    DateTime dateTime = DateTime.parse(dateKey);
     DateTime today = DateTime.now();
     DateTime yesterday = today.subtract(const Duration(days: 1));
 
-    if (dateTime.year == today.year &&
-        dateTime.month == today.month &&
-        dateTime.day == today.day) {
+    if (_isSameDay(dateTime, today)) {
       return 'Hari Ini';
-    } else if (dateTime.year == yesterday.year &&
-        dateTime.month == yesterday.month &&
-        dateTime.day == yesterday.day) {
+    } else if (_isSameDay(dateTime, yesterday)) {
       return 'Kemarin';
     } else {
-      // Format tanggal ke format yang diinginkan (contoh: Rabu, 25 April 2025)
-      return DateFormat('EEEE, dd MMMM', 'id_ID').format(dateTime);
+      return DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(dateTime); // Tambahkan tahun untuk kejelasan
     }
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+           date1.month == date2.month &&
+           date1.day == date2.day;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Mengelompokkan notifikasi
-    final Map<String, List<Map<String, String>>> groupedNotifications =
-    _groupNotificationsByDay();
+    print('DEBUG NOTIF: build method dipanggil. isLoading: $_isLoading, hasError: $_hasError, notifications.length: ${_notifications.length}');
+    final Map<String, List<AppNotification>> groupedNotifications = _groupNotificationsByDay(_notifications);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Menggunakan HeaderWidget sebagai pengganti AppBar
             HeaderWidget(
               title: 'Notifikasi',
               onBackPressed: () => Navigator.of(context).pop(),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: groupedNotifications.length,
-                itemBuilder: (context, index) {
-                  // Mendapatkan hari dari key
-                  String day = groupedNotifications.keys.elementAt(index);
-                  // Mendapatkan daftar notifikasi untuk hari tersebut
-                  List<Map<String, String>> notificationsForDay =
-                  groupedNotifications[day]!;
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _hasError
+                      ? Center(
                           child: Text(
-                            _getDayText(day),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.black,
-                            ),
+                            _errorMessage,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        // Iterasi dan tampilkan setiap notifikasi untuk hari ini
-                        ...notificationsForDay.map((notification) {
-                          Map<String, String> modifiedNotification =
-                          Map<String, String>.from(notification);
-                          if (modifiedNotification['icon'] == 'images/bintang_besar.png') {
-                            modifiedNotification['icon'] = 'images/bintang_besar.png';
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: NotificationItem(
-                              notification: modifiedNotification,
+                        )
+                      : _notifications.isEmpty
+                          ? Center(child: Text('Tidak ada notifikasi.', style: TextStyle(color: Colors.grey)))
+                          : ListView.builder(
+                              itemCount: groupedNotifications.length,
+                              itemBuilder: (context, index) {
+                                String dayKey = groupedNotifications.keys.elementAt(index);
+                                List<AppNotification> notificationsForDay = groupedNotifications[dayKey]!;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                        child: Text(
+                                          _getDayText(dayKey),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      ...notificationsForDay.map((notification) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 8.0),
+                                          child: NotificationItem(
+                                            notification: notification, // Meneruskan objek model AppNotification
+                                            onMarkAsRead: notification.isRead ? null : () => _markNotificationAsRead(notification.id),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        }).toList(),
-                      ],
-                    ),
-                  );
-                },
-              ),
             ),
           ],
         ),

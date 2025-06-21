@@ -1,26 +1,25 @@
-// lib/models/category.dart
-
+// File: lib/models/category_model.dart
 class Category {
   final int id;
   final String name;
-  final String? description;
-  final String? imageUrl; // Menggunakan imageUrl agar konsisten
 
   Category({
     required this.id,
     required this.name,
-    this.description,
-    this.imageUrl,
   });
 
-  // Factory constructor untuk membuat instance Category dari JSON
-  // Pastikan key-nya cocok dengan JSON dari backend Anda
-  factory Category.fromJson(Map<String, dynamic> json) {
-    return Category(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      imageUrl: json['image_url'], // cocokkan dengan 'image_url' dari backend
-    );
+ factory Category.fromJson(Map<String, dynamic> json) {
+  return Category(
+    id: (json['id'] ?? json['category_id'] ?? 0) as int, // fallback kalau null
+    name: json['name']?.toString() ?? 'Tanpa Nama',      // aman dari null
+  );
+}
+
+
+  Map<String, dynamic> toJson() {
+    return {
+      'category_id': id,
+      'name': name,
+    };
   }
 }

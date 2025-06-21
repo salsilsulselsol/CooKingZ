@@ -1,35 +1,67 @@
-// cookingz-backend/app.js atau server.js
+// cookingz-backend/server.js
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const recipeRoutes = require('./routes/recipeRoutes');
-const userRoutes = require('./routes/userRoutes'); // Pastikan ini diimpor
-const favoriteRoutes = require('./routes/favoriteRoutes'); // <<<--- TAMBAHKAN INI
-const registerRoutes = require('./routes/registerRoutes'); // Asumsi Anda punya rute registrasi
-const categoryRoutes = require('./routes/categoryRoutes');
-const path = require('path');
+const morgan = require('morgan'); 
 
+// Import semua rute dan middleware yang dibutuhkan
+const recipeRoutes = require('./routes/recipeRoutes');
+const userRoutes = require('./routes/userRoutes');
+const favoriteRoutes = require('./routes/favoriteRoutes');
+const registerRoutes = require('./routes/registerRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const discoveryRoutes = require('./routes/discoveryRoutes'); // Untuk /home dan /search
+const utilityRoutes = require('./routes/utilityRoutes'); // <<< TAMBAHKAN INI untuk jadwal & notifikasi
+const authenticateToken = require('./middleware/authMiddleware'); // Pastikan ini ada
+
+const path = require('path');
+const db = require('./db');
+
+// Middleware umum
 app.use(cors());
 app.use(express.json());
+app.use(morgan('dev')); 
 
 // Setel direktori 'uploads' sebagai folder statis yang dapat diakses publik.
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Gunakan rute registrasi
-app.use('/register', registerRoutes); // Pastikan `registerRoutes` didefinisikan atau diimpor
-
-// Gunakan rute resep
+// Pasang rute-rute aplikasi Anda
+app.use('/register', registerRoutes);
 app.use('/recipes', recipeRoutes);
-
-// Gunakan rute pengguna
 app.use('/users', userRoutes);
-
-// Gunakan rute favorit
-app.use('/recipes', favoriteRoutes);
-
-// Gunakan rute category
+app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, biasanya /favorites
 app.use('/categories', categoryRoutes);
 
+// Pasang discoveryRoutes di '/home' dengan middleware autentikasi opsional
+app.use('/home', (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+        authenticateToken(req, res, next);
+    } else {
+        next(); // Lanjutkan tanpa autentikasi jika tidak ada token
+    }
+}, discoveryRoutes);
+
+// Pasang utilityRoutes di '/api/utilities' dan lindungi dengan authenticateToken
+// Ini berarti setiap permintaan ke /api/utilities/* akan melalui autentikasi JWT.
+app.use('/api/utilities', authenticateToken, utilityRoutes); // <<< TAMBAHKAN INI
+
+// Middleware penanganan 404 generik. Ini akan tertrigger jika TIDAK ADA rute di atas yang match.
+app.use((req, res, next) => {
+    res.status(404).send('Backend: Rute tidak ditemukan.');
+});
+
+// Middleware penanganan error global. Ini akan tertrigger jika ada error di middleware/rute manapun.
+app.use((err, req, res, next) => {
+    console.error('GLOBAL ERROR HANDLER:', err.stack);
+    res.status(500).json({ // Mengubah .send menjadi .json agar Flutter bisa parse
+        status: 'error',
+        message: 'Backend: Terjadi Error Internal Server. Detail ada di log server.',
+        error: err.message
+    });
+});
 
 // Port server
 const PORT = process.env.PORT || 3000;
