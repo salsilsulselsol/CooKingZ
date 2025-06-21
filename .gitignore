@@ -55,22 +55,22 @@ app.*.map.json
 /windows/flutter/generated_plugins.cmake
 
 
-# Node.js dependencies and build artifacts for cooking-backend
-/cooking-backend/node_modules/
-/cooking-backend/dist/
-/cooking-backend/build/
-/cooking-backend/.env
-/cooking-backend/.env.local
-/cooking-backend/.env.development
-/cooking-backend/.env.production
-/cooking-backend/.env.test
-/cooking-backend/npm-debug.log*
-/cooking-backend/yarn-debug.log*
-/cooking-backend/yarn-error.log*
-/cooking-backend/pnpm-debug.log*
-/cooking-backend/.next/
-/cooking-backend/.turbo/
-/cooking-backend/.cache/
-/cooking-backend/.eslintcache
-/cooking-backend/coverage/
-/cooking-backend/.DS_Store
+# Node.js dependencies and build artifacts for cookingz-backend
+/cookingz-backend/node_modules/
+/cookingz-backend/dist/
+/cookingz-backend/build/
+/cookingz-backend/.env
+/cookingz-backend/.env.local
+/cookingz-backend/.env.development
+/cookingz-backend/.env.production
+/cookingz-backend/.env.test
+/cookingz-backend/npm-debug.log*
+/cookingz-backend/yarn-debug.log*
+/cookingz-backend/yarn-error.log*
+/cookingz-backend/pnpm-debug.log*
+/cookingz-backend/.next/
+/cookingz-backend/.turbo/
+/cookingz-backend/.cache/
+/cookingz-backend/.eslintcache
+/cookingz-backend/coverage/
+/cookingz-backend/.DS_Store
