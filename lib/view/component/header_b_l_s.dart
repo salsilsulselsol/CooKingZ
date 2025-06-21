@@ -1,3 +1,5 @@
+// lib/view/component/header_b_l_s.dart
+
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 
@@ -9,6 +11,11 @@ class RecipeDetailHeader extends StatelessWidget {
   final VoidCallback? onLikePressed;
   final VoidCallback? onSharePressed;
 
+  // MODIFIED: Parameter baru ditambahkan di sini
+  final bool isOwner;
+  final VoidCallback? onEditPressed;
+  final VoidCallback? onDeletePressed;
+
   const RecipeDetailHeader({
     Key? key,
     required this.title,
@@ -17,6 +24,10 @@ class RecipeDetailHeader extends StatelessWidget {
     required this.comments,
     this.onLikePressed,
     this.onSharePressed,
+    // MODIFIED: Tambahkan parameter baru ke constructor
+    this.isOwner = false,
+    this.onEditPressed,
+    this.onDeletePressed,
   }) : super(key: key);
 
   @override
@@ -43,17 +54,23 @@ class RecipeDetailHeader extends StatelessWidget {
           ),
 
           // Title
-          Text(
-            title,
-            style: TextStyle(
-              color: AppTheme.primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
 
-          // Action buttons (like and share)
+          // Action buttons (like, share, and more options)
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 30,
@@ -82,6 +99,41 @@ class RecipeDetailHeader extends StatelessWidget {
                   onPressed: onSharePressed,
                 ),
               ),
+
+              // NEW: Tampilkan menu opsi jika pengguna adalah pemilik resep
+              if (isOwner)
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      onEditPressed?.call();
+                    } else if (value == 'delete') {
+                      onDeletePressed?.call();
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20),
+                          SizedBox(width: 8),
+                          Text('Edit Resep'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Hapus Resep'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ],

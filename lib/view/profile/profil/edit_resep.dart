@@ -1,5 +1,3 @@
-// edit_resep.dart
-
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -34,6 +32,8 @@ class EditResep extends StatefulWidget {
 
 class _EditResepState extends State<EditResep> {
   // --- CONTROLLERS DAN STATE VARIABLES ---
+
+  final String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
