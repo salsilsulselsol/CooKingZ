@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:video_player/video_player.dart';
+import '../profile/profil/edit_resep.dart';
+import 'bagikan_resep.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final int recipeId;
@@ -32,6 +34,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   // NEW: State untuk status favorit
   bool _isFavorited = false;
+  bool _isOwner = false;
 
   @override
   void initState() {
@@ -55,8 +58,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       _fetchedRecipeData = null;
     });
 
-    // Sesuaikan URL backend Anda
-    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/$id' : 'http://10.0.2.2:3000/recipes/$id';
+    const int currentUserId = 1;
+    final String apiUrl = '$_baseUrl/recipes/$id';
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -67,25 +70,29 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           _fetchedRecipeData = recipeData;
           _isLoading = false;
 
+          // Cek kepemilikan resep SETELAH data berhasil didapat
+          if (recipeData['user_id'] != null) {
+            _isOwner = (currentUserId == (recipeData['user_id'] as int));
+          }
+
           // Inisialisasi video controller jika ada video_url
           if (recipeData['video_url'] != null && (recipeData['video_url'] as String).isNotEmpty) {
             final String videoPath = recipeData['video_url'] as String;
-            final fullVideoUrl = kIsWeb ? 'http://localhost:3000$videoPath' : 'http://10.0.2.2:3000$videoPath';
+            final fullVideoUrl = '$_baseUrl$videoPath';
 
             print('Trying to load video from: $fullVideoUrl');
 
             _videoController = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl))
               ..initialize().then((_) {
-                setState(() {}); // Perbarui UI setelah video siap
-                _videoController!.setLooping(true); // Opsional: putar ulang video
+                setState(() {});
+                _videoController!.setLooping(true);
               }).catchError((e) {
                 print('Error initializing video: $e');
-                // Handle error video (misal: tampilkan pesan atau sembunyikan player)
-                _videoController = null; // Set null agar tidak ditampilkan
-                setState(() {}); // Perbarui UI
+                _videoController = null;
+                setState(() {});
               });
           } else {
-            _videoController = null; // Pastikan null jika tidak ada video_url
+            _videoController = null;
           }
         });
       } else {
@@ -100,6 +107,78 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _isLoading = false;
       });
       print('Error fetching recipe: $e');
+    }
+  }
+
+  void _editRecipe() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditResep(recipeId: widget.recipeId),
+      ),
+    );
+
+    // Cukup satu blok 'if' ini saja.
+    if (result == true) {
+      print('Kembali dari halaman edit, me-refresh data...');
+      _fetchRecipeDetails(widget.recipeId);
+      _checkFavoriteStatus(widget.recipeId);
+    }
+  } //
+
+  void _deleteRecipe() {
+    // Fungsi ini hanya untuk memanggil dialog konfirmasi
+    _showDeleteConfirmationDialog(context);
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    // Fungsi ini untuk menampilkan pop-up "Apakah Anda yakin?"
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Hapus'),
+          content: const Text('Apakah Anda yakin ingin menghapus resep ini? Aksi ini tidak dapat dibatalkan.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Batal', style: TextStyle(color: AppTheme.textBrown)),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+              onPressed: () {
+                Navigator.of(ctx).pop(); // Tutup dialog dulu
+                _performDelete();      // Baru jalankan aksi hapus
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _performDelete() async {
+    setState(() { _isLoading = true; });
+    final String apiUrl = '$_baseUrl/recipes/${widget.recipeId}';
+    try {
+      final response = await http.delete(Uri.parse(apiUrl));
+      if (!mounted) return;
+
+      // PERBAIKAN: Tangani status 204 (No Content) yang dikirim backend saat delete berhasil.
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        Navigator.of(context).pop(); // Kembali ke halaman sebelumnya jika sukses
+        // Anda bisa menampilkan SnackBar sukses di halaman sebelumnya jika mau
+      } else {
+        setState(() { _isLoading = false; });
+        _showErrorDialog(context, 'Hapus Gagal', 'Gagal menghapus resep: ${json.decode(response.body)['message'] ?? 'Error tidak diketahui'}');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _isLoading = false; });
+      _showErrorDialog(context, 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat menghapus resep: $e');
     }
   }
 
@@ -321,10 +400,22 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 likes: recipe['favorites_count'] as int? ?? 0,
                 comments: recipe['comments_count'] as int? ?? 0,
                 onBackPressed: () => Navigator.pop(context),
-                onLikePressed: _toggleFavorite, // Modifikasi: Panggil fungsi toggle favorit
+                onLikePressed: _toggleFavorite,
                 onSharePressed: () {
-                  print('Share button pressed for ${recipe['title']}');
+                  // Navigasi ke halaman BagikanResep
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BagikanResep(
+                        recipeId: widget.recipeId,
+                        recipeTitle: recipe['title'] as String? ?? 'Resep Lezat',
+                      ),
+                    ),
+                  );
                 },
+                isOwner: _isOwner,
+                onEditPressed: _editRecipe,
+                onDeletePressed: _deleteRecipe,
               ),
               Expanded(
                 child: SingleChildScrollView(
