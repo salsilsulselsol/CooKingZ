@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../component/header_back.dart';
-import '../../component/bottom_navbar.dart';
+import '../../component/header_back.dart'; // Pastikan path import ini benar
+import '../../component/bottom_navbar.dart'; // Pastikan path import ini benar
 import 'dart:convert'; // Untuk encode/decode JSON
 import 'package:http/http.dart' as http; // Untuk permintaan HTTP
 import 'package:image_picker/image_picker.dart'; // Import image_picker
 import 'dart:io'; // Untuk File (khusus platform non-web)
 import 'package:flutter/foundation.dart' show kIsWeb; // Untuk cek apakah di web
-import 'package:http_parser/http_parser.dart'; // Tambahkan ini untuk MediaType.parse
+import 'package:http_parser/http_parser.dart'; // Untuk MediaType.parse
 
+// Asumsi class AppColors ada di file terpisah atau didefinisikan di sini
 class AppColors {
   static const Color primaryColor = Color(0xFF005A4D);
   static const Color accentTeal = Color(0xFF57B4BA);
@@ -71,10 +72,11 @@ class _BuatResepState extends State<BuatResep> {
       }
     } catch (e) {
       print('Error fetching categories: $e');
-      // Tampilkan snackbar error jika diperlukan
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat kategori: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat kategori: $e')),
+        );
+      }
     }
   }
 
@@ -151,16 +153,20 @@ class _BuatResepState extends State<BuatResep> {
   // --- Fungsi untuk memilih gambar dan video ---
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      _selectedImage = image;
-    });
+    if (image != null) {
+      setState(() {
+        _selectedImage = image;
+      });
+    }
   }
 
   Future<void> _pickVideo() async {
     final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    setState(() {
-      _selectedVideo = video;
-    });
+    if (video != null) {
+      setState(() {
+        _selectedVideo = video;
+      });
+    }
   }
 
   void _clearVideo() {
@@ -237,45 +243,23 @@ class _BuatResepState extends State<BuatResep> {
     // Tambahkan file gambar (wajib)
     if (_selectedImage != null) {
       final String? imageMimeType = _selectedImage!.mimeType;
-
-      if (kIsWeb) {
-        final bytes = await _selectedImage!.readAsBytes();
-        request.files.add(http.MultipartFile.fromBytes(
-          'image',
-          bytes,
-          filename: _selectedImage!.name,
-          contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
-        ));
-      } else {
-        request.files.add(await http.MultipartFile.fromPath(
-          'image',
-          _selectedImage!.path,
-          filename: _selectedImage!.name,
-          contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
-        ));
-      }
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        await _selectedImage!.readAsBytes(),
+        filename: _selectedImage!.name,
+        contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
+      ));
     }
 
     // Tambahkan file video (opsional)
     if (_selectedVideo != null) {
       final String? videoMimeType = _selectedVideo!.mimeType;
-
-      if (kIsWeb) {
-        final bytes = await _selectedVideo!.readAsBytes();
-        request.files.add(http.MultipartFile.fromBytes(
-          'video',
-          bytes,
-          filename: _selectedVideo!.name,
-          contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
-        ));
-      } else {
-        request.files.add(await http.MultipartFile.fromPath(
-          'video',
-          _selectedVideo!.path,
-          filename: _selectedVideo!.name,
-          contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
-        ));
-      }
+      request.files.add(http.MultipartFile.fromBytes(
+        'video',
+        await _selectedVideo!.readAsBytes(),
+        filename: _selectedVideo!.name,
+        contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
+      ));
     }
 
     try {
@@ -283,11 +267,12 @@ class _BuatResepState extends State<BuatResep> {
       var responseData = await response.stream.transform(utf8.decoder).join();
       var jsonResponse = json.decode(responseData);
 
+      if (!mounted) return;
+
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Resep berhasil ditambahkan! ID: ${jsonResponse['recipeId']}')),
         );
-        // Reset form setelah berhasil
         _resetForm();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -296,9 +281,11 @@ class _BuatResepState extends State<BuatResep> {
       }
     } catch (e) {
       print('Error submitting recipe: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan jaringan: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan jaringan: $e')),
+        );
+      }
     }
   }
 
@@ -314,26 +301,28 @@ class _BuatResepState extends State<BuatResep> {
       _selectedCategoryId = null;
       _selectedImage = null;
       _selectedVideo = null;
-      // Reset controller list
-      _toolControllers.clear();
-      _toolControllers.add(TextEditingController());
-      _ingredientControllers.clear();
-      _ingredientControllers.add({
-        'quantity': TextEditingController(),
-        'unit': TextEditingController(),
-        'name': TextEditingController()
+      _toolControllers.forEach((c) => c.clear());
+      _ingredientControllers.forEach((map) {
+        map['quantity']?.clear();
+        map['unit']?.clear();
+        map['name']?.clear();
       });
-      _instructionControllers.clear();
-      _instructionControllers.add(TextEditingController());
+      _instructionControllers.forEach((c) => c.clear());
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return BottomNavbar(
-      Scaffold(
-        backgroundColor: AppColors.bgColor,
-        body: SafeArea(
+    // =======================================================================
+    // STRUKTUR YANG SUDAH DIPERBAIKI
+    // Scaffold menjadi widget terluar
+    // =======================================================================
+    return Scaffold(
+      backgroundColor: AppColors.bgColor,
+      // BottomNavbar sekarang ada di dalam body Scaffold
+      body: BottomNavbar(
+        // Child dari BottomNavbar adalah konten halaman yang sebenarnya
+        SafeArea(
           child: Column(
             children: [
               HeaderWidget(
@@ -809,7 +798,7 @@ class _BuatResepState extends State<BuatResep> {
 
                       // Tombol Simpan Resep
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                        padding: const EdgeInsets.fromLTRB(30, 20, 30, 30), // Beri padding bawah
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
@@ -832,8 +821,8 @@ class _BuatResepState extends State<BuatResep> {
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 80),
+                      // SizedBox di bawah sini tidak lagi diperlukan karena
+                      // BottomNavbar sudah memberikan padding bawah secara otomatis.
                     ],
                   ),
                 ),

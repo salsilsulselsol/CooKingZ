@@ -81,7 +81,7 @@ class MyApp extends StatelessWidget {
         '/forgot-password': (context) => const ForgotPasswordScreen(),
 
         // Kategori
-        '/kategori': (context) => const AppWithNavbar(CategoryPage()),
+        '/kategori': (context) => const CategoryPage(),
         // '/sub-category': (context) => const AppWithNavbar(SubCategoryPage()),
 
         // Komunitas
