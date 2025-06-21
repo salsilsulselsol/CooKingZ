@@ -1273,19 +1273,50 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 }
 
-class _PlayPauseOverlay extends StatelessWidget {
+class _PlayPauseOverlay extends StatefulWidget {
   const _PlayPauseOverlay({required this.controller});
 
   final VideoPlayerController controller;
 
   @override
+  State<_PlayPauseOverlay> createState() => _PlayPauseOverlayState();
+}
+
+class _PlayPauseOverlayState extends State<_PlayPauseOverlay> {
+  // Listener yang akan memanggil setState
+  void _listener() {
+    // Memanggil setState akan membuat method build() dijalankan kembali
+    // dengan nilai controller yang terbaru.
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Daftarkan listener saat widget pertama kali dibuat
+    widget.controller.addListener(_listener);
+  }
+
+  @override
+  void dispose() {
+    // Penting: Hapus listener saat widget dihancurkan untuk mencegah memory leak
+    widget.controller.removeListener(_listener);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Karena setState dipanggil oleh listener,
+    // bagian build ini akan selalu dievaluasi dengan state terbaru.
     return Stack(
       children: <Widget>[
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 50),
           reverseDuration: const Duration(milliseconds: 200),
-          child: controller.value.isPlaying
+          // Kondisi ini sekarang akan selalu dievaluasi ulang dengan benar
+          child: widget.controller.value.isPlaying
               ? const SizedBox.shrink()
               : Container(
             color: Colors.black26,
@@ -1301,7 +1332,13 @@ class _PlayPauseOverlay extends StatelessWidget {
         ),
         GestureDetector(
           onTap: () {
-            controller.value.isPlaying ? controller.pause() : controller.play();
+            // Logika ini tidak perlu diubah, karena listener sudah menangani
+            // pembaruan UI secara otomatis.
+            if (widget.controller.value.isPlaying) {
+              widget.controller.pause();
+            } else {
+              widget.controller.play();
+            }
           },
         ),
       ],
