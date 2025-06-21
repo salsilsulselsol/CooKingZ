@@ -53,3 +53,24 @@ app.*.map.json
 /windows/flutter/generated_plugin_registrant.cc
 /windows/flutter/generated_plugin_registrant.h
 /windows/flutter/generated_plugins.cmake
+
+
+# Node.js dependencies and build artifacts for cooking-backend
+/cooking-backend/node_modules/
+/cooking-backend/dist/
+/cooking-backend/build/
+/cooking-backend/.env
+/cooking-backend/.env.local
+/cooking-backend/.env.development
+/cooking-backend/.env.production
+/cooking-backend/.env.test
+/cooking-backend/npm-debug.log*
+/cooking-backend/yarn-debug.log*
+/cooking-backend/yarn-error.log*
+/cooking-backend/pnpm-debug.log*
+/cooking-backend/.next/
+/cooking-backend/.turbo/
+/cooking-backend/.cache/
+/cooking-backend/.eslintcache
+/cooking-backend/coverage/
+/cooking-backend/.DS_Store
