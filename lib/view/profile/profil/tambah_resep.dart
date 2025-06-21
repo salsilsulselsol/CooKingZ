@@ -32,6 +32,8 @@ class _BuatResepState extends State<BuatResep> {
 
   String? _selectedDifficulty;
   String? _selectedCategory;
+  String? _selectedCategoryId;
+  List<Map<String, dynamic>> _categories = []; // Untuk menyimpan kategori dari API
 
   // Variabel untuk menyimpan file gambar dan video yang dipilih
   XFile? _selectedImage;
@@ -40,23 +42,41 @@ class _BuatResepState extends State<BuatResep> {
   // ImagePicker instance
   final ImagePicker _picker = ImagePicker();
 
-  // Daftar tingkat kesulitan dan kategori (bisa diambil dari API nanti jika kategori dinamis)
+  // Daftar tingkat kesulitan
   final List<String> _difficultyLevels = ['Mudah', 'Sedang', 'Sulit'];
-  final List<Map<String, String>> _categories = [
-    {'id': '1', 'name': 'Hidangan Utama'},
-    {'id': '2', 'name': 'Sarapan'},
-    {'id': '3', 'name': 'Makanan Ringan'},
-    {'id': '4', 'name': 'Kue & Dessert'},
-    {'id': '5', 'name': 'Minuman'},
-  ];
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchCategories(); // Ambil kategori saat widget pertama kali dibuat
+  }
 
-  // Lists untuk input dinamis
-  final List<TextEditingController> _toolControllers = [TextEditingController()];
-  final List<Map<String, TextEditingController>> _ingredientControllers = [
-    {'quantity': TextEditingController(), 'unit': TextEditingController(), 'name': TextEditingController()}
-  ];
-  final List<TextEditingController> _instructionControllers = [TextEditingController()];
+  // Fungsi untuk mengambil kategori dari API
+  Future<void> _fetchCategories() async {
+    const String apiUrl = 'http://localhost:3000/categories'; // Sesuaikan dengan URL API Anda
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        setState(() {
+          _categories = data.map((category) => {
+            'id': category['id'].toString(),
+            'name': category['name'],
+          }).toList();
+        });
+      } else {
+        throw Exception('Failed to load categories');
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+      // Tampilkan snackbar error jika diperlukan
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat kategori: $e')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -74,6 +94,13 @@ class _BuatResepState extends State<BuatResep> {
     for (var controller in _instructionControllers) controller.dispose();
     super.dispose();
   }
+
+  // Lists untuk input dinamis
+  final List<TextEditingController> _toolControllers = [TextEditingController()];
+  final List<Map<String, TextEditingController>> _ingredientControllers = [
+    {'quantity': TextEditingController(), 'unit': TextEditingController(), 'name': TextEditingController()}
+  ];
+  final List<TextEditingController> _instructionControllers = [TextEditingController()];
 
   // --- Fungsi untuk menambah/menghapus field dinamis ---
   void _addToolField() {
@@ -144,13 +171,9 @@ class _BuatResepState extends State<BuatResep> {
 
   // --- Fungsi untuk mengirim data resep ke backend ---
   Future<void> _submitRecipe() async {
-    // Alamat IP backend Anda. PENTING: Sesuaikan ini!
-    // Jika menjalankan di emulator Android, gunakan 'http://10.0.2.2:3000/recipes'.
-    // Jika di iOS simulator/perangkat fisik, gunakan IP lokal Anda (misal: http://192.168.1.100:3000/recipes).
-    // Jika di browser web (di komputer yang sama dengan backend), gunakan 'http://localhost:3000/recipes'.
     const String apiUrl = 'http://localhost:3000/recipes'; // Ubah sesuai kebutuhan Anda!
 
-    const int dummyUserId = 1; // ID pengguna sementara, ganti dengan ID pengguna yang sebenarnya dari sesi login
+    const int dummyUserId = 1; // ID pengguna sementara
 
     // Kumpulkan data teks dari controllers
     final String title = _titleController.text.trim();
@@ -158,9 +181,7 @@ class _BuatResepState extends State<BuatResep> {
     final String estimatedTime = _estimatedTimeController.text.trim();
     final String price = _priceController.text.trim();
     final String difficulty = _selectedDifficulty ?? '';
-    final String? categoryId = _selectedCategory != null
-        ? _categories.firstWhere((cat) => cat['name'] == _selectedCategory)['id']
-        : null;
+    final String? categoryId = _selectedCategoryId;
 
     final List<String> tools = _toolControllers
         .map((c) => c.text.trim())
@@ -173,7 +194,7 @@ class _BuatResepState extends State<BuatResep> {
       'unit': map['unit']?.text.trim() ?? '',
       'name': map['name']?.text.trim() ?? '',
     })
-        .where((map) => map['name']!.isNotEmpty && map['quantity']!.isNotEmpty && map['unit']!.isNotEmpty) // Pastikan semua bagian bahan terisi
+        .where((map) => map['name']!.isNotEmpty && map['quantity']!.isNotEmpty && map['unit']!.isNotEmpty)
         .toList();
 
     final List<String> instructions = _instructionControllers
@@ -191,7 +212,7 @@ class _BuatResepState extends State<BuatResep> {
         tools.isEmpty ||
         ingredients.isEmpty ||
         instructions.isEmpty ||
-        _selectedImage == null) { // Gambar wajib
+        _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua field (termasuk Gambar) harus diisi!')),
       );
@@ -201,7 +222,7 @@ class _BuatResepState extends State<BuatResep> {
     // Buat MultipartRequest untuk mengirim file dan data teks
     var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
 
-    // Tambahkan field teks. Perhatikan bahwa list/map akan di-encode ke JSON string
+    // Tambahkan field teks
     request.fields['userId'] = dummyUserId.toString();
     request.fields['categoryId'] = categoryId;
     request.fields['title'] = title;
@@ -209,26 +230,23 @@ class _BuatResepState extends State<BuatResep> {
     request.fields['estimatedTime'] = estimatedTime;
     request.fields['price'] = price;
     request.fields['difficulty'] = difficulty;
-    request.fields['tools'] = json.encode(tools); // Encode list ke JSON string
-    request.fields['ingredients'] = json.encode(ingredients); // Encode list map ke JSON string
-    request.fields['instructions'] = json.encode(instructions); // Encode list ke JSON string
+    request.fields['tools'] = json.encode(tools);
+    request.fields['ingredients'] = json.encode(ingredients);
+    request.fields['instructions'] = json.encode(instructions);
 
     // Tambahkan file gambar (wajib)
     if (_selectedImage != null) {
-      // Dapatkan MIME type dari XFile.mimeType atau nama file
       final String? imageMimeType = _selectedImage!.mimeType;
 
       if (kIsWeb) {
-        // Untuk web, baca file sebagai bytes
         final bytes = await _selectedImage!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
-          'image', // Nama field di backend (sesuai `upload.fields({name: 'image'})`)
+          'image',
           bytes,
           filename: _selectedImage!.name,
           contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
         ));
       } else {
-        // Untuk platform non-web (mobile/desktop), gunakan fromPath
         request.files.add(await http.MultipartFile.fromPath(
           'image',
           _selectedImage!.path,
@@ -240,19 +258,17 @@ class _BuatResepState extends State<BuatResep> {
 
     // Tambahkan file video (opsional)
     if (_selectedVideo != null) {
-      final String? videoMimeType = _selectedVideo!.mimeType; // Dapatkan MIME type dari XFile
+      final String? videoMimeType = _selectedVideo!.mimeType;
 
       if (kIsWeb) {
-        // Untuk web, baca file sebagai bytes
         final bytes = await _selectedVideo!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
-          'video', // Nama field di backend (sesuai `upload.fields({name: 'video'})`)
+          'video',
           bytes,
           filename: _selectedVideo!.name,
           contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
         ));
       } else {
-        // Untuk platform non-web, gunakan fromPath
         request.files.add(await http.MultipartFile.fromPath(
           'video',
           _selectedVideo!.path,
@@ -263,49 +279,53 @@ class _BuatResepState extends State<BuatResep> {
     }
 
     try {
-      var response = await request.send(); // Mengirim request
-      var responseData = await response.stream.transform(utf8.decoder).join(); // Mengambil respons
-      var jsonResponse = json.decode(responseData); // Mengurai respons JSON
+      var response = await request.send();
+      var responseData = await response.stream.transform(utf8.decoder).join();
+      var jsonResponse = json.decode(responseData);
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Resep berhasil ditambahkan! ID: ${jsonResponse['recipeId']}')),
         );
         // Reset form setelah berhasil
-        _titleController.clear();
-        _descriptionController.clear();
-        _estimatedTimeController.clear();
-        _priceController.clear();
-        setState(() {
-          _selectedDifficulty = null;
-          _selectedCategory = null;
-          _selectedImage = null; // Hapus gambar terpilih
-          _selectedVideo = null; // Hapus video terpilih
-          // Reset controller list
-          _toolControllers.clear();
-          _toolControllers.add(TextEditingController()); // Tambahkan satu field kosong
-          _ingredientControllers.clear();
-          _ingredientControllers.add({
-            'quantity': TextEditingController(),
-            'unit': TextEditingController(),
-            'name': TextEditingController()
-          });
-          _instructionControllers.clear();
-          _instructionControllers.add(TextEditingController());
-        });
+        _resetForm();
       } else {
-        // Tangani error dari backend
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal menambahkan resep: ${jsonResponse['message'] ?? 'Terjadi kesalahan tidak dikenal'}')),
         );
       }
     } catch (e) {
-      // Tangani error jaringan atau parsing JSON
       print('Error submitting recipe: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Terjadi kesalahan jaringan: $e')),
       );
     }
+  }
+
+  // Fungsi untuk mereset form
+  void _resetForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _estimatedTimeController.clear();
+    _priceController.clear();
+    setState(() {
+      _selectedDifficulty = null;
+      _selectedCategory = null;
+      _selectedCategoryId = null;
+      _selectedImage = null;
+      _selectedVideo = null;
+      // Reset controller list
+      _toolControllers.clear();
+      _toolControllers.add(TextEditingController());
+      _ingredientControllers.clear();
+      _ingredientControllers.add({
+        'quantity': TextEditingController(),
+        'unit': TextEditingController(),
+        'name': TextEditingController()
+      });
+      _instructionControllers.clear();
+      _instructionControllers.add(TextEditingController());
+    });
   }
 
   @override
@@ -336,13 +356,13 @@ class _BuatResepState extends State<BuatResep> {
                           color: AppColors.lightTeal.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(16),
                           image: _selectedImage != null
-                              ? kIsWeb // Cek jika di web
+                              ? kIsWeb
                               ? DecorationImage(
-                            image: NetworkImage(_selectedImage!.path), // Untuk web, gunakan NetworkImage
+                            image: NetworkImage(_selectedImage!.path),
                             fit: BoxFit.cover,
                           )
                               : DecorationImage(
-                            image: FileImage(File(_selectedImage!.path)), // Untuk non-web, gunakan FileImage
+                            image: FileImage(File(_selectedImage!.path)),
                             fit: BoxFit.cover,
                           )
                               : null,
@@ -407,7 +427,11 @@ class _BuatResepState extends State<BuatResep> {
                             if (_selectedImage != null)
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () { setState(() { _selectedImage = null; }); },
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedImage = null;
+                                    });
+                                  },
                                   child: Container(
                                     height: 35,
                                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -435,7 +459,7 @@ class _BuatResepState extends State<BuatResep> {
                       // Area Unggah Video (Opsional)
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                        height: 100, // Ukuran lebih kecil untuk video opsional
+                        height: 100,
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: AppColors.lightTeal.withOpacity(0.5),
@@ -446,7 +470,7 @@ class _BuatResepState extends State<BuatResep> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 40, // Ikon lebih kecil
+                              width: 40,
                               height: 40,
                               decoration: BoxDecoration(
                                 color: AppColors.emeraldGreen.withOpacity(0.5),
@@ -537,7 +561,6 @@ class _BuatResepState extends State<BuatResep> {
                         ),
                       ),
 
-
                       // Recipe Info Fields
                       _buildInfoField('Judul', 'Nama Resep', controller: _titleController),
                       _buildInfoField('Deskripsi', 'Deskripsi Resep', lighter: true, controller: _descriptionController),
@@ -591,7 +614,7 @@ class _BuatResepState extends State<BuatResep> {
                         ],
                       ),
 
-                      // Category Dropdown
+                      // Category Dropdown (Dinamis dari API)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -616,20 +639,27 @@ class _BuatResepState extends State<BuatResep> {
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: _selectedCategory,
-                                hint: const Text(
-                                  'Pilih kategori resep',
-                                  style: TextStyle(color: Colors.black54),
+                                hint: Text(
+                                  _categories.isEmpty ? 'Memuat kategori...' : 'Pilih kategori resep',
+                                  style: const TextStyle(color: Colors.black54),
                                 ),
                                 icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                                onChanged: (String? newValue) {
+                                onChanged: _categories.isEmpty
+                                    ? null
+                                    : (String? newValue) {
+                                  final selectedCat = _categories.firstWhere(
+                                        (cat) => cat['name'] == newValue,
+                                    orElse: () => {'id': '', 'name': ''},
+                                  );
                                   setState(() {
                                     _selectedCategory = newValue;
+                                    _selectedCategoryId = selectedCat['id'];
                                   });
                                 },
-                                items: _categories.map<DropdownMenuItem<String>>((Map<String, String> category) {
+                                items: _categories.map<DropdownMenuItem<String>>((Map<String, dynamic> category) {
                                   return DropdownMenuItem<String>(
                                     value: category['name'],
-                                    child: Text(category['name']!),
+                                    child: Text(category['name']),
                                   );
                                 }).toList(),
                               ),
@@ -637,8 +667,6 @@ class _BuatResepState extends State<BuatResep> {
                           ),
                         ],
                       ),
-
-
                       // Tools Section (Alat-Alat)
                       const Padding(
                         padding: EdgeInsets.only(left: 30.0, top: 24.0, bottom: 8.0),
@@ -913,7 +941,7 @@ class _BuatResepState extends State<BuatResep> {
           ),
           const SizedBox(width: 2),
           SizedBox(
-            width: 60, // Lebar untuk jumlah
+            width: 60,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               decoration: BoxDecoration(
@@ -938,7 +966,7 @@ class _BuatResepState extends State<BuatResep> {
           ),
           const SizedBox(width: 8),
           SizedBox(
-            width: 80, // Lebar untuk unit
+            width: 80,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
               decoration: BoxDecoration(
@@ -1023,7 +1051,7 @@ class _BuatResepState extends State<BuatResep> {
                   color: Colors.black,
                   fontSize: 16,
                 ),
-                maxLines: null, // Instruksi bisa multi-baris
+                maxLines: null,
               ),
             ),
           ),
