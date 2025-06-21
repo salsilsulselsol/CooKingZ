@@ -1,22 +1,23 @@
-// cookingz-backend/middleware/authMiddleware.js
+// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
 
 const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-    if (token == null) {
-        return res.status(401).json({ status: 'error', message: 'Token tidak tersedia atau format tidak valid.' });
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key', (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token' });
     }
-
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ status: 'error', message: 'Token tidak valid atau kadaluarsa.' });
-        }
-        req.userId = user.id;
-        next();
-    });
+    
+    // Pastikan struktur user sesuai dengan yang dibuat di loginController
+    req.user = user; // user akan berisi { userId: x, email: y }
+    next();
+  });
 };
 
 module.exports = authenticateToken;

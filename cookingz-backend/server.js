@@ -9,6 +9,7 @@ const recipeRoutes = require('./routes/recipeRoutes');
 const userRoutes = require('./routes/userRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const registerRoutes = require('./routes/registerRoutes');
+const loginRoutes = require('./routes/loginRoutes'); // Jika Anda menggunakan login
 const categoryRoutes = require('./routes/categoryRoutes');
 const discoveryRoutes = require('./routes/discoveryRoutes'); // Untuk /home dan /search
 const utilityRoutes = require('./routes/utilityRoutes'); // <<< TAMBAHKAN INI untuk jadwal & notifikasi
@@ -27,6 +28,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Pasang rute-rute aplikasi Anda
 app.use('/register', registerRoutes);
+app.use('/login', loginRoutes); // Jika Anda menggunakan login
 app.use('/recipes', recipeRoutes);
 app.use('/users', userRoutes);
 app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, biasanya /favorites
