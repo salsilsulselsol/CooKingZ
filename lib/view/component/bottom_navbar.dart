@@ -79,13 +79,16 @@ class BottomNavbarState extends State<BottomNavbar> {
 
     return Stack(
       children: [
-        widget.child,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 90), // Biar konten ngalah
+          child: widget.child,
+        ),
         Positioned(
           left: 0,
           right: 0,
           bottom: 0,
           child: Container(
-            height: 90,
+            height: 90.0,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
