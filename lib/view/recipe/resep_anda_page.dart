@@ -1,9 +1,12 @@
+// lib/page/resep_anda_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'resep_detail_page.dart';
 
+import 'resep_detail_page.dart';
+import '../profile/profil/tambah_resep.dart'; // Nama file lama: buat_resep.dart
 import '../component/food_card_widget.dart';
 import '../../theme/theme.dart';
 import '../component/header_back_PSN.dart';
@@ -32,19 +35,11 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
     _recipesFuture = _initializeAllRecipes();
   }
 
-  // Gabungkan semua logika dalam satu future
   Future<Map<String, List<Food>>> _initializeAllRecipes() async {
     try {
-      // Fetch user recipes
       List<Food> allUserRecipes = await _fetchUserRecipes();
-
-      // Sort by rating
       allUserRecipes.sort((a, b) => (b.rating ?? 0.0).compareTo(a.rating ?? 0.0));
-
-      // Get top 2 for most viewed
       List<Food> mostViewedRecipes = allUserRecipes.take(2).toList();
-
-      // Filter out most viewed from main list
       List<Food> filteredUserRecipes = allUserRecipes
           .where((recipe) => !mostViewedRecipes.any((mvRecipe) => mvRecipe.id == recipe.id))
           .toList();
@@ -67,7 +62,6 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
 
     try {
       final response = await http.get(Uri.parse('$_baseUrl/users/$userId/recipes'));
-
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Food.fromJson(json)).toList();
@@ -84,7 +78,17 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      appBar: HeaderBackPSN(),
+      // Panggil Header dan berikan fungsi untuk onAddPressed
+      appBar: HeaderBackPSN(
+        onAddPressed: () {
+          Navigator.push(
+            context,
+            // Perhatikan nama class BuatResep harus sesuai dengan yang di-import
+            MaterialPageRoute(builder: (context) => const BuatResep()),
+          );
+        },
+      ),
+      // FloatingActionButton dihapus dari sini karena sudah ada di header
       body: FutureBuilder<Map<String, List<Food>>>(
         future: _recipesFuture,
         builder: (context, snapshot) {
@@ -126,9 +130,7 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
                           ? const Center(
                           child: Text(
                               'Tidak ada Rating Tertinggi dari Resep Anda.',
-                              style: TextStyle(color: Colors.white)
-                          )
-                      )
+                              style: TextStyle(color: Colors.white)))
                           : Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: mostViewedRecipes.map((food) => Expanded(
@@ -143,12 +145,12 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
                             },
                             child: FoodCard(food: food),
                           ),
-                        )).toList(),
+                        ))
+                            .toList(),
                       ),
                     ],
                   ),
                 ),
-
                 // User Recipes Section
                 Padding(
                   padding: paddingGridView,
@@ -161,7 +163,7 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
                       ),
                       const SizedBox(height: AppTheme.spacingMedium),
                       filteredUserRecipes.isEmpty
-                          ? const Center(child: Text('No other user recipes found.'))
+                          ? const Center(child: Text('Anda belum menambahkan resep apapun.'))
                           : GridView.count(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -169,8 +171,7 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
                         crossAxisSpacing: AppTheme.spacingMedium,
                         mainAxisSpacing: AppTheme.spacingXLarge,
                         childAspectRatio: 0.75,
-                        children: filteredUserRecipes
-                            .map((food) => InkWell(
+                        children: filteredUserRecipes.map((food) => InkWell(
                           onTap: () {
                             Navigator.push(
                               context,
