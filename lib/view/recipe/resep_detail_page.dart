@@ -17,6 +17,7 @@ class RecipeDetailPage extends StatefulWidget {
 }
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
+  final String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic>? _fetchedRecipeData;
@@ -367,8 +368,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  // --- Widget Builder lainnya (tidak berubah, hanya disertakan untuk kelengkapan) ---
-
   Widget _buildScheduleButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
@@ -617,7 +616,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     Widget imageWidget;
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      finalImageUrl = 'images/$imageUrl';
+      final String finalImageUrl = '$_baseUrl$imageUrl';
       imageWidget = Image.network(
         finalImageUrl,
         height: 200,

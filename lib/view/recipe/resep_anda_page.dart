@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'resep_detail_page.dart';
 
 import '../component/food_card_widget.dart';
 import '../../theme/theme.dart';
@@ -148,9 +149,22 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
                         final mostViewedRecipes = snapshot.data!;
                         return Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: mostViewedRecipes
-                              .map((food) => Expanded(
-                            child: FoodCard(food: food),
+                          children: mostViewedRecipes.map((food) => Expanded(
+                            child: InkWell( // <-- DIBUNGKUS DENGAN INKWELL
+
+                              // Ini adalah perintah yang dijalankan saat kartu diklik
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RecipeDetailPage(recipeId: food.id!),
+                                  ),
+                                );
+                              },
+
+                              // Ini adalah kartu resep Anda
+                              child: FoodCard(food: food),
+                            ),
                           ))
                               .toList(),
                         );
@@ -189,8 +203,21 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
                           crossAxisSpacing: AppTheme.spacingMedium,
                           mainAxisSpacing: AppTheme.spacingXLarge,
                           childAspectRatio: 0.75,
-                          children:
-                          userRecipesToDisplay.map((food) => FoodCard(food: food)).toList(),
+                          children: userRecipesToDisplay
+                              .map((food) => InkWell( // <-- DIBUNGKUS DENGAN INKWELL
+                            // Perintah untuk pindah halaman saat diklik
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RecipeDetailPage(recipeId: food.id!),
+                                ),
+                              );
+                            },
+                            // Kartu resep Anda
+                            child: FoodCard(food: food),
+                          ))
+                              .toList(),
                         );
                       }
                     },
