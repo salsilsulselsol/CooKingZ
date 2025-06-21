@@ -6,5 +6,4 @@ const loginController = require('../controllers/loginController');
 // Route untuk login
 router.post('/', loginController.login);
 
-
 module.exports = router;

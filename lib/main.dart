@@ -226,8 +226,6 @@ class MyApp extends StatelessWidget {
 }
 
 
-
-
 class AppWithNavbar extends StatefulWidget {
   final Widget child;
   const AppWithNavbar(this.child, {super.key});
