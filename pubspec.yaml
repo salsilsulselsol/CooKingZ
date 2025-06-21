@@ -223,6 +223,7 @@ flutter:
     - images/cecep.png
     - images/miya.png
     - images/mila.png
+    - images/user_placeholder.png
 
     - .env
 

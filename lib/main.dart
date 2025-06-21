@@ -95,7 +95,7 @@ class MyApp extends StatelessWidget {
         '/search': (context) => const AppWithNavbar(SearchPopup()),
         '/filter': (context) => const AppWithNavbar(FilterPopup()),
         '/pengguna-terbaik': (context) => const PenggunaTerbaik(),
-        '/trending-resep': (context) => const AppWithNavbar(TrendingResep()),
+        '/trending-resep': (context) => const AppWithNavbar(ResepTrending()),
        
         // Profil
         '/profil-utama': (context) => const AppWithNavbar(ProfilUtama()),

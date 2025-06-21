@@ -178,6 +178,40 @@ exports.getHomeData = async (req, res) => {
         });
     }
 };
+// --- FUNGSI BARU UNTUK API SEMUA RESEP TRENDING (GET /home/trending-recipes) ---
+exports.getAllTrendingRecipes = async (req, res) => {
+    console.log('>>> Controller getAllTrendingRecipes BERHASIL DICAPAI! <<<');
+    try {
+        const [rows] = await db.query(
+            `SELECT 
+                r.id, r.title, r.image_url, u.username, u.profile_picture, 
+                AVG(rev.rating) as avg_rating, COUNT(rev.id) as total_reviews, 
+                r.description, r.cooking_time, r.price as price, r.difficulty
+             FROM recipes r
+             LEFT JOIN reviews rev ON r.id = rev.recipe_id
+             JOIN users u ON r.user_id = u.id
+             GROUP BY 
+                r.id, r.title, r.image_url, u.username, u.profile_picture, 
+                r.description, r.cooking_time, r.price, r.difficulty
+             ORDER BY avg_rating DESC, total_reviews DESC
+             LIMIT 50` // <<< LIMIT 50 untuk halaman TrendingResep
+        );
+        console.log(`Fetched all trending recipes count: ${rows.length}`);
+        res.json({
+            status: 'success',
+            message: 'Semua resep trending berhasil diambil',
+            data: rows
+        });
+    } catch (error) {
+        console.error('Error fetching all trending recipes:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Gagal mengambil semua resep trending',
+            error: error.message
+        });
+    }
+};
+
 
 // --- FUNGSI UNTUK API PENCARIAN (GET /search) ---
 exports.searchRecipes = async (req, res) => {

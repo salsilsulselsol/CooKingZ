@@ -3,34 +3,46 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const upload = require('../middleware/upload');
+const authenticateToken = require('../middleware/authMiddleware'); // <<< Import middleware autentikasi
+const upload = require('../middleware/upload'); // Asumsi ini digunakan untuk upload file
 
-// TODO: Tambahkan middleware otentikasi di sini setelah dibuat
-// Contoh: const authMiddleware = require('../middleware/auth');
-// router.get('/me', authMiddleware, userController.getMyProfile);
+// --- Rute yang membutuhkan autentikasi (hanya bisa diakses oleh user yang login) ---
 
-// Rute untuk mendapatkan profil pengguna yang sedang login
-router.get('/me', userController.getMyProfile);
+// GET profil pengguna yang sedang login
+router.get('/me', authenticateToken, userController.getMyProfile);
 
-// Rute untuk mendapatkan resep favorit pengguna yang sedang login
-router.get('/me/favorites', userController.getMyFavoriteRecipes);
+// GET resep favorit pengguna yang sedang login
+router.get('/me/favorites', authenticateToken, userController.getMyFavoriteRecipes);
 
-// Rute untuk mendapatkan profil pengguna berdasarkan ID
+// PUT (update) profil pengguna yang sedang login (membutuhkan autentikasi dan upload file opsional)
+router.put('/me', authenticateToken, upload.single('profile_picture'), userController.updateMyProfile);
+
+router.get('/latest', userController.getAllLatestUsers); // <<< TAMBAHKAN INI
+
+// POST untuk follow user lain
+router.post('/:id/follow', authenticateToken, userController.followUser);
+
+// POST untuk unfollow user lain
+router.post('/:id/unfollow', authenticateToken, userController.unfollowUser);
+
+// DELETE akun pengguna (membutuhkan autentikasi)
+router.delete('/:id', authenticateToken, userController.deleteUser); // <<< DELETE USER DENGAN AUTH
+
+// --- Rute publik (bisa diakses tanpa login, tapi req.userId tidak akan ada) ---
+
+// GET profil pengguna berdasarkan ID (profil publik)
 router.get('/:id', userController.getUserById);
 
-// Rute untuk mendapatkan resep milik seorang user berdasarkan ID
+// GET resep milik seorang user berdasarkan ID (resep publik user)
 router.get('/:id/recipes', userController.getUserRecipes);
 
-// Rute untuk mendapatkan daftar pengguna yang DIIKUTI oleh user dengan :id
-router.get('/:id/following', userController.getFollowingList);
+// GET daftar pengguna yang DIIKUTI oleh user dengan :id
+router.get('/:id/following', userController.getFollowingList); // Disini req.userId digunakan untuk isFollowedByMe
 
-// Rute untuk mendapatkan daftar PENGGIKUT dari user dengan :id
-router.get('/:id/followers', userController.getFollowersList);
+// GET daftar PENGGIKUT dari user dengan :id
+router.get('/:id/followers', userController.getFollowersList); // Disini req.userId digunakan untuk isFollowedByMe
 
-router.post('/:id/follow', userController.followUser);
-router.post('/:id/unfollow', userController.unfollowUser);
 
-// Rute untuk memperbarui profil pengguna yang sedang login
-router.put('/me', upload.single('profile_picture'), userController.updateMyProfile);
+
 
 module.exports = router;

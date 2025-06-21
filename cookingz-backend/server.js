@@ -25,12 +25,15 @@ app.use(morgan('dev'));
 // Setel direktori 'uploads' sebagai folder statis yang dapat diakses publik.
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+
 // Pasang rute-rute aplikasi Anda
 app.use('/register', registerRoutes);
 app.use('/recipes', recipeRoutes);
 app.use('/users', userRoutes);
 app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, biasanya /favorites
 app.use('/categories', categoryRoutes);
+app.use('/trending-resep', discoveryRoutes); // Untuk rute /trending-recipe
+app.use('/pengguna-terbaik', userRoutes); // Untuk rute /latest
 
 // Pasang discoveryRoutes di '/home' dengan middleware autentikasi opsional
 app.use('/home', (req, res, next) => {
