@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/header_b_l_s.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/theme.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:video_player/video_player.dart';
 import '../profile/profil/edit_resep.dart';
 import 'bagikan_resep.dart';
+
 
 class RecipeDetailPage extends StatefulWidget {
   final int recipeId;
@@ -37,79 +39,245 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _isOwner = false;
 
   @override
-  void initState() {
-    super.initState();
-    _fetchRecipeDetails(widget.recipeId);
-    _checkFavoriteStatus(widget.recipeId); // NEW: Cek status favorit saat inisialisasi
-  }
-
-  @override
   void dispose() {
     _videoController?.dispose();
     _commentController.dispose();
     super.dispose();
   }
+  // Tambahkan import ini di bagian atas file jika belum ada:
+// import 'package:shared_preferences/shared_preferences.dart';
 
-  // Fungsi untuk mengambil detail resep dari backend
-  Future<void> _fetchRecipeDetails(int id) async {
+// 1. Pertama, tambahkan fungsi untuk mendapatkan user ID dari SharedPreferences
+Future<int?> _getCurrentUserId() async {
+  final prefs = await SharedPreferences.getInstance();
+  final int? userIdInt = prefs.getInt('user_id');
+  return userIdInt;
+}
+
+// 2. Ubah initState untuk mengecek user ID
+@override
+void initState() {
+  super.initState();
+  _fetchRecipeDetails(widget.recipeId);
+  _checkFavoriteStatus(widget.recipeId);
+  _checkOwnership(); // Tambahkan ini
+}
+
+// 3. Tambahkan fungsi untuk mengecek kepemilikan
+Future<void> _checkOwnership() async {
+  final currentUserId = await _getCurrentUserId();
+  if (currentUserId != null && _fetchedRecipeData != null) {
     setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-      _fetchedRecipeData = null;
+      _isOwner = (currentUserId == (_fetchedRecipeData!['user_id'] as int));
     });
+  }
+}
 
-    const int currentUserId = 1;
-    final String apiUrl = '$_baseUrl/recipes/$id';
+// 4. Update fungsi _fetchRecipeDetails untuk mengecek ownership setelah data didapat
+Future<void> _fetchRecipeDetails(int id) async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = '';
+    _fetchedRecipeData = null;
+  });
 
-    try {
-      final response = await http.get(Uri.parse(apiUrl));
+  final String apiUrl = '$_baseUrl/recipes/$id';
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> recipeData = json.decode(response.body);
-        setState(() {
-          _fetchedRecipeData = recipeData;
-          _isLoading = false;
+  try {
+    final response = await http.get(Uri.parse(apiUrl));
 
-          // Cek kepemilikan resep SETELAH data berhasil didapat
-          if (recipeData['user_id'] != null) {
-            _isOwner = (currentUserId == (recipeData['user_id'] as int));
-          }
-
-          // Inisialisasi video controller jika ada video_url
-          if (recipeData['video_url'] != null && (recipeData['video_url'] as String).isNotEmpty) {
-            final String videoPath = recipeData['video_url'] as String;
-            final fullVideoUrl = '$_baseUrl$videoPath';
-
-            print('Trying to load video from: $fullVideoUrl');
-
-            _videoController = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl))
-              ..initialize().then((_) {
-                setState(() {});
-                _videoController!.setLooping(true);
-              }).catchError((e) {
-                print('Error initializing video: $e');
-                _videoController = null;
-                setState(() {});
-              });
-          } else {
-            _videoController = null;
-          }
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Gagal mengambil data resep: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> recipeData = json.decode(response.body);
       setState(() {
-        _errorMessage = 'Terjadi kesalahan jaringan: $e';
+        _fetchedRecipeData = recipeData;
+        _isLoading = false;
+
+        // Inisialisasi video controller jika ada video_url
+        if (recipeData['video_url'] != null && (recipeData['video_url'] as String).isNotEmpty) {
+          final String videoPath = recipeData['video_url'] as String;
+          final fullVideoUrl = '$_baseUrl$videoPath';
+
+          print('Trying to load video from: $fullVideoUrl');
+
+          _videoController = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl))
+            ..initialize().then((_) {
+              setState(() {});
+              _videoController!.setLooping(true);
+            }).catchError((e) {
+              print('Error initializing video: $e');
+              _videoController = null;
+              setState(() {});
+            });
+        } else {
+          _videoController = null;
+        }
+      });
+      
+      // Cek ownership setelah data berhasil dimuat
+      _checkOwnership();
+    } else {
+      setState(() {
+        _errorMessage = 'Gagal mengambil data resep: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}';
         _isLoading = false;
       });
-      print('Error fetching recipe: $e');
     }
+  } catch (e) {
+    setState(() {
+      _errorMessage = 'Terjadi kesalahan jaringan: $e';
+      _isLoading = false;
+    });
+    print('Error fetching recipe: $e');
+  }
+}
+
+// 5. Update fungsi _buildAuthorSection
+Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
+  String finalProfileImageUrl = '';
+  Widget profileImageWidget;
+
+  if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
+    finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
+    profileImageWidget = CircleAvatar(
+      radius: 24,
+      backgroundImage: NetworkImage(finalProfileImageUrl),
+      onBackgroundImageError: (exception, stackTrace) {
+        print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
+      },
+    );
+  } else {
+    profileImageWidget = CircleAvatar(
+      radius: 24,
+      backgroundColor: Colors.grey[300],
+      child: Icon(
+        Icons.person,
+        color: Colors.grey[600],
+        size: 30,
+      ),
+    );
   }
 
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            profileImageWidget,
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '@$username',
+                  style: TextStyle(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  fullName,
+                  style: TextStyle(
+                    color: AppTheme.textBrown,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            SizedBox(
+              width: isFollowing ? 120 : 100,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isFollowing = !isFollowing;
+                  });
+                  print('Ikuti/Mengikuti button pressed for user ID: $userId');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
+                  foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text(
+                  isFollowing ? 'Mengikuti' : 'Ikuti',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // HANYA TAMPILKAN TOMBOL TITIK 3 JIKA USER ADALAH PEMILIK RESEP
+            if (_isOwner)
+              IconButton(
+                icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
+                onPressed: () {
+                  _showOwnerOptionsDialog(context);
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+// 6. Tambahkan fungsi untuk menampilkan dialog opsi owner
+void _showOwnerOptionsDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(
+          'Opsi Resep',
+          style: TextStyle(
+            color: AppTheme.primaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit, color: AppTheme.primaryColor),
+              title: Text('Edit Resep'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _editRecipe();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete, color: Colors.red),
+              title: Text('Hapus Resep', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _deleteRecipe();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('Batal', style: TextStyle(color: AppTheme.primaryColor)),
+          ),
+        ],
+      );
+    },
+  );
+}
+  // Fungsi untuk mengambil detail resep dari backend
+  
   void _editRecipe() async {
     final result = await Navigator.push(
       context,
@@ -834,103 +1002,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
-    String finalProfileImageUrl = '';
-    Widget profileImageWidget; // Use a widget instead of ImageProvider
-
-    if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
-      finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
-      profileImageWidget = CircleAvatar(
-        radius: 24,
-        backgroundImage: NetworkImage(finalProfileImageUrl),
-        onBackgroundImageError: (exception, stackTrace) {
-          print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
-        },
-      );
-    } else {
-      // If profilePictureUrl is null or empty, show a grey CircleAvatar with a person icon
-      profileImageWidget = CircleAvatar(
-        radius: 24,
-        backgroundColor: Colors.grey[300], // Light grey background
-        child: Icon(
-          Icons.person,
-          color: Colors.grey[600], // Darker grey icon
-          size: 30,
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              profileImageWidget, // Use the profileImageWidget determined above
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '@$username',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    fullName,
-                    style: TextStyle(
-                      color: AppTheme.textBrown,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              SizedBox(
-                width: isFollowing ? 120 : 100,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      isFollowing = !isFollowing;
-                    });
-                    print('Ikuti/Mengikuti button pressed for user ID: $userId');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
-                    foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    isFollowing ? 'Mengikuti' : 'Ikuti',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
-                onPressed: () {
-                  print('More options button pressed for user ID: $userId');
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildDivider() {
     return Padding(
