@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:masak2/view/component/food_card_widget.dart';
 import 'package:masak2/view/profile/profil/bagikan_profil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,9 +13,9 @@ import 'package:masak2/view/profile/profil/mengikuti_pengikut.dart';
 import 'package:masak2/models/food_model.dart';
 import 'package:masak2/models/user_profile_model.dart';
 import 'package:masak2/view/component/grid_2_builder.dart';
-import 'package:masak2/view/auth/login_page.dart';
-import 'package:masak2/view/auth/register_page.dart';
-import 'package:masak2/theme/theme.dart'; // <<< Pastikan ini diimport untuk AppTheme
+import 'package:masak2/view/auth/login_page.dart'; // Import LoginPage
+import 'package:masak2/view/auth/register_page.dart'; // Import RegisterPage
+
 
 class ProfilUtama extends StatefulWidget {
   final int? userId; 
@@ -46,15 +47,25 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    // Initialize tab controller with a default length; it will be updated after login status check
-    _tabController = TabController(length: 2, vsync: this); 
-    _checkAndLoadData(); // Call new combined function to check login and load data
+    // INI ADALAH SATU-SATUNYA TEMPAT _tabController HARUS DIINISIALISASI
+    _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this); 
+    _checkAndLoadData(); // Panggil fungsi untuk memeriksa status login dan memuat data
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController.dispose(); // Pastikan TabController dispose
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkAndLoadData();
+      }
+    });
   }
 
   Future<Map<String, String>> _getAuthHeaders() async {
@@ -79,36 +90,34 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   Future<void> _checkAndLoadData() async {
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // First, check login status
+    await _getAuthHeaders(); // This will set _isLoggedIn
 
-    // First, check login status and get auth headers
-    final headers = await _getAuthHeaders(); // This will set _isLoggedIn and _currentLoggedInUserId
-
-    // Logika untuk menampilkan guest view (ketika mencoba melihat profil sendiri tapi belum login)
-    if (!_isLoggedIn && _isMyProfile) {
+    if (!_isLoggedIn && _isMyProfile) { // Guest trying to view own profile
       setState(() {
         _isLoading = false;
       });
-      return; // Stop loading data, will show guest view
-    } 
-    // Logika untuk mencoba melihat profil orang lain tanpa login (jika tidak diizinkan backend)
-    else if (!_isLoggedIn && !_isMyProfile) {
-      // Jika backend Anda mengizinkan profil publik, Anda bisa melanjutkan fetching di sini.
-      // Jika tidak, tampilkan pesan error atau arahkan ke login.
-      // Untuk saat ini, kita anggap tidak diizinkan dan tampilkan pesan error.
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "Silakan login untuk melihat profil ini."; // Pesan umum
-      });
-      return;
+      return; // Stop loading data as it's a guest view
+    } else if (!_isLoggedIn && !_isMyProfile) { // Guest trying to view other profile while not logged in
+        // If the intent is to allow guests to see *other user's public profiles*,
+        // this logic needs adjustment to proceed with fetching public profile data.
+        // For this task, interpreting "guest" as seeing login/register view.
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "Silakan login untuk melihat profil ini."; // Generic message for unauthenticated access
+        });
+        return;
     }
 
     // Adjust tab controller length based on whether it's my profile or another user's
     // This needs to be done here after _isLoggedIn is determined
     _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this);
+
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final user = await _fetchUserProfile();
@@ -257,28 +266,37 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Menggunakan _isMyProfile yang sudah diperbarui dan _isLoggedIn
+    // If not logged in and userId is null (meaning 'my profile' view), show guest view
     if (!_isLoggedIn && _isMyProfile) { 
-      return _buildGuestView();
+      return _buildGuestView(); // _buildGuestView sudah mengembalikan Scaffold
     }
 
-    // Jika mencoba melihat profil orang lain tanpa login (dan tidak diizinkan backend)
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(_errorMessage!),
+      // Pastikan ada Material ancestor jika ingin menampilkan SnackBar di sini juga
+      return Scaffold( // Tambahkan Scaffold untuk menampilkan error message di Material context
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(_errorMessage!),
+          ),
         ),
       );
     }
 
+    // Jika profil null setelah loading (misal: ID pengguna tidak valid), tampilkan pesan
     if (_userProfile == null) {
-      return const Center(child: Text("Tidak dapat menemukan data profil."));
+      return const Scaffold( // Tambahkan Scaffold
+        body: Center(child: Text("Tidak dapat menemukan data profil.")),
+      );
     }
 
-    return RefreshIndicator(
-        onRefresh: _checkAndLoadData, // Use the new function to refresh data
-        child: _buildProfileBody(_userProfile!),
+    // Ini adalah tampilan profil utama (baik profil sendiri maupun profil pengguna lain)
+    // PERBAIKAN: Bungkus RefreshIndicator dengan Scaffold agar memiliki Material ancestor
+    return Scaffold( 
+      body: RefreshIndicator(
+        onRefresh: _checkAndLoadData, // Gunakan fungsi _checkAndLoadData untuk refresh data
+        child: _buildProfileBody(_userProfile!), // _buildProfileBody mengembalikan Column, bukan Scaffold
+      ),
     );
   }
 
@@ -364,12 +382,12 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   }
 
   Widget _buildProfileBody(UserProfile user) {
-    return SafeArea(
+    return SafeArea( // SafeArea itu sendiri tidak menyediakan Material
       child: Column(
         children: [
           _buildProfileHeader(user),
           _buildStatsAndActions(user),
-          _buildTabBar(),
+          _buildTabBar(), // TabBar menggunakan _tabController yang diinisialisasi sekali
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -543,7 +561,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
         if (_isLoggedIn && (label == 'Mengikuti' || label == 'Pengikut')) {
           _navigateToFollowerPage(label == 'Mengikuti' ? 0 : 1, userId);
         } else {
-          // Tampilkan pesan atau arahkan ke login jika tidak diizinkan
+          // Optional: Show a message or navigate to login page
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Silakan login untuk melihat detail ini.')),
           );
@@ -599,11 +617,9 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       foods: recipes,
       onFavoritePressed: (index) {
         // TODO: Implementasi logika favorit
-        // Anda mungkin perlu memanggil _checkAndLoadData() lagi setelah ini
       },
       onCardTap: (index) {
         // TODO: Implementasi navigasi ke detail resep
-        // Contoh: Navigator.pushNamed(context, '/detail-resep', arguments: recipes[index].id);
       },
     );
   }
