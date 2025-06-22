@@ -1,11 +1,13 @@
+// File: lib/view/community/review_page.dart (Versi Final - Khusus untuk Balasan Diskusi)
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import '../../theme/theme.dart';
-import '../../view/component/header_back.dart';
-import '../../view/component/bottom_navbar.dart';
+import '../../view/component/header_back.dart'; // Ganti dengan path Anda
+import '../../view/component/bottom_navbar.dart'; // Ganti dengan path Anda
 
 class ReviewsPage extends StatefulWidget {
   final int recipeId;
@@ -23,7 +25,7 @@ class ReviewsPage extends StatefulWidget {
 
 class _ReviewsPageState extends State<ReviewsPage> {
   final String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
-  List<dynamic> _reviews = [];
+  List<Map<String, dynamic>> _reviews = [];
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic>? _recipeData;
@@ -35,42 +37,32 @@ class _ReviewsPageState extends State<ReviewsPage> {
   }
 
   Future<void> _fetchPageData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      // Ambil detail resep
+      // Ambil detail resep untuk ditampilkan di card atas
       final recipeResponse = await http.get(Uri.parse('$_baseUrl/recipes/${widget.recipeId}'));
       if (recipeResponse.statusCode == 200) {
-        _recipeData = json.decode(recipeResponse.body);
-        print('Recipe data: $_recipeData'); // Debug print
+        if (mounted) setState(() => _recipeData = json.decode(recipeResponse.body));
       } else {
-        _errorMessage = 'Gagal mengambil detail resep: ${recipeResponse.statusCode}';
-        _isLoading = false;
-        if (mounted) setState(() {});
-        return;
+        throw Exception('Gagal mengambil detail resep: ${recipeResponse.statusCode}');
       }
 
-      // Ambil ulasan
+      // Ambil semua ulasan dan balasannya
       final reviewsResponse = await http.get(Uri.parse('$_baseUrl/reviews/${widget.recipeId}'));
       if (reviewsResponse.statusCode == 200) {
-        _reviews = json.decode(reviewsResponse.body);
-        print('Reviews data: $_reviews'); // Debug print
+        if (mounted) setState(() => _reviews = List<Map<String, dynamic>>.from(json.decode(reviewsResponse.body)));
       } else {
-        _errorMessage = 'Gagal mengambil ulasan: ${reviewsResponse.statusCode}';
-        _isLoading = false;
-        if (mounted) setState(() {});
-        return;
+        throw Exception('Gagal mengambil ulasan: ${reviewsResponse.statusCode}');
       }
     } catch (e) {
-      _errorMessage = 'Terjadi kesalahan jaringan: $e';
-      print('Error: $e'); // Debug print
+      if (mounted) setState(() => _errorMessage = 'Terjadi kesalahan: ${e.toString()}');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -84,9 +76,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
             children: [
               HeaderWidget(
                 title: 'Ulasan & Diskusi',
-                onBackPressed: () {
-                  Navigator.pop(context);
-                },
+                onBackPressed: () => Navigator.pop(context),
               ),
               Expanded(
                 child: _isLoading
@@ -98,21 +88,17 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          _errorMessage,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red, fontSize: 16),
-                        ),
+                        Text(_errorMessage, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
                         const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchPageData,
-                          child: const Text('Coba Lagi'),
-                        ),
+                        ElevatedButton(onPressed: _fetchPageData, child: const Text('Coba Lagi')),
                       ],
                     ),
                   ),
                 )
-                    : _buildReviewsList(),
+                    : RefreshIndicator(
+                  onRefresh: _fetchPageData,
+                  child: _buildReviewsList(),
+                ),
               ),
             ],
           ),
@@ -123,83 +109,169 @@ class _ReviewsPageState extends State<ReviewsPage> {
 
   Widget _buildReviewsList() {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 90),
+      padding: const EdgeInsets.only(bottom: 90, top: 8),
       children: [
-        // Recipe Card
         if (_recipeData != null) _buildRecipeCard(_recipeData!),
 
-        // Reviews
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+          child: Text(
+            'Balas diskusi pada ulasan di bawah ini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: AppTheme.textBrown.withOpacity(0.8)),
+          ),
+        ),
+
         if (_reviews.isEmpty)
-          Center(
+          const Center(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(20.0),
               child: Text(
-                'Belum ada ulasan untuk resep ini.',
-                style: TextStyle(fontSize: 16, color: AppTheme.textBrown),
+                'Belum ada ulasan. Jadilah yang pertama dari halaman detail resep!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             ),
           )
         else
-          ..._reviews.map<Widget>((reviewData) {
-            // Debug print untuk setiap review
-            print('Review data: $reviewData');
-
-            return _buildReviewCard(
-              username: reviewData['username']?.toString() ?? 'Pengguna',
-              name: reviewData['full_name']?.toString() ?? 'Tidak Dikenal',
-              profileImage: reviewData['profile_picture']?.toString(),
-              reviewImage: null,
-              rating: _parseRating(reviewData['rating']),
-              review: reviewData['comment']?.toString() ?? 'Tidak ada komentar.',
-              commentCount: 0,
-              createdAt: reviewData['created_at']?.toString() ?? DateTime.now().toIso8601String(),
-            );
+          ..._reviews.map<Widget>((comment) {
+            return _buildCommentThread(comment: comment, depth: 0);
           }).toList(),
       ],
     );
   }
 
-  // Helper method untuk parsing rating
-  int _parseRating(dynamic rating) {
-    if (rating == null) return 0;
-    if (rating is int) return rating;
-    if (rating is double) return rating.round();
-    if (rating is String) {
-      try {
-        return double.parse(rating).round();
-      } catch (e) {
-        return 0;
-      }
-    }
-    return 0;
+  Widget _buildCommentThread({required Map<String, dynamic> comment, required int depth}) {
+    final List<dynamic> replies = comment['replies'] ?? [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: (depth * 16.0), right: 16.0, top: 8, bottom: 8),
+          child: _buildReviewCard(
+            commentData: comment,
+            onReply: () => _showReplyDialog(
+              context: context,
+              parentId: comment['id'],
+              recipeId: widget.recipeId,
+            ),
+          ),
+        ),
+        if (replies.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(left: (depth * 16.0) + 16.0),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: Colors.grey.shade300, width: 2)),
+              ),
+              child: Column(
+                children: replies.map<Widget>((reply) {
+                  return _buildCommentThread(comment: reply, depth: depth + 1);
+                }).toList(),
+              ),
+            ),
+          )
+      ],
+    );
   }
+
+  void _showReplyDialog({required BuildContext context, required int recipeId, required int parentId}) {
+    final TextEditingController _commentController = TextEditingController();
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tulis Balasan'),
+          content: Form(
+            key: _formKey,
+            child: TextFormField(
+              controller: _commentController,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'Balasan Anda...'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'Balasan tidak boleh kosong.';
+                return null;
+              },
+              maxLines: 3,
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () {
+                if (_formKey.currentState!.validate()) {
+                  _postComment(
+                    recipeId: recipeId,
+                    comment: _commentController.text,
+                    parentId: parentId,
+                  );
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Kirim'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _postComment({required int recipeId, required String comment, int? parentId, int? rating}) async {
+    // ==============================================================================
+    // !! PENTING: Ganti `1` dengan ID pengguna yang sedang login dari state management Anda !!
+    const int currentUserId = 1; // <-- INI HANYA CONTOH, HARUS DINAMIS
+    // ==============================================================================
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/reviews'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': currentUserId,
+          'recipe_id': recipeId,
+          'comment': comment,
+          'parent_id': parentId,
+          'rating': rating,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Balasan berhasil dikirim!'), backgroundColor: Colors.green));
+        _fetchPageData();
+      } else if (response.statusCode == 409) {
+        final error = json.decode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error['message'] ?? 'Anda sudah pernah mengulas resep ini.'), backgroundColor: Colors.orange[800]));
+      } else {
+        final error = json.decode(response.body);
+        throw Exception('Gagal mengirim: ${error['message']}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+    }
+  }
+
+  // --- Widget-widget dan fungsi helper lainnya ---
 
   Widget _buildRecipeCard(Map<String, dynamic> recipe) {
     final String recipeImageUrl = recipe['image_url'] != null && (recipe['image_url'] as String).isNotEmpty
         ? '$_baseUrl${recipe['image_url']}'
         : 'https://via.placeholder.com/100';
-
-    final double averageRating = _parseDouble(recipe['average_rating']);
-    final int commentsCount = _parseInt(recipe['comments_count']);
+    final double averageRating = _parseDouble(recipe['average_rating'] ?? 0.0);
+    final int commentsCount = _parseInt(recipe['comments_count'] ?? 0);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 12, right: 12),
+            padding: const EdgeInsets.all(12),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
@@ -217,79 +289,26 @@ class _ReviewsPageState extends State<ReviewsPage> {
             ),
           ),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    recipe['title']?.toString() ?? 'Resep Tidak Ditemukan',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      // Rating stars untuk rata-rata resep
-                      ...List.generate(5, (index) {
-                        return Icon(
-                          index < averageRating.round() ? Icons.star : Icons.star_border,
-                          size: 16,
-                          color: Colors.white, // Kembali ke warna putih
-                        );
-                      }),
-                      const SizedBox(width: 4),
-                      Text(
-                        '($commentsCount Reviews)',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundImage: recipe['profile_picture'] != null && (recipe['profile_picture'] as String).isNotEmpty
-                            ? NetworkImage('$_baseUrl${recipe['profile_picture']}')
-                            : null,
-                        child: recipe['profile_picture'] == null || (recipe['profile_picture'] as String).isEmpty
-                            ? Icon(Icons.person, color: Colors.grey[600], size: 18)
-                            : null,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '@${recipe['username']?.toString() ?? 'Pengguna'}', // Username pemilik resep
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              recipe['full_name']?.toString() ?? '', // Nama lengkap pemilik resep
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  recipe['title']?.toString() ?? 'Resep Tidak Ditemukan',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ...List.generate(5, (index) {
+                      return Icon(index < averageRating.round() ? Icons.star : Icons.star_border, size: 16, color: Colors.white);
+                    }),
+                    const SizedBox(width: 4),
+                    Text('($commentsCount Ulasan)', style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -297,41 +316,25 @@ class _ReviewsPageState extends State<ReviewsPage> {
     );
   }
 
-  Widget _buildReviewCard({
-    required String username,
-    required String name,
-    String? profileImage,
-    String? reviewImage,
-    required int rating,
-    required String review,
-    required int commentCount,
-    required String createdAt,
-  }) {
-    String finalProfileImageUrl = '';
-    if (profileImage != null && profileImage.isNotEmpty) {
-      finalProfileImageUrl = '$_baseUrl$profileImage';
-    }
-
+  Widget _buildReviewCard({required Map<String, dynamic> commentData, required VoidCallback onReply}) {
+    final String username = commentData['username']?.toString() ?? 'Pengguna';
+    final String name = commentData['full_name']?.toString() ?? 'Tidak Dikenal';
+    final String? profileImage = commentData['profile_picture']?.toString();
+    final int rating = _parseRating(commentData['rating']);
+    final String review = commentData['comment']?.toString() ?? '';
+    final String createdAt = commentData['created_at']?.toString() ?? DateTime.now().toIso8601String();
+    String finalProfileImageUrl = profileImage != null && profileImage.isNotEmpty ? '$_baseUrl$profileImage' : '';
     DateTime parsedCreatedAt;
     try {
-      parsedCreatedAt = DateTime.parse(createdAt);
+      parsedCreatedAt = DateTime.parse(createdAt).toLocal();
     } catch (e) {
       parsedCreatedAt = DateTime.now();
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: AppTheme.searchBarColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,165 +342,73 @@ class _ReviewsPageState extends State<ReviewsPage> {
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundImage: finalProfileImageUrl.isNotEmpty
-                          ? NetworkImage(finalProfileImageUrl)
-                          : null,
-                      child: finalProfileImageUrl.isEmpty
-                          ? Icon(Icons.person, color: Colors.grey[600], size: 24)
-                          : null,
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '@$username', // Username yang memberikan review
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
-                        if (name.isNotEmpty)
-                          Text(
-                            name, // Nama lengkap yang memberikan review
-                            style: TextStyle(
-                              color: AppTheme.textBrown,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                CircleAvatar(
+                  radius: 20,
+                  backgroundImage: finalProfileImageUrl.isNotEmpty ? NetworkImage(finalProfileImageUrl) : null,
+                  child: finalProfileImageUrl.isEmpty ? Icon(Icons.person, color: Colors.grey[600], size: 24) : null,
                 ),
-                Text(
-                  DateFormat('dd MMM yyyy').format(parsedCreatedAt),
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Rating stars untuk review individual
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                ...List.generate(5, (index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 2),
-                    child: Icon(
-                      index < rating ? Icons.star : Icons.star_border,
-                      size: 16,
-                      color: AppTheme.primaryColor, // Tetap menggunakan warna tema
-                    ),
-                  );
-                }),
                 const SizedBox(width: 8),
-                Text(
-                  '($rating/5)',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Review Image (jika ada)
-          if (reviewImage != null && reviewImage.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Container(
-                height: 140,
-                width: 140,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(reviewImage),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-
-          // Review text
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Text(
-              review,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textBrown,
-              ),
-            ),
-          ),
-
-          // Comment count (jika ada)
-          if (commentCount > 0)
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Transform.translate(
-                offset: const Offset(0, 12),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.chat_bubble_outline,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$commentCount Komentar',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                        ),
-                      ),
+                      Text('@$username', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryColor)),
+                      if (name.isNotEmpty) Text(name, style: TextStyle(color: AppTheme.textBrown, fontSize: 12)),
                     ],
                   ),
                 ),
+                Text(DateFormat('dd MMM kk:mm').format(parsedCreatedAt), style: const TextStyle(color: Colors.grey, fontSize: 10)),
+              ],
+            ),
+          ),
+          if (rating > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: List.generate(5, (index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: Icon(index < rating ? Icons.star : Icons.star_border, size: 16, color: AppTheme.primaryColor),
+                  );
+                }),
               ),
             ),
-
-          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(review, style: TextStyle(fontSize: 14, color: AppTheme.textBrown)),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 4.0, bottom: 4.0),
+              child: TextButton.icon(
+                icon: Icon(Icons.reply, size: 16, color: AppTheme.primaryColor),
+                label: Text('Balas', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                onPressed: onReply,
+                style: TextButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // Helper methods untuk parsing data
+  int _parseRating(dynamic rating) {
+    if (rating == null) return 0;
+    if (rating is int) return rating;
+    if (rating is String) return int.tryParse(rating) ?? 0;
+    return 0;
+  }
+
   double _parseDouble(dynamic value) {
     if (value == null) return 0.0;
     if (value is double) return value;
     if (value is int) return value.toDouble();
-    if (value is String) {
-      try {
-        return double.parse(value);
-      } catch (e) {
-        return 0.0;
-      }
-    }
+    if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
   }
 
@@ -505,13 +416,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
     if (value == null) return 0;
     if (value is int) return value;
     if (value is double) return value.round();
-    if (value is String) {
-      try {
-        return int.parse(value);
-      } catch (e) {
-        return 0;
-      }
-    }
+    if (value is String) return int.tryParse(value) ?? 0;
     return 0;
   }
 }

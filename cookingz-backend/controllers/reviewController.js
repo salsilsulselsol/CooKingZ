@@ -7,64 +7,149 @@ const db = require('../db');
  * @route   POST /reviews
  * @access  Public (user_id diambil dari body, TIDAK diamankan oleh JWT)
  */
-exports.addReview = async (req, res) => {
-    const { user_id, recipe_id, rating, comment } = req.body;
+//exports.addReview = async (req, res) => {
+//    const { user_id, recipe_id, rating, comment } = req.body;
+//
+//    // Validasi input
+//    if (!user_id || !recipe_id || !rating || !comment) {
+//        return res.status(400).json({ message: 'Semua kolom (user_id, recipe_id, rating, comment) harus diisi.' });
+//    }
+//
+//    // Konversi ke number dan validasi (karena dari JSON biasanya string)
+//    const userIdNum = parseInt(user_id);
+//    const recipeIdNum = parseInt(recipe_id);
+//    const ratingNum = parseInt(rating);
+//
+//    if (isNaN(userIdNum) || isNaN(recipeIdNum) || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+//        return res.status(400).json({ message: 'user_id, recipe_id, dan rating harus berupa angka. Rating harus antara 1-5.' });
+//    }
+//
+//    try {
+//        // Cek apakah resep ada
+//        const [recipeCheck] = await db.query('SELECT id FROM recipes WHERE id = ?', [recipeIdNum]);
+//        if (recipeCheck.length === 0) {
+//            return res.status(404).json({ message: 'Resep tidak ditemukan.' });
+//        }
+//
+//        // Cek apakah pengguna ada
+//        const [userCheck] = await db.query('SELECT id FROM users WHERE id = ?', [userIdNum]);
+//        if (userCheck.length === 0) {
+//            return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
+//        }
+//
+//        // Cek apakah pengguna sudah pernah memberikan ulasan untuk resep ini
+//        const [existingReview] = await db.query('SELECT id FROM reviews WHERE user_id = ? AND recipe_id = ?', [userIdNum, recipeIdNum]);
+//        if (existingReview.length > 0) {
+//            return res.status(409).json({ message: 'Anda sudah mengulas resep ini sebelumnya.' });
+//        }
+//
+//        // Masukkan ulasan baru
+//        const insertReviewQuery = 'INSERT INTO reviews (user_id, recipe_id, rating, comment) VALUES (?, ?, ?, ?)';
+//        const [insertResult] = await db.query(insertReviewQuery, [userIdNum, recipeIdNum, ratingNum, comment]);
+//
+//        // HAPUS bagian update recipe rating karena kolom tidak ada di tabel recipes
+//
+//        res.status(201).json({
+//            message: 'Ulasan berhasil ditambahkan.',
+//            reviewId: insertResult.insertId,
+//        });
+//
+//    } catch (error) {
+//        console.error('Error saat menambahkan ulasan:', error);
+//        return res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+//    }
+//};
 
-    // Validasi input
-    if (!user_id || !recipe_id || !rating || !comment) {
-        return res.status(400).json({ message: 'Semua kolom (user_id, recipe_id, rating, comment) harus diisi.' });
+exports.addReview = async (req, res) => {
+    console.log('=== MULAI addReview ===');
+    const { user_id, recipe_id, rating, comment, parent_id = null } = req.body;
+    console.log('Input:', { user_id, recipe_id, rating, comment, parent_id });
+
+    if (!user_id || !recipe_id || !comment) {
+        console.log('❌ Validasi gagal: user_id, recipe_id, dan comment wajib.');
+        return;
     }
 
-    // Konversi ke number dan validasi (karena dari JSON biasanya string)
-    const userIdNum = parseInt(user_id);
-    const recipeIdNum = parseInt(recipe_id);
-    const ratingNum = parseInt(rating);
+    if (parent_id === null && !rating) {
+        console.log('❌ Validasi gagal: Rating wajib untuk komentar utama.');
+        return;
+    }
 
-    if (isNaN(userIdNum) || isNaN(recipeIdNum) || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-        return res.status(400).json({ message: 'user_id, recipe_id, dan rating harus berupa angka. Rating harus antara 1-5.' });
+    const userIdNum = parseInt(user_id, 10);
+    const recipeIdNum = parseInt(recipe_id, 10);
+    const ratingNum = rating !== undefined && rating !== null ? parseInt(rating, 10) : null;
+    const parentIdNum = parent_id ? parseInt(parent_id, 10) : null;
+    console.log('Parsed Values:', { userIdNum, recipeIdNum, ratingNum, parentIdNum });
+
+    if (isNaN(userIdNum) || isNaN(recipeIdNum)) {
+        console.log('❌ user_id dan recipe_id harus angka.');
+        return;
+    }
+
+    if (ratingNum !== null && (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5)) {
+        console.log('❌ Rating harus antara 1 sampai 5.');
+        return;
+    }
+
+    if (parentIdNum !== null && isNaN(parentIdNum)) {
+        console.log('❌ parent_id harus angka jika diisi.');
+        return;
     }
 
     try {
-        // Cek apakah resep ada
         const [recipeCheck] = await db.query('SELECT id FROM recipes WHERE id = ?', [recipeIdNum]);
         if (recipeCheck.length === 0) {
-            return res.status(404).json({ message: 'Resep tidak ditemukan.' });
+            console.log('❌ Resep tidak ditemukan.');
+            return;
         }
 
-        // Cek apakah pengguna ada
         const [userCheck] = await db.query('SELECT id FROM users WHERE id = ?', [userIdNum]);
         if (userCheck.length === 0) {
-            return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
+            console.log('❌ Pengguna tidak ditemukan.');
+            return;
         }
 
-        // Cek apakah pengguna sudah pernah memberikan ulasan untuk resep ini
-        const [existingReview] = await db.query('SELECT id FROM reviews WHERE user_id = ? AND recipe_id = ?', [userIdNum, recipeIdNum]);
-        if (existingReview.length > 0) {
-            return res.status(409).json({ message: 'Anda sudah mengulas resep ini sebelumnya.' });
+        if (parentIdNum !== null) {
+            const [parentCheck] = await db.query('SELECT id FROM reviews WHERE id = ? AND recipe_id = ?', [parentIdNum, recipeIdNum]);
+            if (parentCheck.length === 0) {
+                console.log('❌ Komentar induk tidak valid atau bukan dari resep yang sama.');
+                return;
+            }
         }
 
-        // Masukkan ulasan baru
-        const insertReviewQuery = 'INSERT INTO reviews (user_id, recipe_id, rating, comment) VALUES (?, ?, ?, ?)';
-        const [insertResult] = await db.query(insertReviewQuery, [userIdNum, recipeIdNum, ratingNum, comment]);
+        if (parentIdNum === null) {
+            const [existingReview] = await db.query(
+                'SELECT id FROM reviews WHERE user_id = ? AND recipe_id = ? AND parent_id IS NULL',
+                [userIdNum, recipeIdNum]
+            );
+            if (existingReview.length > 0) {
+                console.log('❌ Sudah ada komentar utama dari user ini.');
+                return;
+            }
+        }
 
-        // HAPUS bagian update recipe rating karena kolom tidak ada di tabel recipes
+        const insertQuery = `
+            INSERT INTO reviews (user_id, recipe_id, parent_id, rating, comment)
+            VALUES (?, ?, ?, ?, ?);
+        `;
+        const [insertResult] = await db.query(insertQuery, [
+            userIdNum,
+            recipeIdNum,
+            parentIdNum,
+            ratingNum,
+            comment
+        ]);
 
-        res.status(201).json({
-            message: 'Ulasan berhasil ditambahkan.',
-            reviewId: insertResult.insertId,
-        });
+        console.log('✅ Komentar berhasil ditambahkan. ID:', insertResult.insertId);
 
     } catch (error) {
-        console.error('Error saat menambahkan ulasan:', error);
-        return res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+        console.error('🔥 ERROR saat insert komentar:', error);
     }
 };
 
-/**
- * @desc    Mendapatkan semua ulasan untuk resep tertentu
- * @route   GET /reviews/:recipeId
- * @access  Public
- */
+
+// Mendapatkan semua ulasan untuk resep tertentu
+
 exports.getReviewsByRecipeId = async (req, res) => {
     const { recipeId } = req.params;
 
@@ -73,25 +158,50 @@ exports.getReviewsByRecipeId = async (req, res) => {
     }
 
     try {
-        // Menggunakan 'reviews' sesuai skema database Anda
         const query = `
             SELECT
-                rr.id,
-                rr.user_id,
+                r.id,
+                r.user_id,
+                r.parent_id, -- Kita ambil parent_id
                 u.username,
                 u.full_name,
                 u.profile_picture,
-                rr.rating,
-                rr.comment,
-                rr.created_at
-            FROM reviews rr
-            JOIN users u ON rr.user_id = u.id
-            WHERE rr.recipe_id = ?
-            ORDER BY rr.created_at DESC;
+                r.rating,
+                r.comment,
+                r.created_at
+            FROM reviews r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.recipe_id = ?
+            ORDER BY r.created_at ASC; -- Urutkan dari yang terlama agar pohon bisa dibangun dengan benar
         `;
-        const [reviews] = await db.query(query, [recipeId]);
+        const [allComments] = await db.query(query, [recipeId]);
 
-        res.status(200).json(reviews);
+        // --- Logika untuk membangun struktur pohon (nested) ---
+        const commentsMap = {};
+        const rootComments = [];
+
+        // Pertama, petakan semua komentar berdasarkan ID mereka untuk akses cepat
+        allComments.forEach(comment => {
+            commentsMap[comment.id] = { ...comment, replies: [] };
+        });
+
+        // Kedua, susun hirarkinya
+        allComments.forEach(comment => {
+            if (comment.parent_id !== null) {
+                // Jika ini adalah balasan, temukan induknya dan tambahkan ke array 'replies'
+                if (commentsMap[comment.parent_id]) {
+                    commentsMap[comment.parent_id].replies.push(commentsMap[comment.id]);
+                }
+            } else {
+                // Jika ini adalah komentar utama (root), tambahkan ke array root
+                rootComments.push(commentsMap[comment.id]);
+            }
+        });
+
+        // Balik urutan rootComments agar yang terbaru muncul di atas
+        rootComments.reverse();
+
+        res.status(200).json(rootComments);
 
     } catch (error) {
         console.error('Error saat mengambil ulasan:', error);
@@ -99,11 +209,8 @@ exports.getReviewsByRecipeId = async (req, res) => {
     }
 };
 
-/**
- * @desc    Menghapus ulasan tertentu
- * @route   DELETE /reviews/:reviewId
- * @access  Public (Siapapun bisa menghapus jika tahu reviewId & userId)
- */
+// Menghapus ulasan tertentu
+
 exports.deleteReview = async (req, res) => {
     const { reviewId } = req.params;
     const { user_id } = req.body; // Mengambil user_id dari body untuk verifikasi (meskipun tidak aman)
