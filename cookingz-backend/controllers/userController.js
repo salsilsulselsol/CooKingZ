@@ -51,20 +51,21 @@ exports.getMyProfile = async (req, res) => {
 // Fungsi BARU untuk mendapatkan semua resep milik seorang pengguna
 exports.getUserRecipes = async (req, res) => {
     try {
-        const userId = req.params.id; // ID pengguna dari parameter URL
-        console.log(`>>> Controller getUserRecipes BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
+        const userId = req.params.id;
+        console.log(`>>> Controller getUserRecipes (DEBUGGING) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
+        // QUERY YANG SUDAH DISEDERHANAKAN (tanpa sub-query rating)
         const query = `
             SELECT 
                 r.id, 
                 r.title, 
                 r.description, 
                 r.image_url, 
-                r.cooking_time, -- Menggunakan cooking_time langsung
+                r.cooking_time,
                 r.difficulty,
-                r.price, -- Menggunakan price langsung
-                r.favorites_count AS likes, -- Menggunakan favorites_count untuk likes
-                (SELECT AVG(rating) FROM reviews WHERE recipe_id = r.id) AS rating -- Subquery untuk rating
+                r.price,
+                r.favorites_count AS likes,
+                0 AS rating  -- Kita beri nilai rating 0 untuk sementara
             FROM recipes AS r
             WHERE r.user_id = ?
         `;
@@ -75,32 +76,29 @@ exports.getUserRecipes = async (req, res) => {
         res.status(200).json({ status: 'success', message: 'Resep pengguna berhasil diambil.', data: recipes });
 
     } catch (error) {
-        console.error('Error saat mengambil resep pengguna:', error);
+        console.error('Error saat mengambil resep pengguna (DEBUGGING):', error);
         res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server saat mengambil resep.', error: error.message });
     }
 };
 
 // Fungsi untuk mendapatkan resep favorit pengguna yang sedang login
 exports.getMyFavoriteRecipes = async (req, res) => {
-    const userId = req.user.userId; // ID pengguna dari token JWT
-    console.log(`>>> Controller getMyFavoriteRecipes BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
-
-    if (!userId) { // Seharusnya tidak terjadi jika authenticateToken berfungsi
-        return res.status(401).json({ status: 'error', message: 'Akses ditolak.' });
-    }
+    const userId = req.user.userId;
+    console.log(`>>> Controller getMyFavoriteRecipes (DEBUGGING) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
     try {
+        // QUERY YANG SUDAH DISEDERHANAKAN (tanpa sub-query rating)
         const query = `
             SELECT 
                 r.id, 
                 r.title, 
                 r.description, 
                 r.image_url, 
-                r.cooking_time, -- Menggunakan cooking_time langsung
+                r.cooking_time,
                 r.difficulty,
-                r.price, -- Menggunakan price langsung
-                r.favorites_count AS likes, -- Menggunakan favorites_count untuk likes
-                (SELECT AVG(rating) FROM reviews WHERE recipe_id = r.id) AS rating
+                r.price,
+                r.favorites_count AS likes,
+                0 AS rating -- Kita beri nilai rating 0 untuk sementara
             FROM recipes AS r
             INNER JOIN recipe_favorites AS rf ON r.id = rf.recipe_id
             WHERE rf.user_id = ?
@@ -112,7 +110,7 @@ exports.getMyFavoriteRecipes = async (req, res) => {
         res.status(200).json({ status: 'success', message: 'Resep favorit berhasil diambil.', data: recipes });
 
     } catch (error) {
-        console.error('Error saat mengambil resep favorit:', error);
+        console.error('Error saat mengambil resep favorit (DEBUGGING):', error);
         res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server saat mengambil resep favorit.', error: error.message });
     }
 };

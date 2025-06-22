@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Untuk Clipboard
-import 'package:qr_flutter/qr_flutter.dart'; // Untuk QR Code
-import 'package:share_plus/share_plus.dart'; // Untuk tombol bagikan
+import 'package:flutter/services.dart';       // Untuk Clipboard
+import 'package:qr_flutter/qr_flutter.dart';  // Untuk QR Code
+import 'package:share_plus/share_plus.dart';  // Untuk tombol bagikan
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../../../models/user_profile_model.dart'; // Sesuaikan path jika perlu
+import '../../../models/user_profile_model.dart';
 
 class BagikanProfil extends StatefulWidget {
   const BagikanProfil({super.key});
@@ -24,36 +25,58 @@ class _BagikanProfilState extends State<BagikanProfil> {
     _fetchMyProfile();
   }
 
+  // <<< TAMBAHKAN FUNGSI INI >>>
+  // Helper untuk mendapatkan headers dengan token
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  // <<< UBAH FUNGSI INI >>>
   // Fungsi untuk mengambil data profil sendiri
   Future<void> _fetchMyProfile() async {
     final baseUrl = dotenv.env['BASE_URL'];
     if (baseUrl == null) {
-      // Handle error jika BASE_URL tidak ada
       if (mounted) setState(() => _isLoading = false);
       return;
     }
 
     try {
-      final response = await http.get(Uri.parse('$baseUrl/users/me'));
+      final headers = await _getAuthHeaders(); // Dapatkan header
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/me'),
+        headers: headers, // Gunakan header
+      );
+
       if (mounted && response.statusCode == 200) {
         setState(() {
-          _userProfile = UserProfile.fromJson(json.decode(response.body));
+          // Sesuaikan dengan struktur JSON dari server Anda
+          final responseData = json.decode(response.body);
+          _userProfile = UserProfile.fromJson(responseData['data']);
           _isLoading = false;
         });
       } else {
-        throw Exception('Gagal memuat profil');
+        throw Exception('Gagal memuat profil (Status: ${response.statusCode})');
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
-      // Handle error, misal dengan menampilkan SnackBar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     }
   }
 
   // Fungsi yang akan dijalankan saat tombol "Bagikan" ditekan
   void _onShare(BuildContext context) {
     if (_userProfile != null) {
-      final String profileUrl = 'https://cookingz.app/users/${_userProfile!.id}'; // Ganti dengan domain Anda
-      final String shareText = 'Lihat profil ${ _userProfile!.fullName} (@${_userProfile!.username}) di CookingZ! $profileUrl';
+      // Ganti dengan domain asli Anda jika sudah punya
+      final String profileUrl = 'https://cookingz.app/users/${_userProfile!.id}'; 
+      final String shareText =
+          'Lihat profil resep milik ${_userProfile!.fullName} (@${_userProfile!.username}) di aplikasi CookingZ! Kunjungi profilnya di: $profileUrl';
       
       Share.share(shareText);
     }
@@ -62,7 +85,8 @@ class _BagikanProfilState extends State<BagikanProfil> {
   // Fungsi yang akan dijalankan saat tombol "Salin Tautan" ditekan
   void _onCopyLink(BuildContext context) {
     if (_userProfile != null) {
-      final String profileUrl = 'https://cookingz.app/users/${_userProfile!.id}'; // Ganti dengan domain Anda
+      // Ganti dengan domain asli Anda jika sudah punya
+      final String profileUrl = 'https://cookingz.app/users/${_userProfile!.id}'; 
       Clipboard.setData(ClipboardData(text: profileUrl)).then((_) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tautan profil disalin ke clipboard!')),
@@ -75,8 +99,9 @@ class _BagikanProfilState extends State<BagikanProfil> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Warna background diubah agar kontras
+      backgroundColor: Colors.white, 
       appBar: AppBar(
+        // ... (biarkan sama)
         backgroundColor: const Color(0xFF006257),
         elevation: 0,
         centerTitle: true,
@@ -96,14 +121,14 @@ class _BagikanProfilState extends State<BagikanProfil> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _userProfile == null
-              ? const Center(child: Text("Gagal memuat data."))
+              ? const Center(child: Text("Gagal memuat data profil."))
               : _buildShareContent(),
     );
   }
 
   Widget _buildShareContent() {
-    // Buat URL profil berdasarkan data yang sudah didapat
-    final String profileUrl = 'https://cookingz.app/users/${_userProfile!.id}'; // Ganti dengan domain Anda
+    // ... (widget ini sudah benar, tidak perlu diubah)
+    final String profileUrl = 'https://cookingz.app/users/${_userProfile!.id}';
 
     return Center(
       child: Column(
@@ -117,7 +142,7 @@ class _BagikanProfilState extends State<BagikanProfil> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withAlpha(77), // 77 ~ 0.3 opacity (255 * 0.3)
+                  color: Colors.grey.withAlpha(77),
                   spreadRadius: 2,
                   blurRadius: 5,
                   offset: const Offset(0, 3),
@@ -129,7 +154,8 @@ class _BagikanProfilState extends State<BagikanProfil> {
               version: QrVersions.auto,
               size: 220.0,
               gapless: false,
-              embeddedImage: const AssetImage('images/share_button.png'), // Ganti dengan path logo Anda
+              // Ganti dengan path logo Anda jika ada
+              // embeddedImage: const AssetImage('assets/images/logo.png'), 
               embeddedImageStyle: const QrEmbeddedImageStyle(
                 size: Size(40, 40),
               ),

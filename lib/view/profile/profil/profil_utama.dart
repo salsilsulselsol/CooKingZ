@@ -113,20 +113,27 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     final baseUrl = dotenv.env['BASE_URL'];
     if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
     
-    final headers = await _getAuthHeaders(); // <-- Dapatkan header
+    final headers = await _getAuthHeaders();
 
     final response = await http.get(
       Uri.parse('$baseUrl/users/$userId/recipes'),
-      headers: headers, // <-- Gunakan header
+      headers: headers,
     );
 
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
-      // Backend Anda membungkus data dalam objek 'data'
       List<dynamic> body = responseData['data'];
-      return body.map((dynamic item) => Food.fromMap(item as Map<String, dynamic>)).toList();
+      // <<< PERUBAHAN DI SINI: Panggil .fromJson bukan .fromMap >>>
+      return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
     } else {
-      throw Exception('Gagal memuat resep buatan pengguna (Status: ${response.statusCode})');
+      try {
+        final errorData = json.decode(response.body);
+        final serverMessage = errorData['message'] ?? 'Tidak ada pesan error dari server.';
+        final detailedError = errorData['error'] ?? '';
+        throw Exception('Gagal memuat resep: $serverMessage - $detailedError (Status: ${response.statusCode})');
+      } catch (e) {
+        throw Exception('Gagal memuat resep (Status: ${response.statusCode}) - Respons: ${response.body}');
+      }
     }
   }
 
@@ -134,26 +141,29 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     final baseUrl = dotenv.env['BASE_URL'];
     if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
 
-    final headers = await _getAuthHeaders(); // <-- Dapatkan header
+    final headers = await _getAuthHeaders();
     
     final response = await http.get(
       Uri.parse('$baseUrl/users/me/favorites'),
-      headers: headers, // <-- Gunakan header
+      headers: headers,
     );
         
     if (response.statusCode == 200) {
       final responseData = json.decode(response.body);
-       // Backend Anda membungkus data dalam objek 'data'
       List<dynamic> body = responseData['data'];
-      return body.map((dynamic item) => Food.fromMap(item as Map<String, dynamic>)).toList();
+      // <<< PERUBAHAN DI SINI: Panggil .fromJson bukan .fromMap >>>
+      return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
     } else {
-      throw Exception('Gagal memuat resep favorit (Status: ${response.statusCode})');
+      try {
+        final errorData = json.decode(response.body);
+        final serverMessage = errorData['message'] ?? 'Tidak ada pesan error dari server.';
+        final detailedError = errorData['error'] ?? '';
+        throw Exception('Gagal memuat favorit: $serverMessage - $detailedError (Status: ${response.statusCode})');
+      } catch (e) {
+        throw Exception('Gagal memuat favorit (Status: ${response.statusCode}) - Respons: ${response.body}');
+      }
     }
   }
-  
-  // ... sisa widget build (seperti _buildProfileBody, _buildUserRecipesTab, dll.) tidak perlu diubah ...
-  // Salin semua widget build dari kode lama Anda ke sini.
-  // Pastikan Anda menyalin semua fungsi dari _buildProfileBody hingga akhir class.
 
     @override
   void dispose() {
