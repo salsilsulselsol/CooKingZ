@@ -559,7 +559,7 @@ class _AllergyQuestionnairePageState extends State<AllergyQuestionnairePage> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        // Navigate to next page
+                        Navigator.pushNamed(context, '/login');
                       },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFF206153)),
@@ -582,7 +582,7 @@ class _AllergyQuestionnairePageState extends State<AllergyQuestionnairePage> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                      Navigator.pushNamed(context, '/beranda');
+                      Navigator.pushNamed(context, '/login');
                       },
                       style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFB3E0DA),

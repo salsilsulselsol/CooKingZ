@@ -18,11 +18,7 @@ class OnboardingC extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(context);
                   },
-                  child: Image.asset(
-                    'images/arrow.png',
-                    width: 28,
-                    height: 28,
-                  ),
+                  child: Image.asset('images/arrow.png', width: 28, height: 28),
                 ),
               ),
             ),
@@ -49,10 +45,7 @@ class OnboardingC extends StatelessWidget {
             // Title Text
             const Text(
               'Selamat Datang',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             // Description Text - Modified with specific line break
@@ -79,28 +72,14 @@ class OnboardingC extends StatelessWidget {
                       minimumSize: const Size(double.infinity, 50),
                     ),
                     onPressed: () {
-                      // Action Pengguna Baru
+                      Navigator.pushNamed(context, '/cooking');
                     },
                     child: const Text(
-                      'Pengguna Baru',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF035E53),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      'Selanjutnya',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/register');
-                    },
-                    child: const Text(
-                      'Pengguna Lama',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -116,10 +95,7 @@ class OnboardingC extends StatelessWidget {
   Widget _buildImage(String assetPath) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: Image.asset(
-        assetPath,
-        fit: BoxFit.cover,
-      ),
+      child: Image.asset(assetPath, fit: BoxFit.cover),
     );
   }
 }

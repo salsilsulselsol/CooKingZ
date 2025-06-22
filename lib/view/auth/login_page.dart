@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:another_flushbar/flushbar.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,17 +15,14 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
-  
-  // Controllers untuk form
+  String _errorMessage = '';
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
-  // Global key untuk form validation
   final _formKey = GlobalKey<FormState>();
-  
-  // URL untuk login endpoint
-  static const String loginUrl = 'http://localhost:3000/login';
-  
+
+  final String _baseUrl = 'http://192.168.100.44:3000'; // ← Ganti IP sesuai backend kamu
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -31,88 +30,83 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Fungsi untuk login dengan logika navigasi berdasarkan onboarding status
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
+      _errorMessage = '';
     });
 
     try {
       final response = await http.post(
-        Uri.parse(loginUrl),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        Uri.parse('$_baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'email': _emailController.text.trim(),
-          'password': _passwordController.text,
+          'password': _passwordController.text.trim(),
         }),
       );
 
-      final responseData = json.decode(response.body);
+      print('DEBUG LOGIN_PAGE: Login API Status Code: ${response.statusCode}');
+      print('DEBUG LOGIN_PAGE: Login API Response Body (FULL): ${response.body}');
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        // Login berhasil
-        final token = responseData['token'];
-        final userData = responseData['user'];
-        final bool isOnboardingCompleted = userData['onboardingCompleted'] ?? false;
+        final token = responseData['token']?.toString() ?? '';
+        final user = responseData['user'] as Map<String, dynamic>?;
 
-        // Simpan token dan data user ke SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setString('user_data', json.encode(userData));
+        final userId = int.tryParse(user?['userId']?.toString() ?? '') ?? 0;
+        final username = user?['username']?.toString() ?? 'unknown_user';
 
-        // Tampilkan pesan sukses
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(responseData['message'] ?? 'Login berhasil!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          // Logika navigasi berdasarkan status onboarding
-          if (isOnboardingCompleted) {
-            // Jika sudah pernah onboarding, langsung ke halaman utama
-            print('DEBUG: User sudah onboarding, navigate ke /cooking');
-            Navigator.pushNamedAndRemoveUntil(
-              context, 
-              '/cooking', // atau '/home' sesuai dengan route utama Anda
-              (route) => false,
-            );
-          } else {
-            // Jika belum onboarding, ke halaman onboarding
-            print('DEBUG: User belum onboarding, navigate ke onboarding');
-            Navigator.pushNamedAndRemoveUntil(
-              context, 
-              '/beranda', // Route ke halaman onboarding
-              (route) => false,
-            );
-          }
+        if (token.isEmpty || userId == 0 || username == 'unknown_user') {
+          setState(() {
+            _errorMessage = 'Login gagal: Data tidak lengkap.';
+          });
+          return;
         }
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        await prefs.setInt('user_id', userId);
+        await prefs.setString('username', username);
+
+        if (mounted) {
+        Flushbar(
+          message: responseData['message'] ?? 'Login berhasil!',
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(12),
+          borderRadius: BorderRadius.circular(8),
+          flushbarPosition: FlushbarPosition.TOP,
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+        ).show(context);
+
+        // Delay sebentar supaya user lihat notifikasinya dulu (opsional)
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        Navigator.pushNamedAndRemoveUntil(context, '/beranda', (route) => false);
+      }
+
+
       } else {
-        // Login gagal
+        setState(() {
+          _errorMessage = responseData['message'] ?? 'Login gagal. Silakan coba lagi.';
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(responseData['message'] ?? 'Login gagal'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(_errorMessage), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
-      // Error handling
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan: $e';
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(_errorMessage), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -124,30 +118,16 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Fungsi untuk validasi email
   String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Email harus diisi';
-    }
-    
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-    if (!emailRegex.hasMatch(value)) {
-      return 'Format email tidak valid';
-    }
-    
+    if (value == null || value.isEmpty) return 'Email harus diisi';
+    final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+    if (!regex.hasMatch(value)) return 'Format email tidak valid';
     return null;
   }
 
-  // Fungsi untuk validasi password
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Password harus diisi';
-    }
-    
-    if (value.length < 6) {
-      return 'Password minimal 6 karakter';
-    }
-    
+    if (value == null || value.isEmpty) return 'Password harus diisi';
+    if (value.length < 6) return 'Password minimal 6 karakter';
     return null;
   }
 
@@ -165,23 +145,10 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 40),
                 const Center(
-                  child: Text(
-                    'Masuk',
-                    style: TextStyle(
-                      fontSize: 24, 
-                      fontWeight: FontWeight.bold, 
-                      color: Color(0xFF015551)
-                    ),
-                  ),
+                  child: Text('Masuk', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF015551))),
                 ),
                 const SizedBox(height: 40),
-                const Text(
-                  'Email',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                const Text('Email', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _emailController,
@@ -191,40 +158,12 @@ class _LoginPageState extends State<LoginPage> {
                     hintText: 'example@example.com',
                     filled: true,
                     fillColor: const Color(0xFFB4E1E1),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Color(0xFF015551), width: 2),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, 
-                      vertical: 14
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Password',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                const Text('Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
@@ -235,40 +174,15 @@ class _LoginPageState extends State<LoginPage> {
                     filled: true,
                     fillColor: const Color(0xFFB4E1E1),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: const Color(0xFF015551),
-                      ),
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF015551)),
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
                         });
                       },
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Color(0xFF015551), width: 2),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, 
-                      vertical: 14
-                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -278,13 +192,7 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () {
                       Navigator.pushNamed(context, '/forgot-password');
                     },
-                    child: const Text(
-                      'Lupa Password?',
-                      style: TextStyle(
-                        color: Color.fromARGB(167, 0, 0, 0),
-                        fontSize: 14,
-                      ),
-                    ),
+                    child: const Text('Lupa Password?', style: TextStyle(color: Colors.black54, fontSize: 14)),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -296,29 +204,11 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF015551),
-                        disabledBackgroundColor: Colors.grey,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              'Masuk',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Masuk', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
                     ),
                   ),
                 ),
@@ -331,18 +221,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: RichText(
                       text: const TextSpan(
                         text: 'Belum punya akun? ',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.black, fontSize: 14),
                         children: [
-                          TextSpan(
-                            text: 'Daftar',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF015551),
-                            ),
-                          )
+                          TextSpan(text: 'Daftar', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF015551))),
                         ],
                       ),
                     ),
@@ -356,173 +237,4 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-}
-
-// Utility class untuk mengelola user session
-class UserSession {
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
-  static Future<Map<String, dynamic>?> getUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString('user_data');
-    if (userDataString != null) {
-      return json.decode(userDataString);
-    }
-    return null;
-  }
-
-  static Future<bool> isLoggedIn() async {
-    final token = await getToken();
-    return token != null && token.isNotEmpty;
-  }
-
-  // Fungsi untuk cek apakah user sudah onboarding
-  static Future<bool> isOnboardingCompleted() async {
-    final userData = await getUserData();
-    return userData?['onboardingCompleted'] ?? false;
-  }
-
-  static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('user_data');
-  }
-
-  // Fungsi untuk update status onboarding di local storage
-  static Future<void> updateOnboardingStatus(bool completed) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userData = await getUserData();
-    if (userData != null) {
-      userData['onboardingCompleted'] = completed;
-      await prefs.setString('user_data', json.encode(userData));
-    }
-  }
-
-  // Fungsi untuk mendapatkan header dengan token untuk API calls
-  static Future<Map<String, String>> getAuthHeaders() async {
-    final token = await getToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-}
-
-// HTTP Service class untuk API calls
-class ApiService {
-  static const String baseUrl = 'http://localhost:3000';
-
-  static Future<http.Response> get(String endpoint) async {
-    final headers = await UserSession.getAuthHeaders();
-    return await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-    );
-  }
-
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
-    final headers = await UserSession.getAuthHeaders();
-    return await http.post(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: json.encode(body),
-    );
-  }
-
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
-    final headers = await UserSession.getAuthHeaders();
-    return await http.put(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: json.encode(body),
-    );
-  }
-
-  static Future<http.Response> delete(String endpoint) async {
-    final headers = await UserSession.getAuthHeaders();
-    return await http.delete(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-    );
-  }
-
-  // Fungsi khusus untuk complete onboarding
-  static Future<bool> completeOnboarding() async {
-    try {
-      final response = await post('/api/complete-onboarding', {});
-      if (response.statusCode == 200) {
-        await UserSession.updateOnboardingStatus(true);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      print('Error completing onboarding: $e');
-      return false;
-    }
-  }
-}
-
-// Fungsi untuk menampilkan dialog sukses
-void _showSuccessDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        backgroundColor: Colors.black.withOpacity(0.7),
-        contentPadding: const EdgeInsets.all(40),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: const Icon(
-                Icons.person_outline,
-                size: 60,
-                color: Color.fromARGB(255, 1, 85, 51),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              "Daftar Akun\nBerhasil",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Tutup dialog
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/beranda', // Ganti dengan route homepage Anda
-                  (route) => false,
-                ); // Navigasi ke halaman homepage
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF57B4BA),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-              ),
-              child: const Text(
-                "Lanjutkan",
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
 }
