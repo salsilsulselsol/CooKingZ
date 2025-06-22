@@ -110,13 +110,19 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
     setState(() => _isLoadingFollowing = true);
     final baseUrl = dotenv.env['BASE_URL'];
     try {
-      final headers = await _getAuthHeaders(); // <-- Gunakan token
-      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}/following'), headers: headers); // <-- Gunakan widget.userId
+      final headers = await _getAuthHeaders();
+      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}/following'), headers: headers);
+      
       if(mounted && response.statusCode == 200) {
-        final List<dynamic> body = json.decode(response.body)['data'];
+        final responseBody = json.decode(response.body);
+        
+        // ==== LOG DEBUG ====
+        print('[DEBUG] RAW JSON from /following: $responseBody');
+        
+        final List<dynamic> body = responseBody['data'];
         setState(() {
           _followingList = body.map((data) => FollowerUser.fromJson(data)).toList();
-          _filteredFollowingList = _followingList; // Inisialisasi list filter
+          _filteredFollowingList = _followingList;
         });
       }
     } catch(e) {
@@ -131,13 +137,19 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
     setState(() => _isLoadingFollowers = true);
     final baseUrl = dotenv.env['BASE_URL'];
     try {
-      final headers = await _getAuthHeaders(); // <-- Gunakan token
-      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}/followers'), headers: headers); // <-- Gunakan widget.userId
+      final headers = await _getAuthHeaders();
+      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}/followers'), headers: headers);
+
       if(mounted && response.statusCode == 200) {
-        final List<dynamic> body = json.decode(response.body)['data'];
+        final responseBody = json.decode(response.body);
+
+        // ==== LOG DEBUG ====
+        print('[DEBUG] RAW JSON from /followers: $responseBody');
+        
+        final List<dynamic> body = responseBody['data'];
         setState(() {
           _followersList = body.map((data) => FollowerUser.fromJson(data)).toList();
-          _filteredFollowersList = _followersList; // Inisialisasi list filter
+          _filteredFollowersList = _followersList;
         });
       }
     } catch(e) {

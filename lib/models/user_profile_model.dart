@@ -1,5 +1,3 @@
-// lib/models/user_profile_model.dart
-
 import 'dart:convert';
 
 UserProfile userProfileFromJson(String str) => UserProfile.fromJson(json.decode(str));
@@ -16,8 +14,9 @@ class UserProfile {
     final String? profilePicture; 
 
     final int recipeCount;
-    final int followersCount;
+    int followersCount;
     final int followingCount;
+    bool isFollowedByMe;
 
     UserProfile({
         required this.id,
@@ -30,9 +29,9 @@ class UserProfile {
         required this.recipeCount,
         required this.followersCount,
         required this.followingCount,
+        required this.isFollowedByMe,
     });
 
-    // ==== PERBAIKAN UTAMA ADA DI FUNGSI INI ====
     factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
         id: json["id"] as int, 
         username: json["username"]?.toString() ?? 'unknown_username', 
@@ -40,15 +39,13 @@ class UserProfile {
         email: json["email"]?.toString() ?? 'unknown@example.com', 
         cookingLevel: json["cooking_level"] as String?, 
         bio: json["bio"] as String?, 
-        // Menggunakan key "profile_picture" yang benar
         profilePicture: json["profile_picture"] as String?, 
-        // Menggunakan key "recipe_count" yang benar
         recipeCount: (json["recipe_count"] as num?)?.toInt() ?? 0, 
         followersCount: (json["followers_count"] as num?)?.toInt() ?? 0, 
-        followingCount: (json["following_count"] as num?)?.toInt() ?? 0, 
+        followingCount: (json["following_count"] as num?)?.toInt() ?? 0,
+        isFollowedByMe: json["isFollowedByMe"] ?? false,
     );
 
-    // Kita juga sesuaikan di toJson untuk konsistensi
     Map<String, dynamic> toJson() => {
         "id": id,
         "username": username,
@@ -60,5 +57,6 @@ class UserProfile {
         "recipe_count": recipeCount, 
         "followers_count": followersCount,
         "following_count": followingCount,
+        "isFollowedByMe": isFollowedByMe,
     };
 }

@@ -3,8 +3,9 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
-const authenticateToken = require('../middleware/authMiddleware'); // <<< Import middleware autentikasi
-const upload = require('../middleware/upload'); // Asumsi ini digunakan untuk upload file
+const authenticateToken = require('../middleware/authMiddleware');
+const optionalAuthenticateToken = require('../middleware/optionalAuthMiddleware');
+const upload = require('../middleware/upload');
 
 // --- Rute yang membutuhkan autentikasi (hanya bisa diakses oleh user yang login) ---
 
@@ -31,18 +32,15 @@ router.delete('/:id', authenticateToken, userController.deleteUser); // <<< DELE
 // --- Rute publik (bisa diakses tanpa login, tapi req.userId tidak akan ada) ---
 
 // GET profil pengguna berdasarkan ID (profil publik)
-router.get('/:id', userController.getUserById);
+router.get('/:id', optionalAuthenticateToken, userController.getUserById);
 
 // GET resep milik seorang user berdasarkan ID (resep publik user)
 router.get('/:id/recipes', userController.getUserRecipes);
 
 // GET daftar pengguna yang DIIKUTI oleh user dengan :id
-router.get('/:id/following', userController.getFollowingList); // Disini req.userId digunakan untuk isFollowedByMe
+router.get('/:id/following', optionalAuthenticateToken, userController.getFollowingList);
 
 // GET daftar PENGGIKUT dari user dengan :id
-router.get('/:id/followers', userController.getFollowersList); // Disini req.userId digunakan untuk isFollowedByMe
-
-
-
+router.get('/:id/followers', optionalAuthenticateToken, userController.getFollowersList);
 
 module.exports = router;

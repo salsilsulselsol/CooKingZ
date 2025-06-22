@@ -219,12 +219,12 @@ exports.updateMyProfile = async (req, res) => {
 exports.getFollowingList = async (req, res) => {
     try {
         const profileUserId = req.params.id; // ID profil yang sedang dilihat
-        const loggedInUserId = req.user.userId; // ID pengguna yang login (dari token, bisa null jika rute publik)
+        // PERBAIKAN: Cek dulu apakah req.user ada sebelum mengakses .userId
+        const loggedInUserId = req.user ? req.user.userId : null;
 
         const query = `
             SELECT 
                 u.id, u.username, u.full_name, u.profile_picture,
-                -- Cek apakah ada relasi follow dari pengguna login ke setiap user (u.id) di daftar ini
                 CASE WHEN EXISTS (
                     SELECT 1 FROM user_followers 
                     WHERE follower_id = ? AND following_id = u.id
@@ -233,7 +233,9 @@ exports.getFollowingList = async (req, res) => {
             JOIN user_followers uf ON u.id = uf.following_id
             WHERE uf.follower_id = ?
         `;
-        const [following] = await db.query(query, [loggedInUserId || 0, profileUserId]); // loggedInUserId bisa null, gunakan 0 sebagai fallback
+        // Gunakan loggedInUserId (yang bisa null) dengan aman
+        const [following] = await db.query(query, [loggedInUserId || 0, profileUserId]); 
+        
         console.log(`Daftar following untuk user ID ${profileUserId} berhasil diambil. Jumlah: ${following.length}`);
         res.status(200).json({ status: 'success', message: 'Daftar diikuti berhasil diambil.', data: following });
     } catch (error) {
@@ -246,12 +248,12 @@ exports.getFollowingList = async (req, res) => {
 exports.getFollowersList = async (req, res) => {
     try {
         const profileUserId = req.params.id; // ID profil yang sedang dilihat
-        const loggedInUserId = req.user.userId; // ID pengguna yang login (dari token, bisa null jika rute publik)
+        // PERBAIKAN: Cek dulu apakah req.user ada sebelum mengakses .userId
+        const loggedInUserId = req.user ? req.user.userId : null;
 
         const query = `
             SELECT 
                 u.id, u.username, u.full_name, u.profile_picture,
-                -- Cek apakah ada relasi follow dari pengguna login ke setiap user (u.id) di daftar ini
                 CASE WHEN EXISTS (
                     SELECT 1 FROM user_followers 
                     WHERE follower_id = ? AND following_id = u.id
@@ -260,7 +262,9 @@ exports.getFollowersList = async (req, res) => {
             JOIN user_followers uf ON u.id = uf.follower_id
             WHERE uf.following_id = ?
         `;
-        const [followers] = await db.query(query, [loggedInUserId || 0, profileUserId]); // loggedInUserId bisa null, gunakan 0 sebagai fallback
+        // Gunakan loggedInUserId (yang bisa null) dengan aman
+        const [followers] = await db.query(query, [loggedInUserId || 0, profileUserId]); 
+
         console.log(`Daftar followers untuk user ID ${profileUserId} berhasil diambil. Jumlah: ${followers.length}`);
         res.status(200).json({ status: 'success', message: 'Daftar pengikut berhasil diambil.', data: followers });
     } catch (error) {

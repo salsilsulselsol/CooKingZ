@@ -25,7 +25,6 @@ class ProfilUtama extends StatefulWidget {
 class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   
-  // Variabel untuk menyimpan data dan status UI
   UserProfile? _userProfile;
   List<Food> _userRecipes = [];
   List<Food> _favoriteRecipes = [];
@@ -56,14 +55,8 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     };
   }
 
-  // ==== KUNCI REFRESH #1 ====
-  // Fungsi terpusat untuk mengambil semua data dari server dan memperbarui UI.
   Future<void> _loadAllData() async {
     if (!mounted) return;
-
-    // ---> TAMBAHKAN LOG DI SINI <---
-    print('[DEBUG ProfilUtama] ==> Memulai eksekusi _loadAllData...');
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -81,8 +74,6 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
           _favoriteRecipes = favorites;
           _isLoading = false;
         });
-        // ---> TAMBAHKAN LOG DI SINI <---
-        print('[DEBUG ProfilUtama] ==> Selesai memuat data. Nama baru: "${user.fullName}". UI seharusnya diperbarui.');
       }
     } catch (e) {
       if (mounted) {
@@ -90,7 +81,6 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
           _errorMessage = "Terjadi kesalahan: ${e.toString()}";
           _isLoading = false;
         });
-        print('[DEBUG ProfilUtama] ==> GAGAL memuat data. Error: $e');
       }
     }
   }
@@ -101,24 +91,11 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     final headers = await _getAuthHeaders();
     
     final uri = Uri.parse('$baseUrl$endpoint?cache_buster=${DateTime.now().millisecondsSinceEpoch}');
-    
     final response = await http.get(uri, headers: headers);
 
     if (response.statusCode == 200) {
-      // ==========================================================
-      // **DEBUGGING DATA MENTAH DARI SERVER**
-      // ==========================================================
       final responseData = json.decode(response.body);
-      print('==================== DEBUG DATA ====================');
-      print('[DEBUG ProfilUtama] RAW JSON RESPONSE: $responseData');
-      
-      final user = UserProfile.fromJson(responseData['data']);
-      print('[DEBUG ProfilUtama] HASIL PARSING - Nama: ${user.fullName}');
-      print('[DEBUG ProfilUtama] HASIL PARSING - Path Gambar: ${user.profilePicture}');
-      print('====================================================');
-      // ==========================================================
-      
-      return user;
+      return UserProfile.fromJson(responseData['data']);
     } else {
       throw Exception('Gagal memuat profil (Status: ${response.statusCode}) - Body: ${response.body}');
     }
@@ -150,25 +127,13 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     }
   }
 
-  // ==== KUNCI REFRESH #2 ====
-  // Fungsi ini menangani perpindahan ke halaman edit dan MENUNGGU hasilnya.
   void _navigateToEditProfile() async {
-    print('[DEBUG ProfilUtama] Tombol "Edit Profil" ditekan. Membuka halaman edit...');
-    
-    // Pergi ke halaman edit dan TUNGGU sampai halaman itu ditutup
     final result = await Navigator.push(
       context, 
       MaterialPageRoute(builder: (context) => const EditProfil())
     );
-    
-    // Ini akan dieksekusi setelah halaman edit ditutup
-    print('[DEBUG ProfilUtama] Kembali dari halaman edit. Menerima sinyal: $result');
-
     if (result == true && mounted) {
-      print('[DEBUG ProfilUtama] Sinyal adalah "true", MEMANGGIL FUNGSI _loadAllData UNTUK REFRESH...');
       _loadAllData();
-    } else {
-      print('[DEBUG ProfilUtama] Sinyal BUKAN "true" (atau halaman sudah tidak ada). TIDAK MELAKUKAN REFRESH.');
     }
   }
   
@@ -185,6 +150,47 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
         _loadAllData();
       }
   }
+
+  // --- FUNGSI BARU UNTUK LOGIKA FOLLOW/UNFOLLOW ---
+  Future<void> _toggleFollow() async {
+    // Pastikan profil yang dilihat adalah profil orang lain
+    if (_isMyProfile || _userProfile == null) return;
+
+    // Tentukan endpoint berdasarkan status follow saat ini
+    final String action = _userProfile!.isFollowedByMe ? 'unfollow' : 'follow';
+    final url = '${dotenv.env['BASE_URL']}/users/${_userProfile!.id}/$action';
+    
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await _getAuthHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        // Jika berhasil, langsung perbarui UI untuk respons instan
+        setState(() {
+          // Balik status follow
+          _userProfile!.isFollowedByMe = !_userProfile!.isFollowedByMe;
+          // Tambah atau kurangi jumlah followers
+          if (_userProfile!.isFollowedByMe) {
+            _userProfile!.followersCount++;
+          } else {
+            _userProfile!.followersCount--;
+          }
+        });
+      } else {
+        final body = json.decode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${body['message'] ?? 'Gagal melakukan aksi'}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $e')),
+      );
+    }
+  }
+  // ---------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +239,8 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
 
     if (profilePicPath != null && profilePicPath.isNotEmpty) {
       final baseUrl = dotenv.env['BASE_URL']!;
-      profileImage = NetworkImage('$baseUrl$profilePicPath');
+      final fullUrl = '$baseUrl$profilePicPath?v=${DateTime.now().millisecondsSinceEpoch}';
+      profileImage = NetworkImage(fullUrl);
     } else {
       profileImage = const AssetImage('images/default_avatar.png'); 
     }
@@ -323,8 +330,6 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     );
   }
   
-  // ==== KUNCI REFRESH #3 ====
-  // Tombol "Edit Profil" sekarang memanggil fungsi _navigateToEditProfile.
   Widget _buildMyProfileActions() {
     return Row(
       children: [
@@ -360,33 +365,47 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     );
   }
 
+  // --- WIDGET TOMBOL DINAMIS UNTUK FOLLOW/UNFOLLOW ---
   Widget _buildOtherProfileActions() {
+    bool isFollowing = _userProfile?.isFollowedByMe ?? false;
+
     return Row(
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () { /* TODO: Logika Follow/Unfollow */ },
-            child: const Text('Ikuti'),
+            onPressed: _toggleFollow,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isFollowing ? Colors.grey[300] : const Color(0xFF0A6859),
+              foregroundColor: isFollowing ? Colors.black : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+            child: Text(isFollowing ? 'Diikuti' : 'Ikuti', style: const TextStyle(fontSize: 13)),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
             onPressed: () { /* TODO: Logika Kirim Pesan */ },
-            child: const Text('Kirim Pesan'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD9D9D9),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+            child: const Text('Kirim Pesan', style: TextStyle(fontSize: 13)),
           ),
         ),
       ],
     );
   }
+  // --------------------------------------------------
 
   Widget _buildStatCounter(String count, String label, int userId) {
     return GestureDetector(
       onTap: () {
-        if (label == 'Mengikuti') {
-          _navigateToFollowerPage(0, userId);
-        } else if (label == 'Pengikut') {
-          _navigateToFollowerPage(1, userId);
+        if (label == 'Mengikuti' || label == 'Pengikut') {
+          _navigateToFollowerPage(label == 'Mengikuti' ? 0 : 1, userId);
         }
       },
       child: Column(
