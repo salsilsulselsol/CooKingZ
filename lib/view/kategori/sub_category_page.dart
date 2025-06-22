@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/header_b_n_s.dart'; // Pastikan ini mengacu ke CustomHeader yang baru
-import 'package:masak2/models/food_model.dart'; // Import Food model yang diperbarui
-import 'package:masak2/view/component/food_card_widget.dart'; // Import FoodCard widget yang diperbarui
+import 'package:masak2/models/food_model.dart'; // Import Food model
+import 'package:masak2/view/component/food_card_widget.dart'; // Import FoodCard widget
 import 'package:masak2/view/component/category_tab.dart'; // Import CategoryTabBar
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -61,8 +61,22 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
 
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
-        // Map JSON data to Food objects using the updated Food.fromJson
-        return data.map((json) => Food.fromJson(json)).toList();
+        // Memetakan data JSON dari API ke format yang diharapkan oleh Food.fromJson
+        // agar tidak muncul 'Resep Tanpa Nama' atau masalah lainnya.
+        return data.map((jsonItem) {
+          return Food.fromJson({
+            'id': jsonItem['id'],
+            'title': jsonItem['name'], // Mengubah 'name' dari API menjadi 'title' yang diharapkan Food.fromJson
+            'description': jsonItem['description'],
+            'image_url': jsonItem['image'], // Mengubah 'image' dari API menjadi 'image_url'
+            'cooking_time': jsonItem['cookingTime'], // Mengubah 'cookingTime' dari API menjadi 'cooking_time'
+            'avg_rating': jsonItem['rating'], // Mengubah 'rating' dari API menjadi 'avg_rating'
+            'total_reviews': jsonItem['likes'], // Mengubah 'likes' dari API menjadi 'total_reviews'
+            'price': jsonItem['price'],
+            'difficulty': jsonItem['difficulty'],
+            // 'detailRoute' tidak ada di API, jadi bisa diabaikan atau diset null
+          });
+        }).toList();
       } else {
         throw Exception('Failed to load recipes for category $categoryId: ${response.statusCode} ${response.body}');
       }
