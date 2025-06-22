@@ -196,23 +196,36 @@ exports.getAllTrendingRecipes = async (req, res) => {
     try {
         const [rows] = await db.query(
             `SELECT 
-                r.id, r.title, r.image_url, u.username, u.profile_picture, 
-                AVG(rev.rating) as avg_rating, COUNT(rev.id) as total_reviews, 
-                r.description, r.cooking_time, r.price as price, r.difficulty
-             FROM recipes r
-             LEFT JOIN reviews rev ON r.id = rev.recipe_id
-             JOIN users u ON r.user_id = u.id
-             GROUP BY 
-                r.id, r.title, r.image_url, u.username, u.profile_picture, 
-                r.description, r.cooking_time, r.price, r.difficulty
-             ORDER BY avg_rating DESC, total_reviews DESC
-             LIMIT 50` // <<< LIMIT 50 untuk halaman TrendingResep
+                r.id, 
+                r.title, 
+                r.image_url, 
+                u.username, 
+                u.profile_picture, 
+                -- Menghitung jumlah review, jika tidak ada maka 0
+                COUNT(rev.id) as total_reviews, 
+                -- Menghitung rating rata-rata, jika tidak ada review maka 0
+                COALESCE(AVG(rev.rating), 0) as avg_rating,
+                r.description, 
+                r.cooking_time, 
+                r.price, -- 'as price' tidak wajib jika nama kolom sama
+                r.difficulty,
+                r.favorites_count as likes -- Mengambil jumlah suka
+            FROM recipes r
+            JOIN users u ON r.user_id = u.id
+            -- LEFT JOIN agar resep tanpa review tetap muncul
+            LEFT JOIN reviews rev ON r.id = rev.recipe_id
+            GROUP BY r.id -- Group by primary key resep sudah cukup jika SQL mode tidak strict
+            -- Urutkan berdasarkan jumlah review terbanyak, lalu rating tertinggi
+            ORDER BY total_reviews DESC, avg_rating DESC
+            LIMIT 50`
         );
         console.log(`Fetched all trending recipes count: ${rows.length}`);
+        
+        // Mengirim respons dengan format yang benar
         res.json({
             status: 'success',
             message: 'Semua resep trending berhasil diambil',
-            data: rows
+            data: rows // Kunci 'data' berisi array resep
         });
     } catch (error) {
         console.error('Error fetching all trending recipes:', error);
@@ -223,7 +236,6 @@ exports.getAllTrendingRecipes = async (req, res) => {
         });
     }
 };
-
 
 // --- FUNGSI UNTUK API PENCARIAN (GET /search) ---
 exports.searchRecipes = async (req, res) => {
