@@ -8,6 +8,7 @@ class FoodCard extends StatelessWidget {
   final Function()? onFavoritePressed;
   final Function()? onCardTap;
 
+
   const FoodCard({
     Key? key,
     required this.food,
@@ -34,92 +35,102 @@ class FoodCard extends StatelessWidget {
   }
 
   Widget _buildFoodImage() {
-    // ==========================================================
-    // **PERUBAHAN UTAMA ADA DI SINI**
-    // Kita hanya cek apakah path gambar tidak kosong.
-    // ==========================================================
-    final bool hasImage = food.image.isNotEmpty;
-    final String? imageUrl = hasImage ? '${dotenv.env['BASE_URL']}${food.image}' : null;
+  final String? imageUrl = food.image;
+  final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
-    final String ratingText = (food.rating == null || food.rating == 0) ? '-' : food.rating!.toStringAsFixed(1);
+  final String ratingText = (food.rating == null || food.rating == 0)
+      ? '-'
+      : food.rating!.toStringAsFixed(1);
 
-    return Container(
-      height: AppTheme.foodCardImageHeight,
-      width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
-            child: Container(
-              color: Colors.grey[200],
-              child: hasImage && imageUrl != null
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.0,
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.broken_image, color: Colors.grey[600], size: 40);
-                      },
-                    )
-                  : Icon(Icons.image_not_supported, color: Colors.grey[600], size: 40),
-            ),
-          ),
-          
-          Positioned(
-            top: AppTheme.spacingMedium,
-            right: AppTheme.spacingMedium,
-            child: GestureDetector(
-              onTap: onFavoritePressed,
-              child: Container(
-                width: AppTheme.favoriteButtonSize,
-                height: AppTheme.favoriteButtonSize,
-                child: Center(
-                  child: Image.asset(
-                    'images/love.png',
-                    width: AppTheme.favoriteIconSize,
-                    height: AppTheme.favoriteIconSize,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.favorite_border, color: Colors.white, size: 16);
+  return Container(
+    height: AppTheme.foodCardImageHeight,
+    width: double.infinity,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+          child: Container(
+            color: Colors.grey[200],
+            child: hasImage
+                ? Image.network(
+                    imageUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.0,
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      );
                     },
-                  ),
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.broken_image,
+                          color: Colors.grey[600], size: 40);
+                    },
+                  )
+                : Icon(Icons.image_not_supported,
+                    color: Colors.grey[600], size: 40),
+          ),
+        ),
+
+        // Favorite Icon
+        Positioned(
+          top: AppTheme.spacingMedium,
+          right: AppTheme.spacingMedium,
+          child: GestureDetector(
+            onTap: onFavoritePressed,
+            child: Container(
+              width: AppTheme.favoriteButtonSize,
+              height: AppTheme.favoriteButtonSize,
+              child: Center(
+                child: Image.asset(
+                  'images/love.png',
+                  width: AppTheme.favoriteIconSize,
+                  height: AppTheme.favoriteIconSize,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.favorite_border,
+                        color: Colors.white, size: 16);
+                  },
                 ),
               ),
             ),
           ),
-          
-          Positioned(
-            top: AppTheme.spacingMedium,
-            left: AppTheme.spacingMedium,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha((0.5 * 255).toInt()),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.star, color: Colors.yellow, size: 14),
-                  const SizedBox(width: 4),
-                  Text(ratingText, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                ],
-              ),
+        ),
+
+        // Rating Badge
+        Positioned(
+          top: AppTheme.spacingMedium,
+          left: AppTheme.spacingMedium,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.star, color: Colors.yellow, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  ratingText,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildFoodInfo() {
     return IntrinsicHeight(
