@@ -55,7 +55,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     final int? userIdInt = prefs.getInt('user_id'); // Kunci harus SAMA dengan saat menyimpan
     return userIdInt;
   }
-  
+
   // Fungsi BARU untuk mendapatkan Access Token dari SharedPreferences
   Future<String?> _getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -392,7 +392,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   // Fungsi untuk mengirim permintaan jadwal
   Future<void> _addMealSchedule() async {
-    
     if (_currentLoggedInUserId == null) {
       _showErrorDialog(context, 'Penjadwalan Gagal', 'Anda harus login untuk menjadwalkan menu.');
       return;
@@ -411,7 +410,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         : 'http://10.0.2.2:3000/api/utilities/meal-schedules';
 
     final String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
-      print('DEBUG: _currentLoggedInUserId = $_currentLoggedInUserId');
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -566,7 +565,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         body: Center(
           child: CircularProgressIndicator(color: AppTheme.primaryColor),
         ),
-        
       );
     }
 
@@ -632,7 +630,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 title: recipe['title'] as String? ?? 'Resep Tidak Ditemukan',
                 likes: recipe['favorites_count'] as int? ?? 0,
                 comments: recipe['comments_count'] as int? ?? 0,
-                onBackPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/beranda', (route) => false),
+                onBackPressed: () => Navigator.pop(context),
                 onLikePressed: _toggleFavorite,
                 onSharePressed: () {
                   Navigator.push(
