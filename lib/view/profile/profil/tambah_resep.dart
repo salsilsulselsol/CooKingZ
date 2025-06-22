@@ -41,9 +41,6 @@ class _BuatResepState extends State<BuatResep> {
 
 // --- FUNGSI BARU UNTUK MENGAMBIL KATEGORI DARI API ---
   Future<void> _fetchCategories() async {
-    // Ganti URL ini sesuai dengan alamat IP lokal Anda jika menjalankan di emulator Android.
-    // Untuk web: 'http://localhost:3000/categories'
-    // Untuk emulator Android: 'http://10.0.2.2:3000/categories'
     const String apiUrl = 'http://localhost:3000/categories';
 
     try {
@@ -295,6 +292,17 @@ class _BuatResepState extends State<BuatResep> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Semua field (termasuk Gambar) harus diisi!')),
       );
+      print('VALIDATION FAILED: Some required fields are empty.');
+      print('Title: $title');
+      print('Description: $description');
+      print('Estimated Time: $estimatedTime');
+      print('Price: $price');
+      print('Difficulty: $difficulty');
+      print('Category ID: $categoryId');
+      print('Tools: $tools (isEmpty: ${tools.isEmpty})');
+      print('Ingredients: $ingredients (isEmpty: ${ingredients.isEmpty})');
+      print('Instructions: $instructions (isEmpty: ${instructions.isEmpty})');
+      print('Selected Image: ${_selectedImage != null}');
       return; // Hentikan eksekusi fungsi.
     }
 
@@ -315,10 +323,19 @@ class _BuatResepState extends State<BuatResep> {
     request.fields['ingredients'] = json.encode(ingredients);
     request.fields['instructions'] = json.encode(instructions);
 
+    // --- DEBUGGING: PRINT THE FIELDS BEING SENT ---
+    print('--- Sending Request Fields ---');
+    request.fields.forEach((key, value) {
+      print('$key: $value');
+    });
+    print('----------------------------');
+
     // 6. MENAMBAHKAN FILE GAMBAR (WAJIB)
     // `kIsWeb` digunakan untuk membedakan logika penanganan file untuk web dan mobile.
     if (_selectedImage != null) {
       final String? imageMimeType = _selectedImage!.mimeType;
+      print('Image MIME Type: $imageMimeType');
+      print('Selected Image Name: ${_selectedImage!.name}');
 
       if (kIsWeb) {
         // Untuk web: file dibaca sebagai byte array (`Uint8List`).
@@ -329,6 +346,7 @@ class _BuatResepState extends State<BuatResep> {
           filename: _selectedImage!.name,
           contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
         ));
+        print('Image added for web (bytes). Size: ${bytes.length} bytes');
       } else {
         // Untuk mobile/desktop: file ditambahkan menggunakan path-nya.
         request.files.add(await http.MultipartFile.fromPath(
@@ -337,12 +355,18 @@ class _BuatResepState extends State<BuatResep> {
           filename: _selectedImage!.name,
           contentType: imageMimeType != null ? MediaType.parse(imageMimeType) : null,
         ));
+        print('Image added for mobile (path): ${_selectedImage!.path}');
       }
+    } else {
+      print('No image selected, this should have been caught by validation.');
     }
+
 
     // 7. MENAMBAHKAN FILE VIDEO (OPSIONAL)
     if (_selectedVideo != null) {
       final String? videoMimeType = _selectedVideo!.mimeType;
+      print('Video MIME Type: $videoMimeType');
+      print('Selected Video Name: ${_selectedVideo!.name}');
       if (kIsWeb) {
         final bytes = await _selectedVideo!.readAsBytes();
         request.files.add(http.MultipartFile.fromBytes(
@@ -351,6 +375,7 @@ class _BuatResepState extends State<BuatResep> {
           filename: _selectedVideo!.name,
           contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
         ));
+        print('Video added for web (bytes). Size: ${bytes.length} bytes');
       } else {
         request.files.add(await http.MultipartFile.fromPath(
           'video',
@@ -358,17 +383,26 @@ class _BuatResepState extends State<BuatResep> {
           filename: _selectedVideo!.name,
           contentType: videoMimeType != null ? MediaType.parse(videoMimeType) : null,
         ));
+        print('Video added for mobile (path): ${_selectedVideo!.path}');
       }
+    } else {
+      print('No video selected (optional).');
     }
 
     // 8. MENGIRIM REQUEST DAN MENANGANI RESPON
     try {
+      print('Sending request to: ${request.url}');
       var response = await request.send(); // Mengirim request ke server.
       var responseData = await response.stream.transform(utf8.decoder).join(); // Membaca data respons.
-      var jsonResponse = json.decode(responseData); // Mengurai respons JSON dari server.
+
+      print('--- Server Response ---');
+      print('Status Code: ${response.statusCode}');
+      print('Response Data: $responseData');
+      print('-----------------------');
 
       // Memeriksa status code dari respons. 201 (Created) menandakan sukses.
       if (response.statusCode == 201) {
+        var jsonResponse = json.decode(responseData); // Mengurai respons JSON dari server.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Resep berhasil ditambahkan! ID: ${jsonResponse['recipeId']}')),
         );
@@ -396,6 +430,7 @@ class _BuatResepState extends State<BuatResep> {
         });
       } else {
         // Jika gagal, tampilkan pesan error dari server.
+        var jsonResponse = json.decode(responseData);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal menambahkan resep: ${jsonResponse['message'] ?? 'Terjadi kesalahan tidak dikenal'}')),
         );
