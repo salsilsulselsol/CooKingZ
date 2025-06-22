@@ -383,19 +383,6 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
             child: Text(isFollowing ? 'Diikuti' : 'Ikuti', style: const TextStyle(fontSize: 13)),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () { /* TODO: Logika Kirim Pesan */ },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD9D9D9),
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-              padding: const EdgeInsets.symmetric(vertical: 8),
-            ),
-            child: const Text('Kirim Pesan', style: TextStyle(fontSize: 13)),
-          ),
-        ),
       ],
     );
   }

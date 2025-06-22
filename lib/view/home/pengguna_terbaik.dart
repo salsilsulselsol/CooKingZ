@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:masak2/view/profile/profil/profil_utama.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -234,7 +235,12 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
             user: userProfile, 
             isFollowing: false, 
             onFollowToggle: () => _toggleFollow(userProfile.id),
-            useGreenBackground: useGreenBackground, 
+            useGreenBackground: useGreenBackground,
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) => ProfilUtama(userId: userProfile.id),
+              ));
+            }, 
           );
         },
       ),
@@ -270,9 +276,14 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
           final userProfile = users[index];
           return ChefCard(
             user: userProfile, 
-            isFollowing: false, 
+            isFollowing: userProfile.isFollowedByMe, 
             onFollowToggle: () => _toggleFollow(userProfile.id),
             useGreenBackground: useGreenBackground, 
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) => ProfilUtama(userId: userProfile.id),
+              ));
+            },
           );
         },
       ),
