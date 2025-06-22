@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const favoriteRoutes = require('./routes/favoriteRoutes');
 const registerRoutes = require('./routes/registerRoutes');
 const loginRoutes = require('./routes/loginRoutes'); // Jika Anda menggunakan login
+const forgotPasswordRoutes = require('./routes/forgotPasswordRoutes'); // <<< ADD THIS (TAMBAHKAN INI)
 const categoryRoutes = require('./routes/categoryRoutes');
 const discoveryRoutes = require('./routes/discoveryRoutes'); // Untuk /home dan /search
 const utilityRoutes = require('./routes/utilityRoutes'); // <<< TAMBAHKAN INI untuk jadwal & notifikasi
@@ -26,16 +27,14 @@ app.use(morgan('dev'));
 // Setel direktori 'uploads' sebagai folder statis yang dapat diakses publik.
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-
 // Pasang rute-rute aplikasi Anda
 app.use('/register', registerRoutes);
-app.use('/login', loginRoutes); 
+app.use('/login', loginRoutes); // Jika Anda menggunakan login
+app.use('/forgot-password', forgotPasswordRoutes); // <<< TAMBAHKAN INI untuk forgot password
 app.use('/recipes', recipeRoutes);
 app.use('/users', userRoutes);
 app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, biasanya /favorites
 app.use('/categories', categoryRoutes);
-app.use('/trending-resep', discoveryRoutes); // Untuk rute /trending-recipe
-app.use('/pengguna-terbaik', userRoutes); // Untuk rute /latest
 
 // Pasang discoveryRoutes di '/home' dengan middleware autentikasi opsional
 app.use('/home', (req, res, next) => {
@@ -52,6 +51,8 @@ app.use('/home', (req, res, next) => {
 // Pasang utilityRoutes di '/api/utilities' dan lindungi dengan authenticateToken
 // Ini berarti setiap permintaan ke /api/utilities/* akan melalui autentikasi JWT.
 app.use('/api/utilities', authenticateToken, utilityRoutes); // <<< TAMBAHKAN INI
+app.use('/forgot-password', forgotPasswordRoutes); // <<< ADD THIS (TAMBAHKAN INI)
+
 
 // Middleware penanganan 404 generik. Ini akan tertrigger jika TIDAK ADA rute di atas yang match.
 app.use((req, res, next) => {
