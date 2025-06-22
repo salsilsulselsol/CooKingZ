@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:masak2/view/kategori/sub_category_page.dart';
-import 'package:masak2/view/component/bottom_navbar.dart';
-import 'package:masak2/view/component/header_b_n_s.dart';
+import 'package:masak2/view/kategori/sub_category_page.dart'; // Pastikan path ini benar
+import 'package:masak2/view/component/bottom_navbar.dart'; // Pastikan path ini benar
+import 'package:masak2/view/component/header_b_n_s.dart'; // Pastikan path ini benar
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -15,11 +15,14 @@ class CategoryPage extends StatefulWidget {
 
 class _CategoryPageState extends State<CategoryPage> {
   final Color primaryColor = const Color(0xFF005A4D);
-  final Color accentTeal = const Color(0xFF57B4BA);
+  // final Color accentTeal = const Color(0xFF57B4BA); // Tidak digunakan langsung di sini
 
   late Future<List<Map<String, dynamic>>> _categoriesFuture;
   List<Map<String, dynamic>> _categories = [];
 
+  // Sesuaikan URL BASE_URL ini dengan alamat IP lokal Anda jika di emulator/perangkat fisik
+  // Untuk emulator Android, gunakan 10.0.2.2
+  // Untuk perangkat fisik, gunakan IP address komputer Anda (contoh: 192.168.1.xxx)
   final String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 
   @override
@@ -47,6 +50,7 @@ class _CategoryPageState extends State<CategoryPage> {
   @override
   Widget build(BuildContext context) {
     return BottomNavbar(
+      // BottomNavbar membungkus konten utama
       _buildMainContent(),
     );
   }
@@ -62,13 +66,19 @@ class _CategoryPageState extends State<CategoryPage> {
             CustomHeader(
               title: 'Kategori',
               titleColor: primaryColor,
+              // Karena CustomHeader yang baru punya showBackButton default true
+              // dan backRoute defaultnya pop, tidak perlu menambahkan `leading` di sini.
+              // Jika ini adalah halaman root, Anda mungkin ingin showBackButton: false.
+              showBackButton: false, // Sebagai halaman utama, mungkin tidak perlu tombol kembali
+              showNotificationButton: true, // Tampilkan tombol notifikasi
+              showSearchButton: true, // Tampilkan tombol pencarian
             ),
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: _categoriesFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator(color: primaryColor));
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: primaryColor)));
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -94,6 +104,7 @@ class _CategoryPageState extends State<CategoryPage> {
     List<Widget> gridItems = [];
 
     // Kategori pertama (besar)
+    // Pastikan ada setidaknya satu kategori sebelum mencoba mengakses _categories[0]
     if (_categories.isNotEmpty) {
       gridItems.add(_buildLargeCategory(_categories[0]));
       gridItems.add(const SizedBox(height: 16));
@@ -112,20 +123,23 @@ class _CategoryPageState extends State<CategoryPage> {
           ),
         );
       } else {
+        // Handle the case for the last odd category
         gridItems.add(
           Row(
             children: [
               Expanded(child: _buildSmallCategory(_categories[i])),
-              const Spacer(),
+              const Spacer(), // Use Spacer to push the single item to the left
             ],
           ),
         );
       }
+      // Add SizedBox for spacing between rows of small categories
       if (i + 2 < _categories.length || (i + 1 < _categories.length && _categories.length % 2 != 0)) {
         gridItems.add(const SizedBox(height: 16));
       }
     }
 
+    // Tambahkan ruang di bagian bawah agar tidak tertutup BottomNavbar
     gridItems.add(const SizedBox(height: 90));
 
     return SingleChildScrollView(
@@ -139,14 +153,16 @@ class _CategoryPageState extends State<CategoryPage> {
   Widget _buildLargeCategory(Map<String, dynamic> category) {
     final int categoryId = category['id'] as int? ?? 0;
     final String categoryName = category['name'] as String? ?? 'Unknown Category';
-    final String imageUrl = category['image_url'] as String? ?? '';
+    // MENGHAPUS $_baseUrl/uploads/ karena backend sudah mengembalikan URL lengkap
+    final String imageUrl = category['image_url'] as String? ?? 'images/placeholder_image.png';
+
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => BottomNavbar(
+            builder: (context) => BottomNavbar( // Membungkus SubCategoryPage dengan BottomNavbar
               SubCategoryPage(
                 categoryName: categoryName,
                 categoryId: categoryId,
@@ -193,6 +209,7 @@ class _CategoryPageState extends State<CategoryPage> {
                   );
                 },
                 errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
+                  // Ganti dengan path ke gambar placeholder Anda jika imageUrl dari API gagal
                   return Image.asset('images/placeholder_image.png', fit: BoxFit.cover);
                 },
               ),
@@ -206,14 +223,15 @@ class _CategoryPageState extends State<CategoryPage> {
   Widget _buildSmallCategory(Map<String, dynamic> category) {
     final int categoryId = category['id'] as int? ?? 0;
     final String categoryName = category['name'] as String? ?? 'Unknown Category';
-    final String imageUrl = category['image_url'] as String? ?? '';
+    // MENGHAPUS $_baseUrl/uploads/ karena backend sudah mengembalikan URL lengkap
+    final String imageUrl = category['image_url'] as String? ?? 'images/placeholder_image.png';
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => BottomNavbar(
+            builder: (context) => BottomNavbar( // Membungkus SubCategoryPage dengan BottomNavbar
               SubCategoryPage(
                 categoryName: categoryName,
                 categoryId: categoryId,
@@ -246,6 +264,7 @@ class _CategoryPageState extends State<CategoryPage> {
                   );
                 },
                 errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
+                  // Ganti dengan path ke gambar placeholder Anda jika imageUrl dari API gagal
                   return Image.asset('images/placeholder_image.png', fit: BoxFit.cover);
                 },
               ),
