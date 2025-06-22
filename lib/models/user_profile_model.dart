@@ -1,4 +1,4 @@
-// File: lib/models/user_profile_model.dart
+// lib/models/user_profile_model.dart
 
 import 'dart:convert';
 
@@ -32,24 +32,23 @@ class UserProfile {
         required this.followingCount,
     });
 
+    // ==== PERBAIKAN UTAMA ADA DI FUNGSI INI ====
     factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
         id: json["id"] as int, 
-        // Menggunakan toString() untuk memastikan String, dan fallback jika null
         username: json["username"]?.toString() ?? 'unknown_username', 
-        // Menggunakan toString() untuk memastikan String, dan fallback jika null
         fullName: json["full_name"]?.toString() ?? json["username"]?.toString() ?? 'unknown_full_name', 
-        // Menggunakan toString() untuk memastikan String, dan fallback jika null
         email: json["email"]?.toString() ?? 'unknown@example.com', 
         cookingLevel: json["cooking_level"] as String?, 
         bio: json["bio"] as String?, 
-        profilePicture: json["profile_picture_url"] as String?, 
-        // Konversi ke int dan default ke 0 jika null
-        recipeCount: (json["total_recipes"] as num?)?.toInt() ?? 0, 
-        // Default ke 0 jika null atau tidak ada
+        // Menggunakan key "profile_picture" yang benar
+        profilePicture: json["profile_picture"] as String?, 
+        // Menggunakan key "recipe_count" yang benar
+        recipeCount: (json["recipe_count"] as num?)?.toInt() ?? 0, 
         followersCount: (json["followers_count"] as num?)?.toInt() ?? 0, 
         followingCount: (json["following_count"] as num?)?.toInt() ?? 0, 
     );
 
+    // Kita juga sesuaikan di toJson untuk konsistensi
     Map<String, dynamic> toJson() => {
         "id": id,
         "username": username,
@@ -57,8 +56,8 @@ class UserProfile {
         "email": email,
         "cooking_level": cookingLevel,
         "bio": bio,
-        "profile_picture_url": profilePicture, 
-        "total_recipes": recipeCount, 
+        "profile_picture": profilePicture, 
+        "recipe_count": recipeCount, 
         "followers_count": followersCount,
         "following_count": followingCount,
     };

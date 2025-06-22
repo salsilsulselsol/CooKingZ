@@ -2,20 +2,19 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart'; // <<< Tambahkan import
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:masak2/view/profile/profil/bagikan_profil.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
+import 'package:masak2/view/profile/profil/tambah_resep.dart';
+import 'package:masak2/view/profile/profil/edit_profil.dart';
+import 'package:masak2/view/profile/profil/mengikuti_pengikut.dart';
+import 'package:masak2/models/food_model.dart';
+import 'package:masak2/models/user_profile_model.dart';
+import 'package:masak2/view/component/grid_2_builder.dart';
 
-import '../../component/grid_2_builder.dart';
-import '../../../models/food_model.dart';
-import '../../../models/user_profile_model.dart';
-import 'tambah_resep.dart';
-import 'edit_profil.dart';
-import 'mengikuti_pengikut.dart';
 
 class ProfilUtama extends StatefulWidget {
-  // Tambahkan parameter userId opsional untuk handle profil orang lain nanti
   final int? userId; 
   const ProfilUtama({super.key, this.userId});
 
@@ -26,30 +25,28 @@ class ProfilUtama extends StatefulWidget {
 class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   
-  late Future<UserProfile> futureUserProfile;
-  late Future<List<Food>> futureUserRecipes;
-  late Future<List<Food>> futureFavoriteRecipes;
+  // Variabel untuk menyimpan data dan status UI
+  UserProfile? _userProfile;
+  List<Food> _userRecipes = [];
+  List<Food> _favoriteRecipes = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  bool _isMyProfile = true; 
-  int? _profileId;
+  bool get _isMyProfile => widget.userId == null;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    
-    // Tentukan apakah ini profil sendiri atau profil orang lain
-    _profileId = widget.userId;
-    if (_profileId == null) {
-      _isMyProfile = true;
-    } else {
-      _isMyProfile = false; // Ini akan berguna saat membuka profil orang lain
-    }
-    
+    _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this);
     _loadAllData();
   }
 
-  // Helper untuk mendapatkan headers dengan token
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<Map<String, String>> _getAuthHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token') ?? '';
@@ -59,140 +56,157 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     };
   }
 
-  void _loadAllData() {
+  // ==== KUNCI REFRESH #1 ====
+  // Fungsi terpusat untuk mengambil semua data dari server dan memperbarui UI.
+  Future<void> _loadAllData() async {
     if (!mounted) return;
+
+    // ---> TAMBAHKAN LOG DI SINI <---
+    print('[DEBUG ProfilUtama] ==> Memulai eksekusi _loadAllData...');
+
     setState(() {
-      futureUserProfile = fetchUserProfile();
-      
-      if (_isMyProfile) {
-        futureFavoriteRecipes = fetchFavoriteRecipes();
-      } else {
-        // Jika profil orang lain, tab favorit tidak menampilkan apa-apa
-        futureFavoriteRecipes = Future.value([]); 
-      }
-      
-      futureUserProfile.then((user) {
-        if (mounted) {
-          setState(() {
-            futureUserRecipes = fetchUserRecipes(user.id);
-          });
-        }
-      }).catchError((error) {
-        if (mounted) {
-          setState(() {
-            futureUserRecipes = Future.error('Gagal memuat resep pengguna.');
-          });
-        }
-      });
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final user = await _fetchUserProfile();
+      final recipes = await _fetchUserRecipes(user.id);
+      final favorites = _isMyProfile ? await _fetchFavoriteRecipes() : <Food>[];
+      
+      if (mounted) {
+        setState(() {
+          _userProfile = user;
+          _userRecipes = recipes;
+          _favoriteRecipes = favorites;
+          _isLoading = false;
+        });
+        // ---> TAMBAHKAN LOG DI SINI <---
+        print('[DEBUG ProfilUtama] ==> Selesai memuat data. Nama baru: "${user.fullName}". UI seharusnya diperbarui.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = "Terjadi kesalahan: ${e.toString()}";
+          _isLoading = false;
+        });
+        print('[DEBUG ProfilUtama] ==> GAGAL memuat data. Error: $e');
+      }
+    }
   }
   
-  Future<UserProfile> fetchUserProfile() async {
+  Future<UserProfile> _fetchUserProfile() async {
     final baseUrl = dotenv.env['BASE_URL'];
-    if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
-
-    // Tentukan endpoint berdasarkan apakah ini profil sendiri atau orang lain
-    final endpoint = _isMyProfile ? '/users/me' : '/users/$_profileId';
-    final headers = await _getAuthHeaders(); // <-- Dapatkan header
-    
-    final response = await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers, // <-- Gunakan header
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      // Backend Anda membungkus data dalam objek 'data'
-      return UserProfile.fromJson(responseData['data']);
-    } else {
-      throw Exception('Gagal memuat profil (Status: ${response.statusCode}) - ${response.body}');
-    }
-  }
-
-  Future<List<Food>> fetchUserRecipes(int userId) async {
-    final baseUrl = dotenv.env['BASE_URL'];
-    if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
-    
-    final headers = await _getAuthHeaders();
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/users/$userId/recipes'),
-      headers: headers,
-    );
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      List<dynamic> body = responseData['data'];
-      // <<< PERUBAHAN DI SINI: Panggil .fromJson bukan .fromMap >>>
-      return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
-    } else {
-      try {
-        final errorData = json.decode(response.body);
-        final serverMessage = errorData['message'] ?? 'Tidak ada pesan error dari server.';
-        final detailedError = errorData['error'] ?? '';
-        throw Exception('Gagal memuat resep: $serverMessage - $detailedError (Status: ${response.statusCode})');
-      } catch (e) {
-        throw Exception('Gagal memuat resep (Status: ${response.statusCode}) - Respons: ${response.body}');
-      }
-    }
-  }
-
-  Future<List<Food>> fetchFavoriteRecipes() async {
-    final baseUrl = dotenv.env['BASE_URL'];
-    if (baseUrl == null) throw Exception("BASE_URL tidak ada di .env");
-
+    final endpoint = _isMyProfile ? '/users/me' : '/users/${widget.userId}';
     final headers = await _getAuthHeaders();
     
-    final response = await http.get(
-      Uri.parse('$baseUrl/users/me/favorites'),
-      headers: headers,
-    );
-        
+    final uri = Uri.parse('$baseUrl$endpoint?cache_buster=${DateTime.now().millisecondsSinceEpoch}');
+    
+    final response = await http.get(uri, headers: headers);
+
     if (response.statusCode == 200) {
+      // ==========================================================
+      // **DEBUGGING DATA MENTAH DARI SERVER**
+      // ==========================================================
       final responseData = json.decode(response.body);
-      List<dynamic> body = responseData['data'];
-      // <<< PERUBAHAN DI SINI: Panggil .fromJson bukan .fromMap >>>
-      return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
+      print('==================== DEBUG DATA ====================');
+      print('[DEBUG ProfilUtama] RAW JSON RESPONSE: $responseData');
+      
+      final user = UserProfile.fromJson(responseData['data']);
+      print('[DEBUG ProfilUtama] HASIL PARSING - Nama: ${user.fullName}');
+      print('[DEBUG ProfilUtama] HASIL PARSING - Path Gambar: ${user.profilePicture}');
+      print('====================================================');
+      // ==========================================================
+      
+      return user;
     } else {
-      try {
-        final errorData = json.decode(response.body);
-        final serverMessage = errorData['message'] ?? 'Tidak ada pesan error dari server.';
-        final detailedError = errorData['error'] ?? '';
-        throw Exception('Gagal memuat favorit: $serverMessage - $detailedError (Status: ${response.statusCode})');
-      } catch (e) {
-        throw Exception('Gagal memuat favorit (Status: ${response.statusCode}) - Respons: ${response.body}');
-      }
+      throw Exception('Gagal memuat profil (Status: ${response.statusCode}) - Body: ${response.body}');
     }
   }
 
-    @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<List<Food>> _fetchUserRecipes(int userId) async {
+    final baseUrl = dotenv.env['BASE_URL'];
+    final headers = await _getAuthHeaders();
+    final response = await http.get(Uri.parse('$baseUrl/users/$userId/recipes'), headers: headers);
+
+    if (response.statusCode == 200) {
+      List<dynamic> body = json.decode(response.body)['data'];
+      return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Gagal memuat resep pengguna.');
+    }
+  }
+
+  Future<List<Food>> _fetchFavoriteRecipes() async {
+    final baseUrl = dotenv.env['BASE_URL'];
+    final headers = await _getAuthHeaders();
+    final response = await http.get(Uri.parse('$baseUrl/users/me/favorites'), headers: headers);
+      
+    if (response.statusCode == 200) {
+      List<dynamic> body = json.decode(response.body)['data'];
+      return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Gagal memuat resep favorit.');
+    }
+  }
+
+  // ==== KUNCI REFRESH #2 ====
+  // Fungsi ini menangani perpindahan ke halaman edit dan MENUNGGU hasilnya.
+  void _navigateToEditProfile() async {
+    print('[DEBUG ProfilUtama] Tombol "Edit Profil" ditekan. Membuka halaman edit...');
+    
+    // Pergi ke halaman edit dan TUNGGU sampai halaman itu ditutup
+    final result = await Navigator.push(
+      context, 
+      MaterialPageRoute(builder: (context) => const EditProfil())
+    );
+    
+    // Ini akan dieksekusi setelah halaman edit ditutup
+    print('[DEBUG ProfilUtama] Kembali dari halaman edit. Menerima sinyal: $result');
+
+    if (result == true && mounted) {
+      print('[DEBUG ProfilUtama] Sinyal adalah "true", MEMANGGIL FUNGSI _loadAllData UNTUK REFRESH...');
+      _loadAllData();
+    } else {
+      print('[DEBUG ProfilUtama] Sinyal BUKAN "true" (atau halaman sudah tidak ada). TIDAK MELAKUKAN REFRESH.');
+    }
+  }
+  
+  void _navigateToFollowerPage(int initialIndex, int userId) async {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MengikutiPengikut(userId: userId),
+          settings: RouteSettings(arguments: initialIndex),
+        ),
+      );
+
+      if (result == true && mounted) {
+        _loadAllData();
+      }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FutureBuilder<UserProfile>(
-        future: futureUserProfile,
-        builder: (context, userSnapshot) {
-          if (userSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (userSnapshot.hasError) {
-            return Center(
-                child: Text("Error: Gagal memuat profil.\n${userSnapshot.error}"));
-          }
-          if (userSnapshot.hasData) {
-            return _buildProfileBody(userSnapshot.data!);
-          }
-          return const Center(child: Text("Tidak dapat menemukan data profil."));
-        },
-      ),
+      body: _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _errorMessage != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(_errorMessage!),
+              ),
+            )
+          : _userProfile == null
+            ? const Center(child: Text("Tidak dapat menemukan data profil."))
+            : RefreshIndicator(
+                onRefresh: _loadAllData,
+                child: _buildProfileBody(_userProfile!),
+              ),
     );
   }
-  
+
   Widget _buildProfileBody(UserProfile user) {
     return SafeArea(
       child: Column(
@@ -203,10 +217,9 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildUserRecipesTab(),
-                _buildFavoritesTab(),
-              ],
+              children: _isMyProfile 
+                ? [_buildUserRecipesTab(), _buildFavoritesTab()]
+                : [_buildUserRecipesTab()],
             ),
           ),
         ],
@@ -214,67 +227,13 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildUserRecipesTab() {
-    return FutureBuilder<List<Food>>(
-      future: futureUserRecipes,
-      builder: (context, recipeSnapshot) {
-        if (recipeSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (recipeSnapshot.hasError) {
-          return Center(child: Text('${recipeSnapshot.error}'));
-        }
-        if (recipeSnapshot.hasData && recipeSnapshot.data!.isNotEmpty) {
-          return _buildRecipeGrid(recipeSnapshot.data!);
-        }
-        return const Center(child: Text("Anda belum punya resep."));
-      },
-    );
-  }
-  
-  Widget _buildFavoritesTab() {
-    // Sembunyikan tab favorit jika bukan profil sendiri
-    if (!_isMyProfile) {
-      return const Center(child: Text("Favorit hanya bisa dilihat di profil sendiri."));
-    }
-    return FutureBuilder<List<Food>>(
-      future: futureFavoriteRecipes,
-      builder: (context, favoriteSnapshot) {
-        if (favoriteSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (favoriteSnapshot.hasError) {
-          return Center(child: Text('${favoriteSnapshot.error}'));
-        }
-        if (favoriteSnapshot.hasData && favoriteSnapshot.data!.isNotEmpty) {
-          return _buildRecipeGrid(favoriteSnapshot.data!);
-        }
-        return const Center(child: Text("Anda belum memiliki resep favorit."));
-      },
-    );
-  }
-  
-  Widget _buildRecipeGrid(List<Food> recipes) {
-    return FoodGridWidget(
-      foods: recipes,
-      onFavoritePressed: (index) {
-        print('Favorite pressed for recipe at index: $index');
-      },
-      onCardTap: (index) {
-        print('Card tapped for recipe at index: $index');
-      },
-    );
-  }
-  
   Widget _buildProfileHeader(UserProfile user) {
     ImageProvider profileImage;
     final String? profilePicPath = user.profilePicture;
 
     if (profilePicPath != null && profilePicPath.isNotEmpty) {
       final baseUrl = dotenv.env['BASE_URL']!;
-      // Pastikan path gambar digabung dengan benar
-      final imagePath = profilePicPath.startsWith('/') ? profilePicPath.substring(1) : profilePicPath;
-      profileImage = NetworkImage('$baseUrl/$imagePath');
+      profileImage = NetworkImage('$baseUrl$profilePicPath');
     } else {
       profileImage = const AssetImage('images/default_avatar.png'); 
     }
@@ -338,8 +297,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-           // Logika untuk menampilkan tombol yang berbeda
-          child: _isMyProfile ? _buildMyProfileActions(user) : _buildOtherProfileActions(user),
+          child: _isMyProfile ? _buildMyProfileActions() : _buildOtherProfileActions(),
         ),
         const SizedBox(height: 8),
         Container(
@@ -364,22 +322,15 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
       ],
     );
   }
-
-  // Tombol untuk profil sendiri
-  Widget _buildMyProfileActions(UserProfile user) {
+  
+  // ==== KUNCI REFRESH #3 ====
+  // Tombol "Edit Profil" sekarang memanggil fungsi _navigateToEditProfile.
+  Widget _buildMyProfileActions() {
     return Row(
       children: [
         Expanded(
           child: ElevatedButton(
-            onPressed: () async {
-              final result = await Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (context) => const EditProfil())
-              );
-              if (result == true && mounted) {
-                _loadAllData();
-              }
-            },
+            onPressed: _navigateToEditProfile,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0A6859), foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
@@ -409,45 +360,33 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
     );
   }
 
-  // Tombol untuk profil orang lain (Contoh)
-  Widget _buildOtherProfileActions(UserProfile user) {
-     return Row(
-       children: [
-         Expanded(
-           child: ElevatedButton(
-             // TODO: Tambahkan logika Follow/Unfollow disini
-             onPressed: () { print("Tombol Follow ditekan untuk user ${user.id}"); },
-             child: Text('Ikuti'), // <-- Teks bisa dinamis (Ikuti/Diikuti)
-           ),
-         ),
-         const SizedBox(width: 12),
-         Expanded(
-           child: ElevatedButton(
-            onPressed: () { print("Tombol Kirim Pesan ditekan untuk user ${user.id}"); },
-             child: Text('Kirim Pesan'),
-           ),
-         ),
-       ],
-     );
+  Widget _buildOtherProfileActions() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () { /* TODO: Logika Follow/Unfollow */ },
+            child: const Text('Ikuti'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () { /* TODO: Logika Kirim Pesan */ },
+            child: const Text('Kirim Pesan'),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildStatCounter(String count, String label, int userId) {
     return GestureDetector(
-      onTap: () async {
-        if (label == 'Mengikuti' || label == 'Pengikut') {
-          final int initialIndex = (label == 'Mengikuti') ? 0 : 1;
-          
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MengikutiPengikut(userId: userId), // <-- Kirim userId
-              settings: RouteSettings(arguments: initialIndex),
-            ),
-          );
-
-          if (result == true && mounted) {
-            _loadAllData();
-          }
+      onTap: () {
+        if (label == 'Mengikuti') {
+          _navigateToFollowerPage(0, userId);
+        } else if (label == 'Pengikut') {
+          _navigateToFollowerPage(1, userId);
         }
       },
       child: Column(
@@ -474,10 +413,35 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
         unselectedLabelColor: Colors.grey,
         tabs: [
           const Tab(text: 'Resep'),
-          // Sembunyikan tab Favorit jika bukan profil sendiri
           if (_isMyProfile) const Tab(text: 'Favorit'),
         ],
       ),
+    );
+  }
+
+  Widget _buildUserRecipesTab() {
+    return _userRecipes.isEmpty
+      ? const Center(child: Text("Pengguna ini belum memiliki resep."))
+      : _buildRecipeGrid(_userRecipes);
+  }
+  
+  Widget _buildFavoritesTab() {
+    if (!_isMyProfile) return Container();
+    
+    return _favoriteRecipes.isEmpty
+      ? const Center(child: Text("Anda belum memiliki resep favorit."))
+      : _buildRecipeGrid(_favoriteRecipes);
+  }
+  
+  Widget _buildRecipeGrid(List<Food> recipes) {
+    return FoodGridWidget(
+      foods: recipes,
+      onFavoritePressed: (index) {
+        // TODO: Implementasi logika favorit
+      },
+      onCardTap: (index) {
+        // TODO: Implementasi navigasi ke detail resep
+      },
     );
   }
 }

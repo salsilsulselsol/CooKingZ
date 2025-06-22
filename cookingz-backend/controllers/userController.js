@@ -154,50 +154,65 @@ exports.getUserById = async (req, res) => {
 
 // Fungsi untuk memperbarui profil pengguna yang sedang login
 exports.updateMyProfile = async (req, res) => {
-    const userId = req.user.userId; // ID pengguna dari token JWT
-    console.log(`>>> Controller updateMyProfile BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
+  const userId = req.user.userId;
+  const { fullName, username, bio } = req.body;
+  const fieldsToUpdate = {};
 
-    const { fullName, username, bio, cooking_level } = req.body; // Tambahkan cooking_level
-    const fieldsToUpdate = {};
+  console.log('[DEBUG-BACKEND] Menerima permintaan update untuk user ID:', userId);
+  console.log('[DEBUG-BACKEND] Data yang diterima (body):', req.body);
+  console.log('[DEBUG-BACKEND] File yang diterima:', req.file ? req.file.filename : 'Tidak ada file');
 
-    if (fullName !== undefined) fieldsToUpdate.full_name = fullName;
-    if (username !== undefined) fieldsToUpdate.username = username;
-    if (bio !== undefined) fieldsToUpdate.bio = bio;
-    if (cooking_level !== undefined) fieldsToUpdate.cooking_level = cooking_level; // Tambahkan cooking_level
+  if (fullName !== undefined) fieldsToUpdate.full_name = fullName;
+  if (username !== undefined) fieldsToUpdate.username = username;
+  if (bio !== undefined) fieldsToUpdate.bio = bio;
 
-    if (req.file) {
-        fieldsToUpdate.profile_picture = 'images/' + req.file.filename; // Sesuaikan path jika perlu
-        // TODO: Hapus gambar lama dari server jika ada
+  if (req.file) {
+    fieldsToUpdate.profile_picture = `/uploads/${req.file.filename}`;
+  }
+
+  if (Object.keys(fieldsToUpdate).length === 0) {
+    console.log('[DEBUG-BACKEND] Tidak ada data untuk diupdate. Mengirim error 400.');
+    return res.status(400).json({ status: 'error', message: 'Tidak ada data untuk diperbarui.' });
+  }
+
+  const setClause = Object.keys(fieldsToUpdate).map(key => `${key} = ?`).join(', ');
+  const values = [...Object.values(fieldsToUpdate), userId];
+  const query = `UPDATE users SET ${setClause} WHERE id = ?`;
+
+  // --- Log untuk Query SQL ---
+  console.log('=====================================================');
+  console.log('[DEBUG-BACKEND] Query yang akan dieksekusi:', query);
+  console.log('[DEBUG-BACKEND] Dengan nilai:', values);
+  console.log('=====================================================');
+
+  try {
+    const [result] = await db.query(query, values);
+
+    console.log('[DEBUG-BACKEND] Hasil dari database:', result);
+
+    if (result.affectedRows === 0) {
+      console.log('[DEBUG-BACKEND] Gagal: Tidak ada baris yang berubah. User ID mungkin tidak ditemukan.');
+      return res.status(404).json({ status: 'error', message: 'Pengguna tidak ditemukan, update gagal.' });
     }
-
-    if (Object.keys(fieldsToUpdate).length === 0) {
-        return res.status(400).json({ status: 'error', message: 'Tidak ada data untuk diperbarui.' });
-    }
-
-    const setClause = Object.keys(fieldsToUpdate)
-        .map(key => `${key} = ?`)
-        .join(', ');
-
-    const values = [...Object.values(fieldsToUpdate), userId];
     
-    const query = `UPDATE users SET ${setClause} WHERE id = ?`;
+    console.log(`[DEBUG-BACKEND] Sukses: Profil user ID ${userId} berhasil diperbarui.`);
+    
+    // Ambil data terbaru untuk dikirim kembali
+    const [updatedUsers] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+    res.status(200).json({ 
+      status: 'success', 
+      message: 'Profil berhasil diperbarui!',
+      data: updatedUsers[0]
+    });
 
-    try {
-        const [result] = await db.query(query, values);
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ status: 'error', message: 'Pengguna tidak ditemukan, update gagal.' });
-        }
-        console.log(`Profil user ID ${userId} berhasil diperbarui.`);
-        res.status(200).json({ status: 'success', message: 'Profil berhasil diperbarui!' });
-
-    } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ status: 'error', message: 'Username atau Email sudah digunakan. Silakan pilih yang lain.' });
-        }
-        console.error('Error saat update profil:', error);
-        res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server saat update profil.', error: error.message });
-    }
+  } catch (error) {
+    console.error('[DEBUG-BACKEND] Terjadi ERROR saat query database:', error);
+    res.status(500).json({ 
+        status: 'error', 
+        message: 'Terjadi kesalahan pada server saat update profil.', 
+        error: error.message 
+    });
+  }
 };
 
 // Fungsi untuk mengambil daftar FOLLOWING (yang di-follow oleh user :id)
