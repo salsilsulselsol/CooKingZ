@@ -38,52 +38,91 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
   }
 
   // Fungsi untuk hapus akun (implementasi API delete user)
-  Future<void> _handleDeleteAccount(BuildContext context) async {
-    print('DEBUG PENGATURAN: Proses hapus akun dimulai.');
+  Future<void> _handleDeleteAccount() async {
+    // Menutup dialog terlebih dahulu sebelum proses
+    Navigator.of(context).pop(); 
+
+    // Menampilkan loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       final userId = prefs.getInt('user_id');
 
       if (token == null || userId == null) {
-        print('ERROR PENGATURAN: Tidak ada token atau user ID, tidak bisa menghapus akun.');
-        // Tampilkan pesan ke pengguna: "Anda tidak login."
-        return;
+        throw Exception('Sesi tidak valid, silakan login ulang.');
       }
 
-      final uri = Uri.parse('$_baseUrl/users/$userId'); // Endpoint DELETE /users/:id
-      print('DEBUG PENGATURAN: Menghapus akun URL: $uri');
-
+      final uri = Uri.parse('$_baseUrl/users/$userId'); 
       final response = await http.delete(
         uri,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // Kirim token untuk autentikasi
+          'Authorization': 'Bearer $token',
         },
       );
 
-      if (response.statusCode == 200) {
-        print('DEBUG PENGATURAN: Akun berhasil dihapus di backend.');
-        await prefs.clear(); // Hapus semua data login lokal
-        // Navigasi ke halaman register atau welcome setelah akun dihapus
-        Navigator.pushNamedAndRemoveUntil(context, '/register', (route) => false); 
-        print('DEBUG PENGATURAN: Akun berhasil dihapus, navigasi ke /register.');
-      } else {
-        final errorBody = json.decode(response.body);
-        print('[ERROR] PENGATURAN: Gagal menghapus akun: ${response.statusCode} - ${errorBody['message']}');
-        // Tampilkan pesan error ke pengguna
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menghapus akun: ${errorBody['message']}')),
-        );
+      // Tutup loading indicator
+      if (mounted) Navigator.of(context).pop();
+
+      if (mounted) {
+        if (response.statusCode == 200) {
+          await prefs.clear();
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Akun berhasil dihapus.'), backgroundColor: Colors.green),
+          );
+        } else {
+          final errorBody = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menghapus akun: ${errorBody['message']}')),
+          );
+        }
       }
     } catch (e) {
-      print('[EXCEPTION] PENGATURAN: Error menghapus akun: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan saat menghapus akun: $e')),
-      );
+      // Tutup loading indicator jika terjadi error
+      if (mounted) Navigator.of(context).pop();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: $e')),
+        );
+      }
     }
   }
 
+  // Fungsi untuk menampilkan dialog konfirmasi sebelum menghapus akun
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Hapus Akun Permanen'),
+          content: const Text('Tindakan ini tidak dapat dibatalkan. Semua resep dan data Anda akan hilang selamanya. Apakah Anda benar-benar yakin?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batalkan'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text(
+                'Ya, Hapus Akun Saya',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+              onPressed: _handleDeleteAccount, // Panggil fungsi hapus akun
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,24 +157,9 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
                 showArrow: false, 
               ),
               const SizedBox(height: 20),
-              GestureDetector( 
-                onTap: () {
-                  showGeneralDialog(
-                    context: context,
-                    barrierDismissible: true,
-                    barrierLabel: "Hapus Akun",
-                    transitionDuration: const Duration(milliseconds: 200),
-                    pageBuilder: (context, animation, secondaryAnimation) {
-                      return ConfirmationDialogWithBlur(
-                        title: 'Hapus Akun',
-                        message: 'Apakah Anda yakin ingin menghapus akun? Tindakan ini tidak dapat dibatalkan.',
-                        cancelButtonText: 'Batalkan',
-                        confirmButtonText: 'Ya, Hapus Akun',
-                        onConfirm: () => _handleDeleteAccount(context), 
-                      );
-                    },
-                  );
-                },
+              GestureDetector(
+                // Panggil fungsi dialog yang sudah kita buat
+                onTap: _showDeleteAccountDialog,
                 child: const Text(
                   'Hapus Akun',
                   style: TextStyle(
