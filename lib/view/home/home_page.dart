@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http; // Untuk HTTP requests
+import 'package:masak2/view/profile/profil/profil_utama.dart';
 import 'dart:convert'; // Untuk JSON decoding
 import 'package:shared_preferences/shared_preferences.dart'; // Untuk token & username
 
@@ -448,27 +449,35 @@ Widget _buildTopSection(BuildContext context) {
             itemCount: _bestUsers.length,
             itemBuilder: (context, index) {
               final user = _bestUsers[index];
-              return Padding(
-                padding: const EdgeInsets.only(right: AppTheme.spacingXLarge),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
-                          ? NetworkImage(user.profilePicture!)
-                          : const AssetImage('images/user_placeholder.png') as ImageProvider,
-                    ),
-                    const SizedBox(height: AppTheme.spacingSmall),
-                    Text(
-                      user.username,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+              
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => ProfilUtama(userId: user.id),
+                  ));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppTheme.spacingXLarge),
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
+                            ? NetworkImage('$_baseUrl$user.profilePicture!')
+                            : const AssetImage('images/user_placeholder.png') as ImageProvider,
                       ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                      const SizedBox(height: AppTheme.spacingSmall),
+                      Text(
+                        user.username,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
