@@ -28,6 +28,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   String _errorMessage = '';
   Map<String, dynamic>? _fetchedRecipeData;
 
+
   bool isFollowing = false;
   DateTime selectedDate = DateTime.now();
 
@@ -555,7 +556,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       _buildIngredientsSection(recipe['ingredients'] as List<dynamic>?),
                       _buildStepsSection(recipe['instructions'] as List<dynamic>?),
                       _buildDivider(),
-                      _buildRatingSection(recipe['average_rating'] as double? ?? 0.0),
+                      _buildRatingSection(
+                          double.tryParse(recipe['average_rating']?.toString() ?? '0.0') ?? 0.0
+                      ),
                       _buildCommentInput(),
                       _buildDivider(),
                       _buildViewAllCommentsButton(),
@@ -572,7 +575,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   // Widget untuk menampilkan bagian penulis resep
+// Widget untuk menampilkan bagian penulis resep
   Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
+    // --- DEBUG PRINTS TAMBAHAN ---
+    print('DEBUG (_buildAuthorSection): userId: $userId');
+    print('DEBUG (_buildAuthorSection): username: "$username"'); // Pakai quote untuk lihat spasi kosong
+    print('DEBUG (_buildAuthorSection): fullName: "$fullName"'); // Pakai quote untuk lihat spasi kosong
+    print('DEBUG (_buildAuthorSection): profilePictureUrl: $profilePictureUrl');
+    // --- AKHIR DEBUG PRINTS TAMBAHAN ---
+
     String finalProfileImageUrl = '';
     Widget profileImageWidget;
 
@@ -612,7 +623,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   Text(
                     '@$username',
                     style: TextStyle(
-                      color: AppTheme.primaryColor,
+                      color: AppTheme.primaryColor, // Pastikan warna ini kontras
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -620,7 +631,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   Text(
                     fullName,
                     style: TextStyle(
-                      color: AppTheme.textBrown,
+                      color: AppTheme.textBrown, // Pastikan warna ini kontras
                       fontSize: 14,
                     ),
                   ),

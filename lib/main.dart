@@ -85,7 +85,7 @@ class MyApp extends StatelessWidget {
 
         // Komunitas
         '/komunitas': (context) => const AppWithNavbar(KomunitasPage()),
-        '/review': (context) => const ReviewPage(),
+        // '/review': (context) => const ReviewPage(),
 
         // Home & Fitur
         '/beranda': (context) => const HomePage(),

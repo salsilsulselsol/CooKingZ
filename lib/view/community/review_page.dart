@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:intl/intl.dart'; // Untuk format tanggal
+import 'package:intl/intl.dart';
 import '../../theme/theme.dart';
-import '../../view/component/header_back.dart'; // Import the HeaderWidget
-import '../../view/component/bottom_navbar.dart'; // Import BottomNavbar
+import '../../view/component/header_back.dart';
+import '../../view/component/bottom_navbar.dart';
 
-class ReviewsPage extends StatefulWidget { // Nama kelas tetap ReviewsPage, bukan ReviewPage
+class ReviewsPage extends StatefulWidget {
   final int recipeId;
   final String recipeTitle;
 
@@ -26,17 +26,14 @@ class _ReviewsPageState extends State<ReviewsPage> {
   List<dynamic> _reviews = [];
   bool _isLoading = true;
   String _errorMessage = '';
-
-  // Data resep untuk _buildRecipeCard
   Map<String, dynamic>? _recipeData;
 
   @override
   void initState() {
     super.initState();
-    _fetchPageData(); // Panggil fungsi baru untuk ambil semua data
+    _fetchPageData();
   }
 
-  // Fungsi untuk mengambil semua data yang dibutuhkan (resep dan ulasan)
   Future<void> _fetchPageData() async {
     setState(() {
       _isLoading = true;
@@ -44,12 +41,13 @@ class _ReviewsPageState extends State<ReviewsPage> {
     });
 
     try {
-      // Ambil detail resep (untuk _buildRecipeCard)
+      // Ambil detail resep
       final recipeResponse = await http.get(Uri.parse('$_baseUrl/recipes/${widget.recipeId}'));
       if (recipeResponse.statusCode == 200) {
         _recipeData = json.decode(recipeResponse.body);
+        print('Recipe data: $_recipeData'); // Debug print
       } else {
-        _errorMessage = 'Gagal mengambil detail resep: ${recipeResponse.statusCode} - ${json.decode(recipeResponse.body)['message'] ?? 'Unknown error'}';
+        _errorMessage = 'Gagal mengambil detail resep: ${recipeResponse.statusCode}';
         _isLoading = false;
         if (mounted) setState(() {});
         return;
@@ -59,14 +57,16 @@ class _ReviewsPageState extends State<ReviewsPage> {
       final reviewsResponse = await http.get(Uri.parse('$_baseUrl/reviews/${widget.recipeId}'));
       if (reviewsResponse.statusCode == 200) {
         _reviews = json.decode(reviewsResponse.body);
+        print('Reviews data: $_reviews'); // Debug print
       } else {
-        _errorMessage = 'Gagal mengambil ulasan: ${reviewsResponse.statusCode} - ${json.decode(reviewsResponse.body)['message'] ?? 'Unknown error'}';
+        _errorMessage = 'Gagal mengambil ulasan: ${reviewsResponse.statusCode}';
         _isLoading = false;
         if (mounted) setState(() {});
         return;
       }
     } catch (e) {
       _errorMessage = 'Terjadi kesalahan jaringan: $e';
+      print('Error: $e'); // Debug print
     } finally {
       setState(() {
         _isLoading = false;
@@ -74,12 +74,11 @@ class _ReviewsPageState extends State<ReviewsPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return BottomNavbar(
       Scaffold(
-        backgroundColor: AppTheme.backgroundColor, // Menggunakan AppTheme.backgroundColor
+        backgroundColor: AppTheme.backgroundColor,
         body: SafeArea(
           child: Column(
             children: [
@@ -96,10 +95,20 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      _errorMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.red, fontSize: 16),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _fetchPageData,
+                          child: const Text('Coba Lagi'),
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -114,12 +123,12 @@ class _ReviewsPageState extends State<ReviewsPage> {
 
   Widget _buildReviewsList() {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 90), // Padding untuk navbar
+      padding: const EdgeInsets.only(bottom: 90),
       children: [
-        // Recipe Card - Sekarang menggunakan data dinamis
-        _recipeData != null ? _buildRecipeCard(_recipeData!) : const SizedBox.shrink(),
+        // Recipe Card
+        if (_recipeData != null) _buildRecipeCard(_recipeData!),
 
-        // Reviews - Sekarang menggunakan data dinamis
+        // Reviews
         if (_reviews.isEmpty)
           Center(
             child: Padding(
@@ -129,38 +138,54 @@ class _ReviewsPageState extends State<ReviewsPage> {
                 style: TextStyle(fontSize: 16, color: AppTheme.textBrown),
               ),
             ),
-          ),
-        ..._reviews.map<Widget>((reviewData) {
-          return _buildReviewCard(
-            username: reviewData['username'] ?? 'Pengguna',
-            name: reviewData['full_name'] ?? 'Tidak Dikenal',
-            profileImage: reviewData['profile_picture'], // Ini akan diolah di dalam _buildReviewCard
-            reviewImage: null, // Asumsi: tidak ada reviewImage dari backend untuk saat ini
-            rating: reviewData['rating'] ?? 0,
-            review: reviewData['comment'] ?? 'Tidak ada komentar.',
-            commentCount: 0, // Backend Anda saat ini tidak mengembalikan ini untuk setiap review.
-            // Jika perlu, Anda harus memodifikasi backend untuk menghitung balasan komentar.
-            createdAt: reviewData['created_at'],
-          );
-        }).toList(),
+          )
+        else
+          ..._reviews.map<Widget>((reviewData) {
+            // Debug print untuk setiap review
+            print('Review data: $reviewData');
+
+            return _buildReviewCard(
+              username: reviewData['username']?.toString() ?? 'Pengguna',
+              name: reviewData['full_name']?.toString() ?? 'Tidak Dikenal',
+              profileImage: reviewData['profile_picture']?.toString(),
+              reviewImage: null,
+              rating: _parseRating(reviewData['rating']),
+              review: reviewData['comment']?.toString() ?? 'Tidak ada komentar.',
+              commentCount: 0,
+              createdAt: reviewData['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+            );
+          }).toList(),
       ],
     );
   }
 
-  // Recipe info card with image on left, text on right
-  // Menerima data resep sebagai parameter
+  // Helper method untuk parsing rating
+  int _parseRating(dynamic rating) {
+    if (rating == null) return 0;
+    if (rating is int) return rating;
+    if (rating is double) return rating.round();
+    if (rating is String) {
+      try {
+        return double.parse(rating).round();
+      } catch (e) {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
   Widget _buildRecipeCard(Map<String, dynamic> recipe) {
     final String recipeImageUrl = recipe['image_url'] != null && (recipe['image_url'] as String).isNotEmpty
         ? '$_baseUrl${recipe['image_url']}'
-        : 'https://via.placeholder.com/100'; // Placeholder jika tidak ada gambar
+        : 'https://via.placeholder.com/100';
 
-    final double averageRating = recipe['average_rating'] as double? ?? 0.0;
-    final int commentsCount = recipe['comments_count'] as int? ?? 0;
+    final double averageRating = _parseDouble(recipe['average_rating']);
+    final int commentsCount = _parseInt(recipe['comments_count']);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor, // Menggunakan warna dari AppTheme
+        color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -177,7 +202,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
             padding: const EdgeInsets.only(left: 12, right: 12),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network( // Menggunakan Image.network untuk gambar dari URL
+              child: Image.network(
                 recipeImageUrl,
                 width: 100,
                 height: 100,
@@ -198,7 +223,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    recipe['title'] as String? ?? 'Resep Tidak Ditemukan',
+                    recipe['title']?.toString() ?? 'Resep Tidak Ditemukan',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -208,15 +233,17 @@ class _ReviewsPageState extends State<ReviewsPage> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      for (int i = 0; i < 5; i++)
-                        Icon(
-                          i < averageRating.round() ? Icons.star : Icons.star_border, // Pembulatan rating
+                      // Rating stars untuk rata-rata resep
+                      ...List.generate(5, (index) {
+                        return Icon(
+                          index < averageRating.round() ? Icons.star : Icons.star_border,
                           size: 16,
-                          color: Colors.white,
-                        ),
+                          color: Colors.white, // Kembali ke warna putih
+                        );
+                      }),
                       const SizedBox(width: 4),
                       Text(
-                        '(${commentsCount} Reviews)', // comments_count dari backend
+                        '($commentsCount Reviews)',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.white70,
@@ -229,7 +256,6 @@ class _ReviewsPageState extends State<ReviewsPage> {
                     children: [
                       CircleAvatar(
                         radius: 12,
-                        // Untuk gambar profil penulis resep (dari recipeData), Anda juga perlu URL lengkapnya
                         backgroundImage: recipe['profile_picture'] != null && (recipe['profile_picture'] as String).isNotEmpty
                             ? NetworkImage('$_baseUrl${recipe['profile_picture']}')
                             : null,
@@ -238,25 +264,27 @@ class _ReviewsPageState extends State<ReviewsPage> {
                             : null,
                       ),
                       const SizedBox(width: 6),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '@${recipe['username'] ?? 'Pengguna'}', // Username penulis resep
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '@${recipe['username']?.toString() ?? 'Pengguna'}', // Username pemilik resep
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                          Text(
-                            recipe['full_name'] ?? '', // Nama lengkap penulis resep
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white70,
+                            Text(
+                              recipe['full_name']?.toString() ?? '', // Nama lengkap pemilik resep
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white70,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -269,34 +297,32 @@ class _ReviewsPageState extends State<ReviewsPage> {
     );
   }
 
-  // Individual review card
-  // Menerima data dinamis dari backend
   Widget _buildReviewCard({
     required String username,
     required String name,
-    String? profileImage, // Nullable karena bisa jadi tidak ada
-    String? reviewImage, // Nullable karena belum ada di backend
+    String? profileImage,
+    String? reviewImage,
     required int rating,
     required String review,
-    required int commentCount, // Tetap ada meski data dari backend belum mengembalikan ini
-    required String createdAt, // Tambahkan ini
+    required int commentCount,
+    required String createdAt,
   }) {
     String finalProfileImageUrl = '';
     if (profileImage != null && profileImage.isNotEmpty) {
-      finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profileImage' : 'http://10.0.2.2:3000$profileImage';
+      finalProfileImageUrl = '$_baseUrl$profileImage';
     }
 
-    // Untuk reviewImage, jika ada dari backend, Anda bisa membuat URL serupa
-    // final String? finalReviewImageUrl = reviewImage != null && reviewImage.isNotEmpty
-    //     ? (kIsWeb ? 'http://localhost:3000$reviewImage' : 'http://10.0.2.2:3000$reviewImage')
-    //     : null;
-
-    final DateTime parsedCreatedAt = DateTime.parse(createdAt);
+    DateTime parsedCreatedAt;
+    try {
+      parsedCreatedAt = DateTime.parse(createdAt);
+    } catch (e) {
+      parsedCreatedAt = DateTime.now();
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppTheme.searchBarColor, // Menggunakan warna dari AppTheme
+        color: AppTheme.searchBarColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -313,17 +339,17 @@ class _ReviewsPageState extends State<ReviewsPage> {
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween, // Agar tanggal di kanan
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     CircleAvatar(
-                      radius: 20, // Mengurangi radius agar tidak terlalu besar
+                      radius: 20,
                       backgroundImage: finalProfileImageUrl.isNotEmpty
                           ? NetworkImage(finalProfileImageUrl)
                           : null,
                       child: finalProfileImageUrl.isEmpty
-                          ? Icon(Icons.person, color: Colors.grey[600], size: 24) // Ukuran ikon disesuaikan
+                          ? Icon(Icons.person, color: Colors.grey[600], size: 24)
                           : null,
                     ),
                     const SizedBox(width: 8),
@@ -331,26 +357,27 @@ class _ReviewsPageState extends State<ReviewsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          username,
+                          '@$username', // Username yang memberikan review
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 14, // Ukuran font disesuaikan
+                            fontSize: 14,
                             color: AppTheme.primaryColor,
                           ),
                         ),
-                        Text(
-                          name,
-                          style: TextStyle(
-                            color: AppTheme.textBrown, // Warna disesuaikan
-                            fontSize: 12, // Ukuran font disesuaikan
+                        if (name.isNotEmpty)
+                          Text(
+                            name, // Nama lengkap yang memberikan review
+                            style: TextStyle(
+                              color: AppTheme.textBrown,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ],
                 ),
                 Text(
-                  DateFormat('dd MMMM yyyy').format(parsedCreatedAt), // Format tanggal
+                  DateFormat('dd MMM yyyy').format(parsedCreatedAt),
                   style: const TextStyle(
                     color: Colors.grey,
                     fontSize: 10,
@@ -359,54 +386,71 @@ class _ReviewsPageState extends State<ReviewsPage> {
               ],
             ),
           ),
+
+          // Rating stars untuk review individual
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                ...List.generate(5, (index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: Icon(
+                      index < rating ? Icons.star : Icons.star_border,
+                      size: 16,
+                      color: AppTheme.primaryColor, // Tetap menggunakan warna tema
+                    ),
+                  );
+                }),
+                const SizedBox(width: 8),
+                Text(
+                  '($rating/5)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
           // Review Image (jika ada)
-          if (reviewImage != null && reviewImage.isNotEmpty) // Tampilkan hanya jika ada reviewImage
+          if (reviewImage != null && reviewImage.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8), // Padding ditambahkan
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Container(
                 height: 140,
                 width: 140,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   image: DecorationImage(
-                    image: NetworkImage(reviewImage), // Menggunakan NetworkImage
+                    image: NetworkImage(reviewImage),
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
             ),
+
+          // Review text
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    for (int i = 0; i < 5; i++) // Selalu tampilkan 5 bintang
-                      Padding(
-                        padding: const EdgeInsets.only(right: 2),
-                        child: Icon(
-                          i < rating ? Icons.star : Icons.star_border,
-                          size: 16,
-                          color: AppTheme.primaryColor, // Warna bintang
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  review,
-                  style: TextStyle(fontSize: 14, color: AppTheme.textBrown), // Ukuran font dan warna disesuaikan
-                ),
-              ],
+            child: Text(
+              review,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textBrown,
+              ),
             ),
           ),
-          // Bagian Komentar
-          if (commentCount > 0) // Hanya tampilkan jika ada komentar
+
+          // Comment count (jika ada)
+          if (commentCount > 0)
             Align(
               alignment: Alignment.bottomRight,
               child: Transform.translate(
-                offset: const Offset(0, 12), // Menggeser ke bawah
+                offset: const Offset(0, 12),
                 child: Container(
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
@@ -435,9 +479,39 @@ class _ReviewsPageState extends State<ReviewsPage> {
                 ),
               ),
             ),
-          const SizedBox(height: 12), // Tambahkan sedikit spasi di bawah card review
+
+          const SizedBox(height: 12),
         ],
       ),
     );
+  }
+
+  // Helper methods untuk parsing data
+  double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return 0.0;
+      }
+    }
+    return 0.0;
+  }
+
+  int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.round();
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        return 0;
+      }
+    }
+    return 0;
   }
 }
