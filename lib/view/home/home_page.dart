@@ -30,20 +30,19 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   // State variables for fetched data
-  bool _isLoading = true; 
-  bool _hasError = false; 
-  String _errorMessage = ''; 
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   String _loggedInUsername = 'people'; // Default ke 'people' jika belum login
-  List<Food> _trendingRecipes = []; 
-  List<UserProfile> _bestUsers = []; 
-  List<Food> _latestRecipes = []; 
-  List<Food> _userRecipes = []; 
+  int? _currentUserId; // <<< LANGKAH 1: TAMBAHKAN VARIABEL INI
+  List<Food> _trendingRecipes = [];
+  List<UserProfile> _bestUsers = [];
+  List<Food> _latestRecipes = [];
+  List<Food> _userRecipes = [];
   List<Category> _categories = []; // Ini akan menampung kategori dari API
 
   int _selectedCategoryIndex = -1;
-
-
 
   // Base URL for your backend API
   final String _baseUrl = 'http://localhost:3000'; // <<<--- GANTI DENGAN IP BACKEND ANDA YANG BENAR
@@ -63,12 +62,17 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token'); 
-      final usernameFromPrefs = prefs.getString('username'); 
+      final token = prefs.getString('auth_token');
+      final usernameFromPrefs = prefs.getString('username');
+      
+      // <<< LANGKAH 2: AMBIL ID PENGGUNA YANG LOGIN
+      setState(() {
+        _currentUserId = prefs.getInt('id');
+      });
 
       // Atur username: jika ada, gunakan username; jika tidak, gunakan 'people'
       if (usernameFromPrefs != null && usernameFromPrefs.isNotEmpty) {
-        _loggedInUsername = usernameFromPrefs; 
+        _loggedInUsername = usernameFromPrefs;
       } else {
         _loggedInUsername = 'people';
       }
@@ -78,12 +82,12 @@ class _HomePageState extends State<HomePage> {
         Uri.parse('$_baseUrl/home'),
         headers: {
           'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token', 
+          if (token != null) 'Authorization': 'Bearer $token',
         },
       );
 
       print('DEBUG: Status Code API: ${response.statusCode}');
-      print('DEBUG: Response Body API: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...'); // Cetak sebagian saja agar tidak terlalu panjang
+      print('DEBUG: Response Body API: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -94,23 +98,13 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           print('DEBUG: Parsing trending recipes...');
           _trendingRecipes = (data['trendingRecipes'] as List)
-              .map((jsonItem) {
-                print('  DEBUG Parsing Trending Item: $jsonItem');
-                final food = Food.fromJson(jsonItem);
-                print('  DEBUG Parsed Food (Trending): name="${food.name}", image="${food.image}", rating="${food.rating}", cookingTime="${food.cookingTime}", price="${food.price}", description="${food.description}"');
-                return food;
-              })
+              .map((jsonItem) => Food.fromJson(jsonItem))
               .toList();
           print('DEBUG: Trending recipes parsed. Count: ${_trendingRecipes.length}');
 
           print('DEBUG: Parsing best users...');
           _bestUsers = (data['bestUsers'] as List)
-              .map((jsonItem) {
-                print('  DEBUG Parsing Best User Item: $jsonItem');
-                final user = UserProfile.fromJson(jsonItem);
-                print('  DEBUG Parsed UserProfile: username="${user.username}", profilePicture="${user.profilePicture}", recipeCount="${user.recipeCount}", fullName="${user.fullName}", email="${user.email}"');
-                return user;
-              }) 
+              .map((jsonItem) => UserProfile.fromJson(jsonItem))
               .toList();
           print('DEBUG: Best users parsed. Count: ${_bestUsers.length}');
 
@@ -131,8 +125,8 @@ class _HomePageState extends State<HomePage> {
           print('DEBUG: User recipes parsed. Count: ${_userRecipes.length}');
 
           print('DEBUG: Parsing categories...');
-          _categories = (data['categories'] as List) 
-              .map((jsonItem) => Category.fromJson(jsonItem)) 
+          _categories = (data['categories'] as List)
+              .map((jsonItem) => Category.fromJson(jsonItem))
               .toList();
           print('DEBUG: Categories parsed. Count: ${_categories.length}');
 
@@ -153,7 +147,7 @@ class _HomePageState extends State<HomePage> {
         _errorMessage = 'Terjadi kesalahan: $e';
         _isLoading = false;
       });
-      print('[EXCEPTION] Error fetching home data in catch block: $e'); 
+      print('[EXCEPTION] Error fetching home data in catch block: $e');
       rethrow; // Re-throw error untuk melihat stack trace lengkap
     }
   }
@@ -179,36 +173,26 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         _buildTopSection(context),
                         CategoryTabBar(
-                          // Ini akan menggunakan kategori dari API.
-                          // Jika Anda benar-benar ingin hardcoded 'mealTypes', GANTI BARIS DI BAWAH INI:
-                          // categories: mealTypes,
-                          categories: _categories.map((cat) => cat.name).toList(), 
+                          categories: _categories.map((cat) => cat.name).toList(),
                           selectedIndex: _selectedCategoryIndex,
                           primaryColor: AppTheme.primaryColor,
                           onCategorySelected: (index) {
                             setState(() {
                               _selectedCategoryIndex = index;
-                              // TODO: Implement filtering logic jika diperlukan
                             });
                           },
-                           // Ganti dengan warna utama Anda
                         ),
                         Expanded(
                           child: SingleChildScrollView(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // --- SEMUA SECTION KONTEN UTAMA DIBAWAH INI AKAN DIAKTIFKAN ---
                                 _buildTrendingRecipeSection(context),
-                                
-                                if (_userRecipes.isNotEmpty) 
+                                if (_userRecipes.isNotEmpty)
                                   _buildYourRecipesSection(context),
-                                
                                 _buildTopUsersSection(context),
-                                
                                 _buildRecentlyAddedRecipeSection(context),
-
-                                const SizedBox(height: 70), 
+                                const SizedBox(height: 70),
                               ],
                             ),
                           ),
@@ -220,154 +204,156 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- DEFINISI WIDGET SECTION LAINNYA DI DALAM CLASS INI ---
-Widget _buildTopSection(BuildContext context) {
-  final bool isLoggedIn = _loggedInUsername != 'people';
+  Widget _buildTopSection(BuildContext context) {
+    final bool isLoggedIn = _loggedInUsername != 'people';
 
-  return Padding(
-    padding: const EdgeInsets.fromLTRB(
-      AppTheme.spacingXLarge,
-      AppTheme.spacingXLarge,
-      AppTheme.spacingXXLarge,
-      AppTheme.spacingLarge,
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            // LOGO TETAP
-            Image.asset(
-              'images/logo.png',
-              width: 32,
-              height: 32,
-            ),
-            const SizedBox(width: AppTheme.spacingSmall),
-
-            // TEXT JIKA LOGIN, TOMBOL JIKA BELUM
-            isLoggedIn
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hi! $_loggedInUsername',
-                        style: TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Masak apa hari ini?',
-                        style: TextStyle(fontSize: 12, color: Colors.black54),
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pushNamed(context, '/login'),
-                        style: TextButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(60, 32),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.spacingXLarge,
+        AppTheme.spacingXLarge,
+        AppTheme.spacingXXLarge,
+        AppTheme.spacingLarge,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Image.asset(
+                'images/logo.png',
+                width: 32,
+                height: 32,
+              ),
+              const SizedBox(width: AppTheme.spacingSmall),
+              isLoggedIn
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hi! $_loggedInUsername',
+                          style: TextStyle(
+                            color: AppTheme.primaryColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          textStyle: const TextStyle(fontSize: 12),
                         ),
-                        child: const Text('Login'),
-                      ),
-                      const SizedBox(width: AppTheme.spacingSmall),
-                      TextButton(
-                        onPressed: () => Navigator.pushNamed(context, '/register'),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.black87,
-                          minimumSize: const Size(60, 32),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Masak apa hari ini?',
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/login'),
+                          style: TextButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(60, 32),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            textStyle: const TextStyle(fontSize: 12),
                           ),
-                          textStyle: const TextStyle(fontSize: 12),
+                          child: const Text('Login'),
                         ),
-                        child: const Text('Daftar'),
-                      ),
-                    ],
+                        const SizedBox(width: AppTheme.spacingSmall),
+                        TextButton(
+                          onPressed: () => Navigator.pushNamed(context, '/register'),
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black87,
+                            minimumSize: const Size(60, 32),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                          child: const Text('Daftar'),
+                        ),
+                      ],
                   ),
-          ],
-        ),
-
-        // ICON SAMPING KANAN
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/notif'),
-              child: Container(
-                width: AppTheme.favoriteButtonSize,
-                height: AppTheme.favoriteButtonSize,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: AssetImage('images/notif.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppTheme.spacingMedium),
-            GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/penjadwalan'),
-              child: Container(
-                width: AppTheme.favoriteButtonSize,
-                height: AppTheme.favoriteButtonSize,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: AssetImage('images/calendar.png'),
-                    fit: BoxFit.cover,
+            ],
+          ),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/notif'),
+                child: Container(
+                  width: AppTheme.favoriteButtonSize,
+                  height: AppTheme.favoriteButtonSize,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage('images/notif.png'),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: AppTheme.spacingMedium),
-            GestureDetector(
-              onTap: () => showRecipeRecommendationsTopSheet(context),
-              child: Container(
-                width: AppTheme.favoriteButtonSize,
-                height: AppTheme.favoriteButtonSize,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: AssetImage('images/search.png'),
-                    fit: BoxFit.cover,
+              const SizedBox(width: AppTheme.spacingMedium),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/penjadwalan'),
+                child: Container(
+                  width: AppTheme.favoriteButtonSize,
+                  height: AppTheme.favoriteButtonSize,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage('images/calendar.png'),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-
+              const SizedBox(width: AppTheme.spacingMedium),
+              GestureDetector(
+                onTap: () => showRecipeRecommendationsTopSheet(context),
+                child: Container(
+                  width: AppTheme.favoriteButtonSize,
+                  height: AppTheme.favoriteButtonSize,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: AssetImage('images/search.png'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildTrendingRecipeSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.only( left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingMedium, bottom: AppTheme.spacingMedium, ),
+          padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingMedium, bottom: AppTheme.spacingMedium),
           child: GestureDetector(
-            onTap: () { Navigator.pushNamed(context, '/trending-resep'); },
-            child: Text( 'Resep Trending >', style: TextStyle( fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, ), ), ),
+            onTap: () {
+              Navigator.pushNamed(context, '/trending-resep');
+            },
+            child: Text(
+              'Resep Trending >',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          ),
         ),
         SizedBox(
-          height: 280, 
+          height: 280,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXLarge),
@@ -375,15 +361,13 @@ Widget _buildTopSection(BuildContext context) {
             itemBuilder: (context, index) {
               final recipe = _trendingRecipes[index];
               return TrendingRecipeCard(
-                imagePath: recipe.image, // Food.image (sudah null-safe di model)
-                title: recipe.name, // Food.name (sudah null-safe di model)
-                description: recipe.description ?? 'Tidak ada deskripsi', 
-                favorites: recipe.likes?.toString() ?? '0', 
-                duration: recipe.cookingTime != null ? '${recipe.cookingTime}menit' : 'N/A', 
-                price: recipe.price ?? 'Gratis', 
-                detailRoute: '/detail-resep/${recipe.id}', // Pastikan ini sesuai dengan route detail resep Anda
-              
-                // Tambahkan onTap jika perlu
+                imagePath: recipe.image,
+                title: recipe.name,
+                description: recipe.description ?? 'Tidak ada deskripsi',
+                favorites: recipe.likes?.toString() ?? '0',
+                duration: recipe.cookingTime != null ? '${recipe.cookingTime} menit' : 'N/A',
+                price: recipe.price ?? 'Gratis',
+                detailRoute: '/detail-resep/${recipe.id}',
               );
             },
           ),
@@ -395,27 +379,40 @@ Widget _buildTopSection(BuildContext context) {
 
   Widget _buildYourRecipesSection(BuildContext context) {
     return Container(
-      decoration: BoxDecoration( color: AppTheme.primaryColor, borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium), ),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor,
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.only( left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge, ),
+            padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge),
             child: GestureDetector(
-              onTap: () { Navigator.pushNamed(context, '/resep-anda'); },
-              child: Text( 'Resep Anda >', style: TextStyle( fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, ), ), ),
+              onTap: () {
+                Navigator.pushNamed(context, '/resep-anda');
+              },
+              child: Text(
+                'Resep Anda >',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
           SizedBox(
-            height: 250, 
+            height: 250,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only( left: AppTheme.spacingXLarge, right: AppTheme.spacingXLarge, ),
+              padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXLarge),
               itemCount: _userRecipes.length,
               itemBuilder: (context, index) {
                 final recipe = _userRecipes[index];
-                return FoodCard( 
-                  food: recipe, 
-                  onCardTap: () { 
+                return FoodCard(
+                  food: recipe,
+                  onCardTap: () {
                     Navigator.pushNamed(context, '/detail-resep', arguments: recipe.id);
                   },
                   onFavoritePressed: () {
@@ -425,7 +422,7 @@ Widget _buildTopSection(BuildContext context) {
               },
             ),
           ),
-          SizedBox(height: AppTheme.spacingXXLarge),
+          const SizedBox(height: AppTheme.spacingXXLarge),
         ],
       ),
     );
@@ -436,25 +433,44 @@ Widget _buildTopSection(BuildContext context) {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.only( left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge, ),
+          padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge),
           child: GestureDetector(
-            onTap: () { Navigator.pushNamed(context, '/pengguna-terbaik'); },
-            child: Text( 'Pengguna Terbaik >', style: TextStyle( fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, ), ), ),
+            onTap: () {
+              Navigator.pushNamed(context, '/pengguna-terbaik');
+            },
+            child: Text(
+              'Pengguna Terbaik >',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          ),
         ),
         SizedBox(
-          height: 100, 
+          height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.only( left: AppTheme.spacingXLarge, right: AppTheme.spacingXLarge, ),
+            padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXLarge),
             itemCount: _bestUsers.length,
             itemBuilder: (context, index) {
               final user = _bestUsers[index];
-              
+
               return GestureDetector(
+                // <<< LANGKAH 3: TAMBAHKAN LOGIKA IF/ELSE DI SINI
                 onTap: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => ProfilUtama(userId: user.id),
-                  ));
+                  if (user.id == _currentUserId) {
+                    // Navigasi ke profil sendiri (tanpa userId)
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) => const ProfilUtama(),
+                    ));
+                  } else {
+                    // Navigasi ke profil orang lain
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) => ProfilUtama(userId: user.id),
+                    ));
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(right: AppTheme.spacingXLarge),
@@ -463,8 +479,8 @@ Widget _buildTopSection(BuildContext context) {
                       CircleAvatar(
                         radius: 30,
                         backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
-                            ? NetworkImage('$_baseUrl$user.profilePicture!')
-                            : const AssetImage('images/user_placeholder.png') as ImageProvider,
+                              ? NetworkImage('$_baseUrl${user.profilePicture}')
+                              : const AssetImage('images/user_placeholder.png') as ImageProvider,
                       ),
                       const SizedBox(height: AppTheme.spacingSmall),
                       Text(
@@ -493,8 +509,15 @@ Widget _buildTopSection(BuildContext context) {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.only( left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge, ),
-          child: Text( 'Baru Saja Ditambahkan', style: TextStyle( fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryColor, ), ),
+          padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge),
+          child: Text(
+            'Baru Saja Ditambahkan',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryColor,
+            ),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXLarge),
@@ -510,10 +533,10 @@ Widget _buildTopSection(BuildContext context) {
             itemCount: _latestRecipes.length,
             itemBuilder: (context, index) {
               final recipe = _latestRecipes[index];
-              return FoodCard( 
-                food: recipe, 
+              return FoodCard(
+                food: recipe,
                 onCardTap: () {
-                   Navigator.pushNamed(context, '/detail-resep/${recipe.id}'); // <<< PERBAIKAN DI SINI
+                  Navigator.pushNamed(context, '/detail-resep/${recipe.id}');
                 },
                 onFavoritePressed: () {
                   print('Favorite pressed for ${recipe.name}');
