@@ -43,21 +43,22 @@ exports.getMealSchedules = async (req, res) => {
 
 // POST jadwal makan baru
 exports.addMealSchedule = async (req, res) => {
-    const userId = req.userId;
-    const { recipe_id, meal_type, date } = req.body; // date harus dalam format YYYY-MM-DD
-    console.log(`>>> Controller addMealSchedule BERHASIL DICAPAI! untuk user_id: ${userId}, recipe_id: ${recipe_id} <<<`);
+    // ✅ Ambil user_id dari request body instead of JWT
+    const { user_id, recipe_id, meal_type, date } = req.body;
+    console.log(`>>> Controller addMealSchedule BERHASIL DICAPAI! untuk user_id: ${user_id}, recipe_id: ${recipe_id} <<<`);
 
-    if (!recipe_id || !meal_type || !date) {
+    // ✅ Validasi semua field termasuk user_id
+    if (!user_id || !recipe_id || !meal_type || !date) {
         return res.status(400).json({
             status: 'error',
-            message: 'recipe_id, meal_type, dan date wajib diisi.'
+            message: 'user_id, recipe_id, meal_type, dan date wajib diisi.'
         });
     }
 
     try {
         const [result] = await db.query(
             `INSERT INTO meal_schedules (user_id, recipe_id, meal_type, date) VALUES (?, ?, ?, ?)`,
-            [userId, recipe_id, meal_type, date]
+            [user_id, recipe_id, meal_type, date] // ✅ Gunakan user_id dari body
         );
         console.log(`Meal schedule added. Insert ID: ${result.insertId}`);
         res.status(201).json({
