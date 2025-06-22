@@ -15,46 +15,39 @@ exports.addReview = async (req, res) => {
         return res.status(400).json({ message: 'Semua kolom (user_id, recipe_id, rating, comment) harus diisi.' });
     }
 
-    // Pastikan user_id dan recipe_id adalah angka. Rating adalah angka antara 1-5.
-    if (typeof user_id !== 'number' || typeof recipe_id !== 'number' || typeof rating !== 'number' || rating < 1 || rating > 5) {
+    // Konversi ke number dan validasi (karena dari JSON biasanya string)
+    const userIdNum = parseInt(user_id);
+    const recipeIdNum = parseInt(recipe_id);
+    const ratingNum = parseInt(rating);
+
+    if (isNaN(userIdNum) || isNaN(recipeIdNum) || isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
         return res.status(400).json({ message: 'user_id, recipe_id, dan rating harus berupa angka. Rating harus antara 1-5.' });
     }
 
     try {
         // Cek apakah resep ada
-        const [recipeCheck] = await db.query('SELECT id FROM recipes WHERE id = ?', [recipe_id]);
+        const [recipeCheck] = await db.query('SELECT id FROM recipes WHERE id = ?', [recipeIdNum]);
         if (recipeCheck.length === 0) {
             return res.status(404).json({ message: 'Resep tidak ditemukan.' });
         }
 
         // Cek apakah pengguna ada
-        const [userCheck] = await db.query('SELECT id FROM users WHERE id = ?', [user_id]);
+        const [userCheck] = await db.query('SELECT id FROM users WHERE id = ?', [userIdNum]);
         if (userCheck.length === 0) {
             return res.status(404).json({ message: 'Pengguna tidak ditemukan.' });
         }
 
         // Cek apakah pengguna sudah pernah memberikan ulasan untuk resep ini
-        // Menggunakan 'reviews' sesuai skema database Anda
-        const [existingReview] = await db.query('SELECT id FROM reviews WHERE user_id = ? AND recipe_id = ?', [user_id, recipe_id]);
+        const [existingReview] = await db.query('SELECT id FROM reviews WHERE user_id = ? AND recipe_id = ?', [userIdNum, recipeIdNum]);
         if (existingReview.length > 0) {
             return res.status(409).json({ message: 'Anda sudah mengulas resep ini sebelumnya.' });
         }
 
         // Masukkan ulasan baru
-        // Menggunakan 'reviews' sesuai skema database Anda
         const insertReviewQuery = 'INSERT INTO reviews (user_id, recipe_id, rating, comment) VALUES (?, ?, ?, ?)';
-        const [insertResult] = await db.query(insertReviewQuery, [user_id, recipe_id, rating, comment]);
+        const [insertResult] = await db.query(insertReviewQuery, [userIdNum, recipeIdNum, ratingNum, comment]);
 
-        // Hitung ulang rata-rata rating dan jumlah ulasan untuk resep
-        // Menggunakan 'reviews' sesuai skema database Anda
-        const updateRecipeRatingQuery = `
-            UPDATE recipes
-            SET
-                average_rating = (SELECT AVG(rating) FROM reviews WHERE recipe_id = ?),
-                comments_count = (SELECT COUNT(id) FROM reviews WHERE recipe_id = ?)
-            WHERE id = ?;
-        `;
-        await db.query(updateRecipeRatingQuery, [recipe_id, recipe_id, recipe_id]);
+        // HAPUS bagian update recipe rating karena kolom tidak ada di tabel recipes
 
         res.status(201).json({
             message: 'Ulasan berhasil ditambahkan.',
