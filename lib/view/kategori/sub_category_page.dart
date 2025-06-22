@@ -1,12 +1,16 @@
+// lib/view/kategori/sub_category_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
-import 'package:masak2/view/component/header_b_n_s.dart';
-import 'package:masak2/models/food_model.dart';
-import 'package:masak2/view/component/food_card_widget.dart';
-import 'package:masak2/view/component/category_tab.dart';
+import 'package:masak2/view/component/header_b_n_s.dart'; // Pastikan ini mengacu ke CustomHeader yang baru
+import 'package:masak2/models/food_model.dart'; // Import Food model yang diperbarui
+import 'package:masak2/view/component/food_card_widget.dart'; // Import FoodCard widget yang diperbarui
+import 'package:masak2/view/component/category_tab.dart'; // Import CategoryTabBar
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
+
+import '../recipe/resep_detail_page.dart'; // Import halaman detail resep
 
 class SubCategoryPage extends StatefulWidget {
   final String categoryName;
@@ -37,6 +41,9 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
 
   late Future<List<Food>> _foodsFuture;
 
+  // Sesuaikan URL BASE_URL ini dengan alamat IP lokal Anda jika di emulator/perangkat fisik
+  // Untuk emulator Android, gunakan 10.0.2.2
+  // Untuk perangkat fisik, gunakan IP address komputer Anda (contoh: 192.168.1.xxx)
   final String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 
   @override
@@ -54,6 +61,7 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
 
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
+        // Map JSON data to Food objects using the updated Food.fromJson
         return data.map((json) => Food.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load recipes for category $categoryId: ${response.statusCode} ${response.body}');
@@ -64,25 +72,22 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return BottomNavbar(
-      _buildMainContent(),
-    );
-  }
-
-  Widget _buildMainContent() {
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBody: true,
+      extendBody: true, // Memungkinkan body meluas di bawah bottomNavigationBar
       body: SafeArea(
-        bottom: false,
+        bottom: false, // Tidak mempertimbangkan bottom padding dari SafeArea agar BottomNavbar bisa penuh
         child: Column(
           children: [
             CustomHeader(
               title: widget.categoryName,
               titleColor: primaryColor,
+              showBackButton: true, // Tampilkan tombol kembali
+              // backRoute: null, // Defaultnya akan pop, jadi tidak perlu disetel
+              showNotificationButton: true, // Tampilkan tombol notifikasi (sesuai kebutuhan)
+              showSearchButton: true, // Tampilkan tombol pencarian (sesuai kebutuhan)
             ),
             CategoryTabBar(
               categories: _categories,
@@ -90,6 +95,10 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
               onCategorySelected: (index) {
                 setState(() {
                   _selectedCategoryIndex = index;
+                  // TODO: Implement sorting logic based on selectedCategoryIndex
+                  // Misalnya, Anda bisa memanggil ulang _fetchRecipesByCategoryId
+                  // dengan parameter sort jika backend mendukungnya, atau
+                  // melakukan sorting di sisi klien pada daftar 'foods' yang sudah diambil.
                 });
               },
               primaryColor: primaryColor,
@@ -99,9 +108,9 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
                 future: _foodsFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return Center(child: CircularProgressIndicator(color: primaryColor));
                   } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
+                    return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: primaryColor)));
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(child: Text('Tidak ada resep ditemukan untuk kategori ${widget.categoryName}.'));
                   } else {
@@ -114,27 +123,45 @@ class _SubCategoryPageState extends State<SubCategoryPage> {
           ],
         ),
       ),
+      // BottomNavbar harus di luar `_buildMainContent` jika `extendBody: true`
+      bottomNavigationBar: BottomNavbar(
+        const SizedBox.shrink(), // Placeholder kosong karena konten sudah ada di body
+      ),
     );
   }
 
   Widget _buildFoodGridView(List<Food> foods) {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(2, 20, 2, 110),
+      padding: const EdgeInsets.fromLTRB(2, 20, 2, 110), // Padding bawah agar tidak tertutup BottomNavbar
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 0.50,
         mainAxisSpacing: 5,
-        childAspectRatio: 3 / 3.5,
+        childAspectRatio: 3 / 3.5, // Sesuaikan rasio aspek jika FoodCard terlihat terlalu panjang/pendek
       ),
       itemCount: foods.length,
       itemBuilder: (context, index) {
+        final recipe = foods[index]; // Ambil objek Food saat ini
         return FoodCard(
-          food: foods[index],
+          food: recipe,
           onFavoritePressed: () {
+            // TODO: Implement favorite logic (e.g., call API to toggle favorite status)
             setState(() {
+              // Update state jika status favorit berubah
             });
           },
           onCardTap: () {
+            // Navigasi ke halaman detail resep menggunakan Navigator.push
+            // Anda bisa menggunakan MaterialPageRoute jika Anda tidak mendaftarkan named routes
+            // atau Navigator.pushNamed jika Anda sudah mendaftarkan '/detail-resep/:id'
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RecipeDetailPage(recipeId: recipe.id!), // Pastikan ID tidak null
+              ),
+            );
+            // Atau jika Anda menggunakan named routes (pastikan terdaftar di main.dart):
+            // Navigator.pushNamed(context, '/detail-resep/${recipe.id}');
           },
         );
       },
