@@ -25,6 +25,8 @@ router.post(
 // Rute untuk mendapatkan detail resep berdasarkan ID (READ)
 router.get('/:id', recipeController.getRecipeById);
 
+router.get('/', recipeController.getAllRecipes);
+
 // Rute untuk memperbarui resep berdasarkan ID (UPDATE)
 router.put(
   '/:id',

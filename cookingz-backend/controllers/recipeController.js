@@ -527,6 +527,65 @@ getRecipeById: async (req, res, next) => {
     console.log('--- DEBUG: Function updateRecipe finished ---');
   },
 
+    // Fungsi untuk mendapatkan semua resep dengan sorting (READ ALL)
+    getAllRecipes: async (req, res, next) => {
+        console.log('\n--- DEBUG: Entering getAllRecipes ---');
+        // Ambil parameter sort dari query string, defaultnya 'newest'
+        const { sort = 'newest' } = req.query;
+        console.log(`DEBUG: Sorting parameter: ${sort}`);
+
+        let orderByClause = '';
+
+        // Tentukan klausa ORDER BY berdasarkan parameter sort
+        switch (sort) {
+            case 'trending':
+                // Logika trending bisa lebih kompleks, misalnya berdasarkan likes dalam 7 hari terakhir.
+                // Untuk sekarang, kita urutkan berdasarkan jumlah favorit terbanyak.
+                orderByClause = 'ORDER BY favorites_count DESC';
+                break;
+            case 'oldest':
+                orderByClause = 'ORDER BY r.created_at ASC';
+                break;
+            case 'newest':
+            default:
+                orderByClause = 'ORDER BY r.created_at DESC';
+                break;
+        }
+        console.log(`DEBUG: Using ORDER BY clause: ${orderByClause}`);
+
+        try {
+            const query = `
+                SELECT
+                    r.id,
+                    r.title,
+                    r.description,
+                    r.image_url,
+                    r.created_at,
+                    u.username,
+                    u.profile_picture,
+                    (SELECT COUNT(*) FROM recipe_favorites WHERE recipe_id = r.id) AS favorites_count,
+                    (SELECT COUNT(*) FROM reviews WHERE recipe_id = r.id) AS comments_count
+                FROM
+                    recipes r
+                JOIN
+                    users u ON r.user_id = u.id
+                ${orderByClause}
+            `;
+
+            const [recipes] = await pool.query(query);
+
+            console.log(`DEBUG: Found ${recipes.length} recipes.`);
+            res.status(200).json(recipes);
+            console.log('--- DEBUG: Exiting getAllRecipes successfully ---');
+
+        } catch (error) {
+            console.error('Error getting all recipes:', error);
+            console.log('--- DEBUG: Exiting getAllRecipes with error ---');
+            next(error);
+        }
+    },
+
+
   // Fungsi untuk menghapus resep (DELETE)
   deleteRecipe: async (req, res, next) => {
     const { id } = req.params;
