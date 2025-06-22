@@ -8,9 +8,8 @@ const db = require('../db');
  * @access  Private (akan menggunakan middleware otentikasi nantinya)
  */
 exports.toggleFavorite = async (req, res) => {
-    // TODO: Ganti baris ini dengan `const userId = req.user.id;` setelah otentikasi siap.
-    // Untuk sekarang, kita akan hardcode user ID 1 untuk pengujian.
-    const userId = 1;
+
+    const { user_id: userId } = req.body;
 
     const { id: recipeId } = req.params; // Mengambil recipeId dari URL params
 

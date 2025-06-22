@@ -236,24 +236,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   // Fungsi untuk mengecek status favorit resep
   Future<void> _checkFavoriteStatus(int recipeId, int userId) async {
-    final String apiUrl = kIsWeb
-        ? 'http://localhost:3000/recipes/$recipeId/favorite-status?user_id=$userId'
-        : 'http://10.0.2.2:3000/recipes/$recipeId/favorite-status?user_id=$userId';
-
-    final String? accessToken = await _getAccessToken(); // Ambil token
-    // Perhatikan: Anda bisa memilih apakah cek status favorit butuh token atau tidak.
-    // Saat ini, backend Anda mungkin tidak memerlukannya karena rute '/recipes' belum ada `authenticateToken`
-    // Tapi jika di masa depan `favoriteRoutes` juga di bawah `authenticateToken`, ini akan diperlukan.
-
-    Map<String, String> headers = {'Content-Type': 'application/json'};
-    if (accessToken != null) {
-      headers['Authorization'] = 'Bearer $accessToken';
-    }
+    final String apiUrl = '$_baseUrl/recipes/$recipeId/favorite-status?user_id=$userId';
 
     try {
       final response = await http.get(
         Uri.parse(apiUrl),
-        headers: headers, // Gunakan header yang mungkin berisi token
+        headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
@@ -278,20 +266,14 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       return;
     }
 
-    final String? accessToken = await _getAccessToken(); // Ambil token
-    if (accessToken == null) {
-      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
-      return;
-    }
-
-    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/${widget.recipeId}/favorite' : 'http://10.0.2.2:3000/recipes/${widget.recipeId}/favorite';
+    final String apiUrl = '$_baseUrl/recipes/${widget.recipeId}/favorite';
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Sertakan token
+          // Tidak perlu Authorization header
         },
         body: json.encode({'user_id': _currentLoggedInUserId!}),
       );
@@ -311,8 +293,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           });
           _showSuccessDialog(context, 'Favorit', data['message']);
         }
-      } else if (response.statusCode == 401) {
-        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
         _showErrorDialog(context, 'Favorit Gagal', 'Gagal mengubah status favorit: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
