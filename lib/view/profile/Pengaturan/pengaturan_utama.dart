@@ -14,7 +14,7 @@ class PengaturanUtama extends StatefulWidget {
   State<PengaturanUtama> createState() => _PengaturanUtamaState(); 
 }
 
-class _PengaturanUtamaState extends State<PengaturanUtama> { 
+class _PengaturanUtamaState extends State<PengaturanUtama> with TickerProviderStateMixin{ 
   bool _isLoggedIn = false; 
 
   final String _baseUrl = 'http://localhost:3000'; // Sesuaikan dengan IP backend Anda
@@ -73,7 +73,7 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
       if (mounted) {
         if (response.statusCode == 200) {
           await prefs.clear();
-          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+          Navigator.pushNamedAndRemoveUntil(context, '/beranda', (route) => false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Akun berhasil dihapus.'), backgroundColor: Colors.green),
           );
@@ -201,13 +201,14 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
                 
                 // 2. Hapus data token dan user
                 await prefs.remove('auth_token');
+                await prefs.remove('username');
                 await prefs.remove('user_id');
 
                 // 3. Pastikan widget masih ada sebelum navigasi
                 if (!mounted) return;
 
                 // 4. Arahkan ke halaman login dan hapus semua rute sebelumnya
-                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                Navigator.pushNamedAndRemoveUntil(context, '/beranda', (route) => false);
               },
             ),
           ],

@@ -59,7 +59,7 @@ class _HomePageState extends State<HomePage> {
       _hasError = false;
       _errorMessage = '';
     });
-
+    
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
