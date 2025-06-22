@@ -243,7 +243,7 @@ getRecipeById: async (req, res, next) => {
                 u.username,
                 u.full_name,
                 u.profile_picture,
-                (SELECT COUNT(*) FROM user_favorites WHERE recipe_id = r.id) AS favorites_count,
+                (SELECT COUNT(*) FROM recipe_favorites WHERE recipe_id = r.id) AS favorites_count,
                 (SELECT COUNT(*) FROM reviews WHERE recipe_id = r.id) AS comments_count,
                 (SELECT AVG(rating) FROM reviews WHERE recipe_id = r.id) AS average_rating
              FROM
@@ -546,7 +546,7 @@ getRecipeById: async (req, res, next) => {
       await connection.query('DELETE FROM recipe_steps WHERE recipe_id = ?', [id]);
       await connection.query('DELETE FROM meal_schedules WHERE recipe_id = ?', [id]);
       await connection.query('DELETE FROM reviews WHERE recipe_id = ?', [id]);
-      await connection.query('DELETE FROM user_favorites WHERE recipe_id = ?', [id]);
+      await connection.query('DELETE FROM recipe_favorites WHERE recipe_id = ?', [id]);
       console.log(`DEBUG: Related data for recipe ID ${id} deleted.`);
 
       const [deleteResult] = await connection.query('DELETE FROM recipes WHERE id = ?', [id]);
