@@ -1,12 +1,10 @@
-// lib/page/resep_anda_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'resep_detail_page.dart';
-import '../profile/profil/tambah_resep.dart'; // Nama file lama: buat_resep.dart
+import '../profile/profil/tambah_resep.dart';
 import '../component/food_card_widget.dart';
 import '../../theme/theme.dart';
 import '../component/header_back_PSN.dart';
@@ -62,15 +60,34 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
 
     try {
       final response = await http.get(Uri.parse('$_baseUrl/users/$userId/recipes'));
+
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Food.fromJson(json)).toList();
+        // First check if the response body is not empty
+        if (response.body.isEmpty) {
+          return [];
+        }
+
+        // Try to decode the JSON
+        final decoded = jsonDecode(response.body);
+
+        // Handle different response formats
+        if (decoded is List) {
+          return decoded.map((json) => Food.fromJson(json)).toList();
+        } else if (decoded is Map && decoded.containsKey('data')) {
+          // If the response is wrapped in a 'data' field
+          if (decoded['data'] is List) {
+            return (decoded['data'] as List).map((json) => Food.fromJson(json)).toList();
+          }
+        }
+
+        // If we get here, the format wasn't expected
+        return [];
       } else {
         throw Exception('Failed to load user recipes: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
       print('Error fetching user recipes: $e');
-      throw Exception('Failed to connect to the server or parse data. Error: $e');
+      return []; // Return empty list instead of throwing exception
     }
   }
 
@@ -78,26 +95,19 @@ class _ResepAndaPageState extends State<ResepAndaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      // Panggil Header dan berikan fungsi untuk onAddPressed
       appBar: HeaderBackPSN(
         onAddPressed: () {
           Navigator.push(
             context,
-            // Perhatikan nama class BuatResep harus sesuai dengan yang di-import
             MaterialPageRoute(builder: (context) => const BuatResep()),
           );
         },
       ),
-      // FloatingActionButton dihapus dari sini karena sudah ada di header
       body: FutureBuilder<Map<String, List<Food>>>(
         future: _recipesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final recipesData = snapshot.data ?? {'mostViewed': <Food>[], 'filtered': <Food>[]};
