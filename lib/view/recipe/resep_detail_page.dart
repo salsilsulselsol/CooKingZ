@@ -30,6 +30,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
 
   bool isFollowing = false;
+  bool _isFollowLoading = false;
   DateTime selectedDate = DateTime.now();
 
   VideoPlayerController? _videoController;
@@ -76,7 +77,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     await _fetchRecipeDetails(widget.recipeId); // Ambil detail resep
 
     // Cek status favorit hanya jika user_id tersedia
-    if (_currentLoggedInUserId != null) {
+    if (_currentLoggedInUserId != null && _fetchedRecipeData != null) {
+      final authorId = _fetchedRecipeData!['user_id'];
+      if (authorId != null) {
+        // Cek apakah user yang login sudah follow penulis resep
+        await _checkFollowStatus(authorId);
+      }
+      // Cek status favorit resep
       await _checkFavoriteStatus(widget.recipeId, _currentLoggedInUserId!);
     }
     _checkOwnership(); // Cek kepemilikan
@@ -145,6 +152,85 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _isLoading = false;
       });
       print('Error fetching recipe: $e');
+    }
+  }
+
+  Future<void> _checkFollowStatus(int authorId) async {
+    // Tidak perlu cek jika user tidak login
+    if (_currentLoggedInUserId == null) return;
+
+    // API untuk mendapatkan daftar followers dari si penulis resep
+    final String apiUrl = '$_baseUrl/users/$authorId/followers';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final List<dynamic> followers = responseData['data'] ?? [];
+
+        // Cek apakah ID user yang login ada di dalam daftar follower
+        final bool isUserFollowing = followers.any((follower) => follower['id'] == _currentLoggedInUserId);
+
+        if (mounted) {
+          setState(() {
+            isFollowing = isUserFollowing;
+          });
+        }
+      } else {
+        print('Gagal memeriksa status follow: ${response.body}');
+      }
+    } catch (e) {
+      print('Error saat memeriksa status follow: $e');
+    }
+  }
+
+  Future<void> _toggleFollowStatus(int userIdToToggle) async {
+    if (_isFollowLoading) return; // Mencegah klik ganda
+
+    final String? accessToken = await _getAccessToken();
+    if (_currentLoggedInUserId == null || accessToken == null) {
+      _showErrorDialog(context, 'Aksi Gagal', 'Anda harus login untuk melakukan aksi ini.');
+      return;
+    }
+
+    if (_currentLoggedInUserId == userIdToToggle) {
+      _showErrorDialog(context, 'Aksi Gagal', 'Anda tidak bisa mengikuti diri sendiri.');
+      return;
+    }
+
+    setState(() {
+      _isFollowLoading = true;
+    });
+
+    // Tentukan endpoint berdasarkan status `isFollowing` saat ini
+    final String endpoint = isFollowing ? 'unfollow' : 'follow';
+    final String apiUrl = '$_baseUrl/users/$userIdToToggle/$endpoint';
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          isFollowing = !isFollowing; // Ubah state setelah berhasil
+        });
+      } else {
+        final error = json.decode(response.body)['message'] ?? 'Gagal melakukan aksi.';
+        _showErrorDialog(context, 'Aksi Gagal', error);
+      }
+    } catch (e) {
+      _showErrorDialog(context, 'Kesalahan Jaringan', 'Terjadi kesalahan: ${e.toString()}');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFollowLoading = false;
+        });
+      }
     }
   }
 
@@ -391,52 +477,83 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       return;
     }
 
-    // Karena user_id dikirim dari frontend, `accessToken` TIDAK diperlukan
-    // untuk rute '/reviews' ini jika Anda tidak menggunakan middleware autentikasi di backend.
-    // final String? accessToken = await _getAccessToken(); // <--- Hapus atau komen ini
-    // if (accessToken == null) { // <--- Hapus atau komen ini
-    //   _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.'); // <--- Hapus atau komen ini
-    //   return; // <--- Hapus atau komen ini
-    // } // <--- Hapus atau komen ini
-
     final String apiUrl = kIsWeb ? 'http://localhost:3000/reviews' : 'http://10.0.2.2:3000/reviews';
+
+    // Debug: Print data yang akan dikirim
+    print('DEBUG: Sending review data:');
+    print('- user_id: $_currentLoggedInUserId');
+    print('- recipe_id: ${widget.recipeId}');
+    print('- rating: ${_currentRating.toInt()}');
+    print('- comment: $comment');
+    print('- API URL: $apiUrl');
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          // Hapus header 'Authorization' karena tidak diperlukan oleh controller addReview baru
-          // 'Authorization': 'Bearer $accessToken',
         },
         body: json.encode({
-          'user_id': _currentLoggedInUserId!, // Ini akan dikirim ke backend
+          'user_id': _currentLoggedInUserId!,
           'recipe_id': widget.recipeId,
           'rating': _currentRating.toInt(),
           'comment': comment,
         }),
       );
 
+      // Debug: Print response details
+      print('DEBUG: Response received:');
+      print('- Status Code: ${response.statusCode}');
+      print('- Response Body: ${response.body}');
+      print('- Response Headers: ${response.headers}');
+
       if (!mounted) return;
 
-      if (response.statusCode == 201) {
-        _commentController.clear();
-        if (mounted) {
-          setState(() {
-            _currentRating = 0.0;
-          });
+      // Cek berbagai kemungkinan status code sukses
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Status 2xx berarti sukses
+        try {
+          final responseData = json.decode(response.body);
+          print('DEBUG: Parsed response data: $responseData');
+
+          _commentController.clear();
+          if (mounted) {
+            setState(() {
+              _currentRating = 0.0;
+            });
+          }
+          _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
+
+        } catch (parseError) {
+          print('DEBUG: Error parsing response JSON: $parseError');
+          // Tetap anggap sukses jika status code 2xx meski JSON parsing gagal
+          _commentController.clear();
+          if (mounted) {
+            setState(() {
+              _currentRating = 0.0;
+            });
+          }
+          _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
         }
-        _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
-        // Refresh detail resep untuk menampilkan rata-rata rating dan jumlah komentar yang diperbarui
-        _fetchRecipeDetails(widget.recipeId);
       } else {
-        // Hapus `else if (response.statusCode == 401)` karena tidak ada autentikasi token
-        _showErrorDialog(context, 'Ulasan Gagal', 'Gagal mengirim ulasan: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
+        // Status bukan 2xx, anggap error
+        String errorMessage = 'Terjadi kesalahan tidak diketahui.';
+
+        try {
+          final errorResponse = json.decode(response.body);
+          errorMessage = errorResponse['message'] ?? errorMessage;
+        } catch (parseError) {
+          print('DEBUG: Error parsing error response: $parseError');
+          errorMessage = 'Server error (${response.statusCode})';
+        }
+
+        print('DEBUG: Review submission failed. Status: ${response.statusCode}, Message: $errorMessage');
+        _showErrorDialog(context, 'Ulasan Gagal', errorMessage);
       }
     } catch (e) {
       if (!mounted) return;
+      print('DEBUG: Exception during review submission: $e');
       _showErrorDialog(context, 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat mengirim ulasan: $e');
-      print('Error submitting review: $e');
     }
   }
 
@@ -577,36 +694,26 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   // Widget untuk menampilkan bagian penulis resep
 // Widget untuk menampilkan bagian penulis resep
   Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
-    // --- DEBUG PRINTS TAMBAHAN ---
-    print('DEBUG (_buildAuthorSection): userId: $userId');
-    print('DEBUG (_buildAuthorSection): username: "$username"'); // Pakai quote untuk lihat spasi kosong
-    print('DEBUG (_buildAuthorSection): fullName: "$fullName"'); // Pakai quote untuk lihat spasi kosong
-    print('DEBUG (_buildAuthorSection): profilePictureUrl: $profilePictureUrl');
-    // --- AKHIR DEBUG PRINTS TAMBAHAN ---
-
     String finalProfileImageUrl = '';
     Widget profileImageWidget;
 
     if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
-      finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
+      finalProfileImageUrl = '$_baseUrl$profilePictureUrl';
       profileImageWidget = CircleAvatar(
         radius: 24,
         backgroundImage: NetworkImage(finalProfileImageUrl),
-        onBackgroundImageError: (exception, stackTrace) {
-          print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
-        },
+        onBackgroundImageError: (e, s) => print('Error loading profile image: $e'),
       );
     } else {
       profileImageWidget = CircleAvatar(
         radius: 24,
         backgroundColor: Colors.grey[300],
-        child: Icon(
-          Icons.person,
-          color: Colors.grey[600],
-          size: 30,
-        ),
+        child: Icon(Icons.person, color: Colors.grey[600], size: 30),
       );
     }
+
+    // Cek apakah resep ini milik user yang sedang login
+    final bool isMyOwnRecipe = _currentLoggedInUserId == userId;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -620,57 +727,40 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '@$username',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor, // Pastikan warna ini kontras
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    fullName,
-                    style: TextStyle(
-                      color: AppTheme.textBrown, // Pastikan warna ini kontras
-                      fontSize: 14,
-                    ),
-                  ),
+                  Text('@$username', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(fullName, style: TextStyle(color: AppTheme.textBrown, fontSize: 14)),
                 ],
               ),
             ],
           ),
           Row(
             children: [
-              SizedBox(
-                width: isFollowing ? 120 : 100,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      isFollowing = !isFollowing;
-                    });
-                    print('Ikuti/Mengikuti button pressed for user ID: $userId');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
-                    foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+              // Hanya tampilkan tombol jika bukan resep milik sendiri
+              if (!isMyOwnRecipe)
+                SizedBox(
+                  width: isFollowing ? 120 : 100,
+                  child: ElevatedButton(
+                    // Non-aktifkan tombol saat proses loading
+                    onPressed: _isFollowLoading ? null : () => _toggleFollowStatus(userId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
+                      foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
-                  ),
-                  child: Text(
-                    isFollowing ? 'Mengikuti' : 'Ikuti',
-                    style: const TextStyle(fontSize: 14),
+                    child: _isFollowLoading
+                    // Tampilkan loading indicator
+                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    // Tampilkan teks sesuai state
+                        : Text(isFollowing ? 'Mengikuti' : 'Ikuti', style: const TextStyle(fontSize: 14)),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
+              // Beri jarak jika tombol follow ada
+              if (!isMyOwnRecipe) const SizedBox(width: 8),
               if (_isOwner)
                 IconButton(
                   icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
-                  onPressed: () {
-                    _showOwnerOptionsDialog(context);
-                  },
+                  onPressed: () => _showOwnerOptionsDialog(context),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
