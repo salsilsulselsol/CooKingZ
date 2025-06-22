@@ -5,27 +5,45 @@ const db = require('../db');
 
 // GET semua jadwal makan untuk user yang sedang login
 exports.getMealSchedules = async (req, res) => {
-    const userId = req.userId; // user_id didapatkan dari authenticateToken
-    console.log(`>>> Controller getMealSchedules BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
+    const requestedUserId = parseInt(req.params.id); // Dapatkan userId dari URL parameter
+    const authenticatedUserId = req.userId; // user_id didapatkan dari authenticateToken
+
+    console.log(`>>> Controller getMealSchedules BERHASIL DICAPAI! <<<`);
+    console.log(`Requested User ID from URL: ${requestedUserId}`);
+    
+
+    // --- PEMERIKSAAN KEAMANAN PENTING ---
+
+    // --- AKHIR PEMERIKSAAN KEAMANAN ---
+
     try {
-        const [rows] = await db.query(
-            `SELECT 
-                ms.id, 
-                ms.user_id, 
-                ms.recipe_id, 
-                ms.meal_type, 
+       const [rows] = await db.query(
+            `SELECT
+                ms.id,
+                ms.user_id,
+                ms.recipe_id,
+                ms.meal_type,
                 ms.date,
-                r.title as recipe_title, 
-                r.image_url as recipe_image_url,
-                r.cooking_time as recipe_cooking_time, -- Tambahkan ini jika FoodCardJadwal butuh waktu masak
-                r.price as recipe_price -- Tambahkan ini jika FoodCardJadwal butuh harga
-             FROM meal_schedules ms
-             JOIN recipes r ON ms.recipe_id = r.id
-             WHERE ms.user_id = ?
-             ORDER BY ms.date ASC, ms.meal_type ASC`, // Urutkan berdasarkan tanggal dan jenis makan
-            [userId]
-        );
-        console.log(`Fetched meal schedules count: ${rows.length}`);
+
+                -- Data dari tabel recipes
+                r.title AS recipe_title,
+                r.description AS recipe_description,
+                r.cooking_time AS recipe_cooking_time,
+                r.difficulty AS recipe_difficulty,
+                r.price AS recipe_price,
+                r.image_url AS recipe_image_url,
+                r.video_url AS recipe_video_url,
+                r.favorites_count AS recipe_favorites_count
+
+            FROM meal_schedules ms
+            JOIN recipes r ON ms.recipe_id = r.id
+            WHERE ms.user_id = ?
+            ORDER BY ms.date ASC, ms.meal_type ASC
+            `,
+            [requestedUserId]  // ✅ Parameter user yang dijadwalkan
+            );
+
+        console.log(`Fetched meal schedules count: ${rows.length} for user_id: ${requestedUserId}`);
         res.json({
             status: 'success',
             message: 'Jadwal makan berhasil diambil',
@@ -76,36 +94,37 @@ exports.addMealSchedule = async (req, res) => {
     }
 };
 
-// DELETE jadwal makan berdasarkan ID
-exports.deleteMealSchedule = async (req, res) => {
-    const userId = req.userId;
-    const { id } = req.params; // ID jadwal dari URL parameter
-    console.log(`>>> Controller deleteMealSchedule BERHASIL DICAPAI! untuk user_id: ${userId}, schedule_id: ${id} <<<`);
 
-    try {
-        const [result] = await db.query(
-            `DELETE FROM meal_schedules WHERE id = ? AND user_id = ?`,
-            [id, userId] // Pastikan user hanya bisa menghapus jadwalnya sendiri
-        );
-        if (result.affectedRows === 0) {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Jadwal makan tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.'
-            });
-        }
-        console.log(`Meal schedule deleted. ID: ${id}`);
-        res.json({
-            status: 'success',
-            message: 'Jadwal makan berhasil dihapus'
-        });
-    } catch (error) {
-        console.error('Error in deleteMealSchedule:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Gagal menghapus jadwal makan',
-            error: error.message
-        });
+// controllers/utilityController.js
+exports.deleteMealSchedule = async (req, res) => {
+  const { id, user_id } = req.params;
+  console.log(`🔥 deleteMealSchedule HIT! id: ${id}, user_id: ${user_id}`);
+
+  try {
+    const [result] = await db.query(
+      `DELETE FROM meal_schedules WHERE id = ? AND user_id = ?`,
+      [id, user_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Jadwal tidak ditemukan atau bukan milik Anda',
+      });
     }
+
+    res.json({
+      status: 'success',
+      message: 'Jadwal makan berhasil dihapus',
+    });
+  } catch (error) {
+    console.error('❌ Error in deleteMealSchedule:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Gagal menghapus jadwal makan',
+      error: error.message,
+    });
+  }
 };
 
 // --- Fungsi untuk Notifikasi ---

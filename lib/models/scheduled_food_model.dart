@@ -1,20 +1,22 @@
-// File: lib/models/scheduled_food_model.dart
 import 'dart:convert';
-// Import Food model jika diperlukan di tempat lain, tapi ScheduledMeal akan mencakup detail resep sendiri.
 
 ScheduledFood scheduledFoodFromJson(String str) => ScheduledFood.fromJson(json.decode(str));
 String scheduledFoodToJson(ScheduledFood data) => json.encode(data.toJson());
 
-class ScheduledFood { // Menggunakan nama kelas yang Anda inginkan
+class ScheduledFood {
   final int id;
   final int userId;
   final int recipeId;
-  final String mealType; // misal: 'Sarapan', 'Makan Siang', dll.
+  final String mealType; // Contoh: Sarapan, Makan Siang
   final DateTime date;
-  
-  // Detail resep dari join di backend
+
+  // Informasi tambahan dari JOIN backend
   final String? recipeTitle;
-  final String? recipeImageUrl; // Menggunakan String? untuk penanganan null
+  final String? recipeImageUrl;
+  final int? recipeCookingTime;
+  final int? recipePrice;
+  final int? recipeRating;
+  final String? recipeDescription;
 
   ScheduledFood({
     required this.id,
@@ -24,17 +26,25 @@ class ScheduledFood { // Menggunakan nama kelas yang Anda inginkan
     required this.date,
     this.recipeTitle,
     this.recipeImageUrl,
+    this.recipeCookingTime,
+    this.recipePrice,
+    this.recipeRating,
+    this.recipeDescription,
   });
 
   factory ScheduledFood.fromJson(Map<String, dynamic> json) {
     return ScheduledFood(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      recipeId: json['recipe_id'] as int,
-      mealType: json['meal_type'] as String,
-      date: DateTime.parse(json['date']), // Tanggal dari backend harus string YYYY-MM-DD
-      recipeTitle: json['recipe_title'] as String?, // Ambil dari 'recipe_title'
-      recipeImageUrl: json['recipe_image_url'] as String?, // Ambil dari 'recipe_image_url'
+      id: json['id'],
+      userId: json['user_id'],
+      recipeId: json['recipe_id'],
+      mealType: json['meal_type'],
+      date: DateTime.parse(json['date']),
+      recipeTitle: json['recipe_title'],
+      recipeImageUrl: json['recipe_image_url'],
+      recipeCookingTime: json['recipe_cooking_time'],
+      recipePrice: json['recipe_price'],
+      recipeRating: json['recipe_rating'], // Harus diberi alias di backend kalau AVG
+      recipeDescription: json['recipe_description'],
     );
   }
 
@@ -43,8 +53,12 @@ class ScheduledFood { // Menggunakan nama kelas yang Anda inginkan
         "user_id": userId,
         "recipe_id": recipeId,
         "meal_type": mealType,
-        "date": date.toIso8601String().split('T')[0], // Hanya tanggal (YYYY-MM-DD)
+        "date": date.toIso8601String().split('T')[0],
         "recipe_title": recipeTitle,
         "recipe_image_url": recipeImageUrl,
+        "recipe_cooking_time": recipeCookingTime,
+        "recipe_price": recipePrice,
+        "recipe_rating": recipeRating,
+        "recipe_description": recipeDescription,
       };
 }
