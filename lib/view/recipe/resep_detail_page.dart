@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/header_b_l_s.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart'; // <--- ADD THIS IMPORT for DateFormat
 import '../../theme/theme.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -10,11 +11,11 @@ import 'package:video_player/video_player.dart';
 import '../profile/profil/edit_resep.dart';
 import 'bagikan_resep.dart';
 
-
 class RecipeDetailPage extends StatefulWidget {
   final int recipeId;
+  final VoidCallback? onScheduleAdded; // <--- ADD THIS
 
-  const RecipeDetailPage({super.key, required this.recipeId});
+  const RecipeDetailPage({super.key, required this.recipeId, this.onScheduleAdded}); // <--- UPDATE CONSTRUCTOR
 
   @override
   State<RecipeDetailPage> createState() => _RecipeDetailPageState();
@@ -34,9 +35,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   final TextEditingController _commentController = TextEditingController();
   double _currentRating = 0.0;
 
-  // NEW: State untuk status favorit
   bool _isFavorited = false;
   bool _isOwner = false;
+  int? _currentLoggedInUserId; // State untuk menyimpan user_id yang login
 
   @override
   void dispose() {
@@ -44,240 +45,107 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     _commentController.dispose();
     super.dispose();
   }
-  // Tambahkan import ini di bagian atas file jika belum ada:
-// import 'package:shared_preferences/shared_preferences.dart';
 
-// 1. Pertama, tambahkan fungsi untuk mendapatkan user ID dari SharedPreferences
-Future<int?> _getCurrentUserId() async {
-  final prefs = await SharedPreferences.getInstance();
-  final int? userIdInt = prefs.getInt('user_id');
-  return userIdInt;
-}
+  // Fungsi untuk mendapatkan user ID dari SharedPreferences
+  Future<int?> _getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int? userIdInt = prefs.getInt('user_id'); // Kunci harus SAMA dengan saat menyimpan
+    return userIdInt;
+  }
 
-// 2. Ubah initState untuk mengecek user ID
-@override
-void initState() {
-  super.initState();
-  _fetchRecipeDetails(widget.recipeId);
-  _checkFavoriteStatus(widget.recipeId);
-  _checkOwnership(); // Tambahkan ini
-}
+  // Fungsi BARU untuk mendapatkan Access Token dari SharedPreferences
+  Future<String?> _getAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Gunakan kunci yang SAMA PERSIS dengan yang Anda gunakan saat menyimpan token setelah login
+    final String? token = prefs.getString('auth_token'); // <--- PASTIKAN KUNCI INI SAMA
+    print('DEBUG in RecipeDetailPage: Token from SharedPreferences: $token');
+    return token;
+  }
 
-// 3. Tambahkan fungsi untuk mengecek kepemilikan
-Future<void> _checkOwnership() async {
-  final currentUserId = await _getCurrentUserId();
-  if (currentUserId != null && _fetchedRecipeData != null) {
+  @override
+  void initState() {
+    super.initState();
+    _initializePageData(); // Panggil fungsi inisialisasi baru
+  }
+
+  // Fungsi inisialisasi data halaman secara berurutan
+  Future<void> _initializePageData() async {
+    _currentLoggedInUserId = await _getCurrentUserId(); // Ambil user ID saat init
+    await _fetchRecipeDetails(widget.recipeId); // Ambil detail resep
+
+    // Cek status favorit hanya jika user_id tersedia
+    if (_currentLoggedInUserId != null) {
+      await _checkFavoriteStatus(widget.recipeId, _currentLoggedInUserId!);
+    }
+    _checkOwnership(); // Cek kepemilikan
+
     setState(() {
-      _isOwner = (currentUserId == (_fetchedRecipeData!['user_id'] as int));
+      _isLoading = false; // Set loading to false setelah semua data awal dimuat
     });
   }
-}
 
-// 4. Update fungsi _fetchRecipeDetails untuk mengecek ownership setelah data didapat
-Future<void> _fetchRecipeDetails(int id) async {
-  setState(() {
-    _isLoading = true;
-    _errorMessage = '';
-    _fetchedRecipeData = null;
-  });
-
-  final String apiUrl = '$_baseUrl/recipes/$id';
-
-  try {
-    final response = await http.get(Uri.parse(apiUrl));
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> recipeData = json.decode(response.body);
+  // Fungsi untuk mengecek kepemilikan resep
+  Future<void> _checkOwnership() async {
+    if (_currentLoggedInUserId != null && _fetchedRecipeData != null) {
       setState(() {
-        _fetchedRecipeData = recipeData;
-        _isLoading = false;
-
-        // Inisialisasi video controller jika ada video_url
-        if (recipeData['video_url'] != null && (recipeData['video_url'] as String).isNotEmpty) {
-          final String videoPath = recipeData['video_url'] as String;
-          final fullVideoUrl = '$_baseUrl$videoPath';
-
-          print('Trying to load video from: $fullVideoUrl');
-
-          _videoController = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl))
-            ..initialize().then((_) {
-              setState(() {});
-              _videoController!.setLooping(true);
-            }).catchError((e) {
-              print('Error initializing video: $e');
-              _videoController = null;
-              setState(() {});
-            });
-        } else {
-          _videoController = null;
-        }
-      });
-      
-      // Cek ownership setelah data berhasil dimuat
-      _checkOwnership();
-    } else {
-      setState(() {
-        _errorMessage = 'Gagal mengambil data resep: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}';
-        _isLoading = false;
+        _isOwner = (_currentLoggedInUserId! == (_fetchedRecipeData!['user_id'] as int));
       });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'Terjadi kesalahan jaringan: $e';
-      _isLoading = false;
-    });
-    print('Error fetching recipe: $e');
-  }
-}
-
-// 5. Update fungsi _buildAuthorSection
-Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
-  String finalProfileImageUrl = '';
-  Widget profileImageWidget;
-
-  if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
-    finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
-    profileImageWidget = CircleAvatar(
-      radius: 24,
-      backgroundImage: NetworkImage(finalProfileImageUrl),
-      onBackgroundImageError: (exception, stackTrace) {
-        print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
-      },
-    );
-  } else {
-    profileImageWidget = CircleAvatar(
-      radius: 24,
-      backgroundColor: Colors.grey[300],
-      child: Icon(
-        Icons.person,
-        color: Colors.grey[600],
-        size: 30,
-      ),
-    );
   }
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            profileImageWidget,
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '@$username',
-                  style: TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  fullName,
-                  style: TextStyle(
-                    color: AppTheme.textBrown,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            SizedBox(
-              width: isFollowing ? 120 : 100,
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    isFollowing = !isFollowing;
-                  });
-                  print('Ikuti/Mengikuti button pressed for user ID: $userId');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
-                  foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                child: Text(
-                  isFollowing ? 'Mengikuti' : 'Ikuti',
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // HANYA TAMPILKAN TOMBOL TITIK 3 JIKA USER ADALAH PEMILIK RESEP
-            if (_isOwner)
-              IconButton(
-                icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
-                onPressed: () {
-                  _showOwnerOptionsDialog(context);
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-// 6. Tambahkan fungsi untuk menampilkan dialog opsi owner
-void _showOwnerOptionsDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(
-          'Opsi Resep',
-          style: TextStyle(
-            color: AppTheme.primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.edit, color: AppTheme.primaryColor),
-              title: Text('Edit Resep'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _editRecipe();
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete, color: Colors.red),
-              title: Text('Hapus Resep', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.of(context).pop();
-                _deleteRecipe();
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text('Batal', style: TextStyle(color: AppTheme.primaryColor)),
-          ),
-        ],
-      );
-    },
-  );
-}
   // Fungsi untuk mengambil detail resep dari backend
-  
+  Future<void> _fetchRecipeDetails(int id) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _fetchedRecipeData = null;
+    });
+
+    final String apiUrl = '$_baseUrl/recipes/$id';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> recipeData = json.decode(response.body);
+        setState(() {
+          _fetchedRecipeData = recipeData;
+
+          if (recipeData['video_url'] != null && (recipeData['video_url'] as String).isNotEmpty) {
+            final String videoPath = recipeData['video_url'] as String;
+            final fullVideoUrl = '$_baseUrl$videoPath';
+
+            print('Trying to load video from: $fullVideoUrl');
+
+            _videoController = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl))
+              ..initialize().then((_) {
+                if (mounted) setState(() {});
+                _videoController!.setLooping(true);
+              }).catchError((e) {
+                print('Error initializing video: $e');
+                _videoController = null;
+                if (mounted) setState(() {});
+              });
+          } else {
+            _videoController = null;
+          }
+        });
+        _checkOwnership();
+      } else {
+        setState(() {
+          _errorMessage = 'Gagal mengambil data resep: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan jaringan: $e';
+        _isLoading = false;
+      });
+      print('Error fetching recipe: $e');
+    }
+  }
+
   void _editRecipe() async {
     final result = await Navigator.push(
       context,
@@ -286,21 +154,17 @@ void _showOwnerOptionsDialog(BuildContext context) {
       ),
     );
 
-    // Cukup satu blok 'if' ini saja.
     if (result == true) {
       print('Kembali dari halaman edit, me-refresh data...');
-      _fetchRecipeDetails(widget.recipeId);
-      _checkFavoriteStatus(widget.recipeId);
+      _initializePageData(); // Panggil ulang untuk merefresh semua data
     }
-  } //
+  }
 
   void _deleteRecipe() {
-    // Fungsi ini hanya untuk memanggil dialog konfirmasi
     _showDeleteConfirmationDialog(context);
   }
 
   void _showDeleteConfirmationDialog(BuildContext context) {
-    // Fungsi ini untuk menampilkan pop-up "Apakah Anda yakin?"
     showDialog(
       context: context,
       builder: (BuildContext ctx) {
@@ -318,8 +182,8 @@ void _showOwnerOptionsDialog(BuildContext context) {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Hapus', style: TextStyle(color: Colors.white)),
               onPressed: () {
-                Navigator.of(ctx).pop(); // Tutup dialog dulu
-                _performDelete();      // Baru jalankan aksi hapus
+                Navigator.of(ctx).pop();
+                _performDelete();
               },
             ),
           ],
@@ -329,42 +193,76 @@ void _showOwnerOptionsDialog(BuildContext context) {
   }
 
   Future<void> _performDelete() async {
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     final String apiUrl = '$_baseUrl/recipes/${widget.recipeId}';
+
+    final String? accessToken = await _getAccessToken(); // Ambil token
+    if (accessToken == null) {
+      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
+      setState(() { _isLoading = false; });
+      return;
+    }
+
     try {
-      final response = await http.delete(Uri.parse(apiUrl));
+      final response = await http.delete(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken', // Sertakan token
+        },
+      );
       if (!mounted) return;
 
-      // PERBAIKAN: Tangani status 204 (No Content) yang dikirim backend saat delete berhasil.
       if (response.statusCode == 200 || response.statusCode == 204) {
-        Navigator.of(context).pop(); // Kembali ke halaman sebelumnya jika sukses
-        // Anda bisa menampilkan SnackBar sukses di halaman sebelumnya jika mau
-      } else {
-        setState(() { _isLoading = false; });
-        _showErrorDialog(context, 'Hapus Gagal', 'Gagal menghapus resep: ${json.decode(response.body)['message'] ?? 'Error tidak diketahui'}');
+        Navigator.of(context).pop();
+      } else if (response.statusCode == 401) {
+        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
+      }
+      else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorDialog(context, 'Hapus Gagal', 'Gagal menghapus resep: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
       _showErrorDialog(context, 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat menghapus resep: $e');
     }
   }
 
-  // NEW: Fungsi untuk mengecek status favorit resep
-  Future<void> _checkFavoriteStatus(int recipeId) async {
-    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
+  // Fungsi untuk mengecek status favorit resep
+  Future<void> _checkFavoriteStatus(int recipeId, int userId) async {
     final String apiUrl = kIsWeb
         ? 'http://localhost:3000/recipes/$recipeId/favorite-status?user_id=$userId'
         : 'http://10.0.2.2:3000/recipes/$recipeId/favorite-status?user_id=$userId';
 
+    final String? accessToken = await _getAccessToken(); // Ambil token
+    // Perhatikan: Anda bisa memilih apakah cek status favorit butuh token atau tidak.
+    // Saat ini, backend Anda mungkin tidak memerlukannya karena rute '/recipes' belum ada `authenticateToken`
+    // Tapi jika di masa depan `favoriteRoutes` juga di bawah `authenticateToken`, ini akan diperlukan.
+
+    Map<String, String> headers = {'Content-Type': 'application/json'};
+    if (accessToken != null) {
+      headers['Authorization'] = 'Bearer $accessToken';
+    }
+
     try {
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: headers, // Gunakan header yang mungkin berisi token
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
-        setState(() {
-          _isFavorited = data['isFavorited'] ?? false;
-        });
+        if (mounted) {
+          setState(() {
+            _isFavorited = data['isFavorited'] ?? false;
+          });
+        }
       } else {
         print('Gagal mengecek status favorit: ${response.statusCode} - ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
@@ -373,34 +271,48 @@ void _showOwnerOptionsDialog(BuildContext context) {
     }
   }
 
-  // NEW: Fungsi untuk menambah/menghapus resep dari favorit
+  // Fungsi untuk menambah/menghapus resep dari favorit
   Future<void> _toggleFavorite() async {
-    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
+    if (_currentLoggedInUserId == null) {
+      _showErrorDialog(context, 'Favorit Gagal', 'Anda harus login untuk menambahkan ke favorit.');
+      return;
+    }
+
+    final String? accessToken = await _getAccessToken(); // Ambil token
+    if (accessToken == null) {
+      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
+      return;
+    }
+
     final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/${widget.recipeId}/favorite' : 'http://10.0.2.2:3000/recipes/${widget.recipeId}/favorite';
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        // Body tidak perlu user_id karena sudah ada di backend (hardcode atau dari auth)
-        // Namun, jika backend Anda memerlukan user_id di body, tambahkan di sini:
-        body: json.encode({'user_id': userId}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken', // Sertakan token
+        },
+        body: json.encode({'user_id': _currentLoggedInUserId!}),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> data = json.decode(response.body);
-        setState(() {
-          _isFavorited = data['isFavorited'] ?? !_isFavorited; // Update status favorit dari respons
-          // Perbarui jumlah likes di UI setelah toggle
-          if (_fetchedRecipeData != null) {
-            if (_isFavorited) {
-              _fetchedRecipeData!['favorites_count'] = (_fetchedRecipeData!['favorites_count'] as int? ?? 0) + 1;
-            } else {
-              _fetchedRecipeData!['favorites_count'] = (_fetchedRecipeData!['favorites_count'] as int? ?? 0) - 1;
+        if (mounted) {
+          setState(() {
+            _isFavorited = data['isFavorited'] ?? !_isFavorited;
+            if (_fetchedRecipeData != null) {
+              if (_isFavorited) {
+                _fetchedRecipeData!['favorites_count'] = (_fetchedRecipeData!['favorites_count'] as int? ?? 0) + 1;
+              } else {
+                _fetchedRecipeData!['favorites_count'] = (_fetchedRecipeData!['favorites_count'] as int? ?? 0) - 1;
+              }
             }
-          }
-        });
-        _showSuccessDialog(context, 'Favorit', data['message']);
+          });
+          _showSuccessDialog(context, 'Favorit', data['message']);
+        }
+      } else if (response.statusCode == 401) {
+        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
         _showErrorDialog(context, 'Favorit Gagal', 'Gagal mengubah status favorit: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
@@ -412,35 +324,70 @@ void _showOwnerOptionsDialog(BuildContext context) {
 
   // Fungsi untuk mengirim permintaan jadwal
   Future<void> _addMealSchedule() async {
-    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
+    if (_currentLoggedInUserId == null) {
+      _showErrorDialog(context, 'Penjadwalan Gagal', 'Anda harus login untuk menjadwalkan menu.');
+      return;
+    }
 
-    final String apiUrl = kIsWeb ? 'http://localhost:3000/meal-schedules' : 'http://10.0.2.2:3000/meal-schedules';
-    final String formattedDate = selectedDate.toIso8601String().split('T')[0]; // FormatYYYY-MM-DD
+    // 1. Ambil token dari SharedPreferences menggunakan fungsi _getAccessToken()
+    final String? token = await _getAccessToken();
+
+    if (token == null || token.isEmpty) {
+      _showErrorDialog(context, 'Token Tidak Valid', 'Silakan login kembali.');
+      return;
+    }
+
+    final String apiUrl = kIsWeb
+        ? 'http://localhost:3000/api/utilities/meal-schedules'
+        : 'http://10.0.2.2:3000/api/utilities/meal-schedules';
+
+    final String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: json.encode({
-          'user_id': userId,
+          'user_id': _currentLoggedInUserId, // Kirim user_id yang sedang login
           'recipe_id': widget.recipeId,
-          'scheduled_date': formattedDate,
+          'date': formattedDate,
+          'meal_type': 'Dinner', // Bisa diubah menjadi parameter yang bisa dipilih user
         }),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 201) {
-        if (!mounted) return;
-        Navigator.of(context).pop(); // Close calendar dialog first
-        _showSuccessDialog(context, 'Penjadwalan', 'Menu Berhasil');
+        Navigator.of(context).pop(); // Tutup dialog kalender
+        _showSuccessDialog(context, 'Penjadwalan Berhasil', 'Menu berhasil ditambahkan ke jadwal');
+
+        // Panggil callback jika ada, untuk merefresh tampilan halaman sebelumnya (misal: halaman jadwal)
+        if (widget.onScheduleAdded != null) {
+          widget.onScheduleAdded!();
+        }
+      } else if (response.statusCode == 401) {
+        Navigator.of(context).pop(); // Tutup dialog sebelum menampilkan error auth
+        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
-        if (!mounted) return;
-        Navigator.of(context).pop(); // Close calendar dialog
-        _showErrorDialog(context, 'Penjadwalan Gagal', 'Gagal menjadwalkan menu: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
+        Navigator.of(context).pop();
+        final errorResponse = json.decode(response.body);
+        _showErrorDialog(
+            context,
+            'Penjadwalan Gagal',
+            errorResponse['message'] ?? 'Terjadi kesalahan (${response.statusCode})'
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close calendar dialog
-      _showErrorDialog(context, 'Kesalahan Jaringan', 'Terjadi kesalahan jaringan saat menjadwalkan menu: $e');
+      Navigator.of(context).pop();
+      _showErrorDialog(
+          context,
+          'Kesalahan Jaringan',
+          'Gagal terhubung ke server: ${e.toString()}'
+      );
       print('Error scheduling meal: $e');
     }
   }
@@ -457,33 +404,48 @@ void _showOwnerOptionsDialog(BuildContext context) {
       _showErrorDialog(context, 'Ulasan Gagal', 'Harap tuliskan komentar Anda.');
       return;
     }
+    if (_currentLoggedInUserId == null) {
+      _showErrorDialog(context, 'Ulasan Gagal', 'Anda harus login untuk memberikan ulasan.');
+      return;
+    }
 
-    const int userId = 1; // TODO: Ganti dengan ID pengguna sebenarnya dari otentikasi
+    final String? accessToken = await _getAccessToken(); // Ambil token
+    if (accessToken == null) {
+      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
+      return;
+    }
 
     final String apiUrl = kIsWeb ? 'http://localhost:3000/reviews' : 'http://10.0.2.2:3000/reviews';
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken', // Sertakan token
+        },
         body: json.encode({
-          'user_id': userId,
+          'user_id': _currentLoggedInUserId!,
           'recipe_id': widget.recipeId,
           'rating': _currentRating.toInt(),
           'comment': comment,
         }),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 201) {
-        if (!mounted) return;
         _commentController.clear();
-        setState(() {
-          _currentRating = 0.0; // Reset rating after submission
-        });
+        if (mounted) {
+          setState(() {
+            _currentRating = 0.0;
+          });
+        }
         _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
-        _fetchRecipeDetails(widget.recipeId); // Re-fetch recipe details to update average rating
+        _fetchRecipeDetails(widget.recipeId);
+      } else if (response.statusCode == 401) {
+        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
-        if (!mounted) return;
         _showErrorDialog(context, 'Ulasan Gagal', 'Gagal mengirim ulasan: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
@@ -492,7 +454,6 @@ void _showOwnerOptionsDialog(BuildContext context) {
       print('Error submitting review: $e');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -570,7 +531,6 @@ void _showOwnerOptionsDialog(BuildContext context) {
                 onBackPressed: () => Navigator.pop(context),
                 onLikePressed: _toggleFavorite,
                 onSharePressed: () {
-                  // Navigasi ke halaman BagikanResep
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -627,6 +587,152 @@ void _showOwnerOptionsDialog(BuildContext context) {
     );
   }
 
+  // Widget untuk menampilkan bagian penulis resep
+  Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
+    String finalProfileImageUrl = '';
+    Widget profileImageWidget;
+
+    if (profilePictureUrl != null && profilePictureUrl.isNotEmpty) {
+      finalProfileImageUrl = kIsWeb ? 'http://localhost:3000$profilePictureUrl' : 'http://10.0.2.2:3000$profilePictureUrl';
+      profileImageWidget = CircleAvatar(
+        radius: 24,
+        backgroundImage: NetworkImage(finalProfileImageUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          print('Error loading profile image from: $finalProfileImageUrl - Exception: $exception');
+        },
+      );
+    } else {
+      profileImageWidget = CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.grey[300],
+        child: Icon(
+          Icons.person,
+          color: Colors.grey[600],
+          size: 30,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              profileImageWidget,
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '@$username',
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    fullName,
+                    style: TextStyle(
+                      color: AppTheme.textBrown,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              SizedBox(
+                width: isFollowing ? 120 : 100,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      isFollowing = !isFollowing;
+                    });
+                    print('Ikuti/Mengikuti button pressed for user ID: $userId');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isFollowing ? AppTheme.searchBarColor : AppTheme.primaryColor,
+                    foregroundColor: isFollowing ? AppTheme.primaryColor : Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    isFollowing ? 'Mengikuti' : 'Ikuti',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_isOwner)
+                IconButton(
+                  icon: Icon(Icons.more_vert, color: AppTheme.primaryColor),
+                  onPressed: () {
+                    _showOwnerOptionsDialog(context);
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Fungsi untuk menampilkan dialog opsi owner
+  void _showOwnerOptionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Opsi Resep',
+            style: TextStyle(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit, color: AppTheme.primaryColor),
+                title: Text('Edit Resep'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _editRecipe();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete, color: Colors.red),
+                title: Text('Hapus Resep', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _deleteRecipe();
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Batal', style: TextStyle(color: AppTheme.primaryColor)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildScheduleButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
@@ -666,7 +772,7 @@ void _showOwnerOptionsDialog(BuildContext context) {
   void _showCalendarDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) { // Gunakan dialogContext agar tidak bingung dengan context utama
         return AlertDialog(
           title: Text(
             'Jadwalkan Menu',
@@ -675,24 +781,117 @@ void _showOwnerOptionsDialog(BuildContext context) {
               color: AppTheme.primaryColor,
             ),
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${_getMonthName(selectedDate.month)} ${selectedDate.year}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          content: StatefulBuilder( // StatefulBuilder untuk memperbarui UI di dalam dialog
+            builder: (BuildContext context, StateSetter setDialogState) {
+              final now = DateTime.now();
+              final firstDayOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
+              final int weekdayOffset = (firstDayOfMonth.weekday - 1 + 7) % 7;
+              final int daysInMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0).day;
+              final int totalCells = daysInMonth + weekdayOffset;
+
+              return SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_left, color: AppTheme.primaryColor),
+                          onPressed: () {
+                            setDialogState(() {
+                              selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, selectedDate.day);
+                            });
+                          },
+                        ),
+                        Text(
+                          '${_getMonthName(selectedDate.month)} ${selectedDate.year}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.arrow_right, color: AppTheme.primaryColor),
+                          onPressed: () {
+                            setDialogState(() {
+                              selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, selectedDate.day);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(), // Mencegah scrolling di dalam dialog
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                      ),
+                      itemCount: (totalCells / 7).ceil() * 7,
+                      itemBuilder: (context, index) {
+                        if (index < 7) {
+                          final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+                          return Center(
+                            child: Text(
+                              days[index],
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                          );
+                        }
+
+                        final int day = index - 7 - weekdayOffset + 1;
+
+                        if (day <= 0 || day > daysInMonth) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final currentDay = DateTime(selectedDate.year, selectedDate.month, day);
+                        bool isSelected = currentDay.day == selectedDate.day &&
+                            currentDay.month == selectedDate.month &&
+                            currentDay.year == selectedDate.year;
+
+                        bool isToday = currentDay.day == now.day &&
+                            currentDay.month == now.month &&
+                            currentDay.year == now.year;
+
+                        return InkWell(
+                          onTap: () {
+                            setDialogState(() { // Perbarui state dialog saja
+                              selectedDate = currentDay;
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.accentTeal : (isToday ? AppTheme.searchBarColor.withOpacity(0.5) : Colors.transparent),
+                              shape: BoxShape.circle,
+                              border: isToday && !isSelected ? Border.all(color: AppTheme.primaryColor) : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                day.toString(),
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : (isToday ? AppTheme.primaryColor : Colors.black),
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                _buildCalendar(),
-              ],
-            ),
+              );
+            },
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
               },
               child: Text('Batal', style: TextStyle(color: AppTheme.primaryColor)),
             ),
@@ -718,79 +917,6 @@ void _showOwnerOptionsDialog(BuildContext context) {
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
     return monthNames[month];
-  }
-
-
-  Widget _buildCalendar() {
-    final now = DateTime.now();
-    final firstDayOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
-    final int weekdayOffset = (firstDayOfMonth.weekday - 1 + 7) % 7;
-    final int daysInMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0).day;
-    final int totalCells = daysInMonth + weekdayOffset;
-
-    return GridView.builder(
-      shrinkWrap: true,
-
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-      ),
-      itemCount: (totalCells / 7).ceil() * 7,
-      itemBuilder: (context, index) {
-        if (index < 7) {
-          final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-          return Center(
-            child: Text(
-              days[index],
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-          );
-        }
-
-        final int day = index - 7 - weekdayOffset + 1;
-
-        if (day <= 0 || day > daysInMonth) {
-          return const SizedBox.shrink();
-        }
-
-        final currentDay = DateTime(selectedDate.year, selectedDate.month, day);
-        bool isSelected = currentDay.day == selectedDate.day &&
-            currentDay.month == selectedDate.month &&
-            currentDay.year == selectedDate.year;
-
-        bool isToday = currentDay.day == now.day &&
-            currentDay.month == now.month &&
-            currentDay.year == now.year;
-
-        return InkWell(
-          onTap: () {
-            setState(() {
-              selectedDate = currentDay;
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected ? AppTheme.accentTeal : (isToday ? AppTheme.searchBarColor.withOpacity(0.5) : Colors.transparent),
-              shape: BoxShape.circle,
-              border: isToday && !isSelected ? Border.all(color: AppTheme.primaryColor) : null,
-            ),
-            child: Center(
-              child: Text(
-                day.toString(),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : (isToday ? AppTheme.primaryColor : Colors.black),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void _showSuccessDialog(BuildContext context, String title1, String title2, [String? message]) {
@@ -882,10 +1008,9 @@ void _showOwnerOptionsDialog(BuildContext context) {
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           print('Error loading recipe image from: $finalImageUrl - Error: $error');
-          // Return an empty SizedBox or a placeholder, but NOT a default asset
           return Container(
             height: 200,
-            color: Colors.grey[200], // Or a transparent color
+            color: Colors.grey[200],
             child: const Center(
               child: Icon(Icons.image_not_supported, color: Colors.grey, size: 50),
             ),
@@ -893,12 +1018,11 @@ void _showOwnerOptionsDialog(BuildContext context) {
         },
       );
     } else {
-      // If imageUrl is null or empty, return an empty container or a simple placeholder
       imageWidget = Container(
         height: 200,
-        color: Colors.grey[200], // A light grey background to show an empty space
+        color: Colors.grey[200],
         child: const Center(
-          child: Icon(Icons.image, color: Colors.grey, size: 50), // A generic image icon
+          child: Icon(Icons.image, color: Colors.grey, size: 50),
         ),
       );
     }
@@ -924,7 +1048,7 @@ void _showOwnerOptionsDialog(BuildContext context) {
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
             ),
-            child: imageWidget, // Use the imageWidget determined above
+            child: imageWidget,
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1001,7 +1125,6 @@ void _showOwnerOptionsDialog(BuildContext context) {
       ),
     );
   }
-
 
   Widget _buildDivider() {
     return Padding(
@@ -1445,10 +1568,7 @@ class _PlayPauseOverlay extends StatefulWidget {
 }
 
 class _PlayPauseOverlayState extends State<_PlayPauseOverlay> {
-  // Listener yang akan memanggil setState
   void _listener() {
-    // Memanggil setState akan membuat method build() dijalankan kembali
-    // dengan nilai controller yang terbaru.
     if (mounted) {
       setState(() {});
     }
@@ -1457,27 +1577,22 @@ class _PlayPauseOverlayState extends State<_PlayPauseOverlay> {
   @override
   void initState() {
     super.initState();
-    // Daftarkan listener saat widget pertama kali dibuat
     widget.controller.addListener(_listener);
   }
 
   @override
   void dispose() {
-    // Penting: Hapus listener saat widget dihancurkan untuk mencegah memory leak
     widget.controller.removeListener(_listener);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Karena setState dipanggil oleh listener,
-    // bagian build ini akan selalu dievaluasi dengan state terbaru.
     return Stack(
       children: <Widget>[
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 50),
           reverseDuration: const Duration(milliseconds: 200),
-          // Kondisi ini sekarang akan selalu dievaluasi ulang dengan benar
           child: widget.controller.value.isPlaying
               ? const SizedBox.shrink()
               : Container(
@@ -1494,8 +1609,6 @@ class _PlayPauseOverlayState extends State<_PlayPauseOverlay> {
         ),
         GestureDetector(
           onTap: () {
-            // Logika ini tidak perlu diubah, karena listener sudah menangani
-            // pembaruan UI secara otomatis.
             if (widget.controller.value.isPlaying) {
               widget.controller.pause();
             } else {
