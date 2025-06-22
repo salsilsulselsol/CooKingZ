@@ -277,7 +277,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStat
                         width: 30, height: 30,
                         child: IconButton(
                           icon: Image.asset('images/garis_tiga.png', width: 28, height: 28),
-                          onPressed: () => Navigator.pushNamed(context, "/pengaturan"),
+                          onPressed: () => Navigator.pushNamed(context, "/pengaturan-utama"),
                           padding: EdgeInsets.zero,
                         ),
                       ),

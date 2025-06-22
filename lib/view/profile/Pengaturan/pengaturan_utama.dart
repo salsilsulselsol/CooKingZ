@@ -37,18 +37,6 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
     });
   }
 
-  // Fungsi untuk logout (clear token dan navigasi ke login)
-  Future<void> _handleLogout(BuildContext context) async {
-    print('DEBUG PENGATURAN: Proses logout dimulai.');
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token'); 
-    await prefs.remove('username'); 
-    await prefs.remove('user_id'); 
-
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false); 
-    print('DEBUG PENGATURAN: Logout berhasil, navigasi ke /login.');
-  }
-
   // Fungsi untuk hapus akun (implementasi API delete user)
   Future<void> _handleDeleteAccount(BuildContext context) async {
     print('DEBUG PENGATURAN: Proses hapus akun dimulai.');
@@ -126,23 +114,7 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
               MenuItem(
                 icon: Icons.logout,
                 label: 'Keluar',
-                onTap: () {
-                  showGeneralDialog(
-                    context: context,
-                    barrierDismissible: true,
-                    barrierLabel: "Keluar",
-                    transitionDuration: const Duration(milliseconds: 200),
-                    pageBuilder: (context, animation, secondaryAnimation) {
-                      return ConfirmationDialogWithBlur(
-                        title: 'Akhiri Sesi',
-                        message: 'Apakah Anda yakin ingin keluar?',
-                        cancelButtonText: 'Batalkan',
-                        confirmButtonText: 'Ya, Akhiri Sesi',
-                        onConfirm: () => _handleLogout(context), 
-                      );
-                    },
-                  );
-                },
+                onTap: _showLogoutDialog, // Panggil fungsi dialog yang baru kita buat
                 showArrow: false, 
               ),
               const SizedBox(height: 20),
@@ -176,6 +148,47 @@ class _PengaturanUtamaState extends State<PengaturanUtama> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Akhiri Sesi'),
+          content: const Text('Apakah Anda yakin ingin keluar?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batalkan'),
+              onPressed: () {
+                // Tutup hanya dialognya saja
+                Navigator.of(dialogContext).pop(); 
+              },
+            ),
+            TextButton(
+              child: const Text(
+                'Ya, Keluar',
+                style: TextStyle(color: Colors.red), // Beri warna merah untuk aksi destruktif
+              ),
+              onPressed: () async {
+                // 1. Dapatkan instance SharedPreferences
+                final prefs = await SharedPreferences.getInstance();
+                
+                // 2. Hapus data token dan user
+                await prefs.remove('auth_token');
+                await prefs.remove('user_id');
+
+                // 3. Pastikan widget masih ada sebelum navigasi
+                if (!mounted) return;
+
+                // 4. Arahkan ke halaman login dan hapus semua rute sebelumnya
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
