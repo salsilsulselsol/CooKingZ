@@ -133,9 +133,20 @@ async function getCategories() {
     }
 }
 
-// Controller untuk endpoint GET /home
+// Controller untuk endpoint GET /home/:id
 exports.getHomeData = async (req, res) => {
     console.log('>>> Controller getHomeData BERHASIL DICAPAI! <<<');
+    
+    // Mengambil ID pengguna dari parameter URL
+    const userIdFromParams = parseInt(req.params.id, 10); // Pastikan dikonversi ke integer
+    console.log('User ID from URL parameter:', userIdFromParams);
+
+    // Anda mungkin masih perlu req.userId jika Anda memiliki middleware otentikasi
+    // yang menambahkan ID pengguna ke req.userId.
+    // Jika tidak, Anda hanya perlu menggunakan userIdFromParams.
+    // Untuk tujuan ini, kita akan gunakan userIdFromParams sebagai prioritas.
+    const currentUserId = userIdFromParams;
+
     try {
         const trendingRecipes = await getTrendingRecipes();
         console.log('Fetched trending recipes count:', trendingRecipes.length);
@@ -150,11 +161,12 @@ exports.getHomeData = async (req, res) => {
         console.log('Fetched categories count:', categories.length);
 
         let userRecipes = [];
-        if (req.userId) { 
-            userRecipes = await getUserRecipes(req.userId);
-            console.log('Fetched user recipes count (for userId ' + req.userId + '):', userRecipes.length);
+        // Menggunakan currentUserId (dari parameter URL) untuk getUserRecipes
+        if (currentUserId && currentUserId !== 0) { // Pastikan ID valid dan bukan 0 (jika 0 digunakan untuk guest)
+            userRecipes = await getUserRecipes(currentUserId);
+            console.log('Fetched user recipes count (for userId ' + currentUserId + '):', userRecipes.length);
         } else {
-            console.log('User not logged in. No user-specific recipes fetched.');
+            console.log('User not logged in or invalid ID. No user-specific recipes fetched.');
         }
 
         res.json({
@@ -168,7 +180,7 @@ exports.getHomeData = async (req, res) => {
                 categories
             }
         });
-        console.log('<<< Response for /home sent successfully. >>>');
+        console.log('<<< Response for /home/:id sent successfully. >>>');
     } catch (error) {
         console.error('!!! FINAL CATCH - Error in getHomeData controller:', error);
         res.status(500).json({
@@ -222,83 +234,133 @@ exports.searchRecipes = async (req, res) => {
         difficulty, 
         min_rating, 
         max_price,
+        max_time, // Pastikan max_time juga diterima
+        allergens, // Asumsi ini juga diterima
         limit = 20, 
-        offset = 0  
+        offset = 0 
     } = req.query; 
 
-    let query = `
-        SELECT 
-            r.id, 
-            r.title, 
-            r.description, 
-            r.image_url, 
-            u.username, 
-            u.profile_picture, 
-            AVG(rev.rating) as avg_rating, 
+    // Base SELECT statement
+    let selectClause = `
+        SELECT
+            r.id,
+            r.title,
+            r.description,
+            r.image_url,
+            u.username,
+            u.profile_picture,
+            AVG(rev.rating) as avg_rating,
             COUNT(rev.id) as total_reviews,
-            r.cooking_time, 
-            r.price as price, 
+            r.cooking_time,
+            r.price as price,
             r.difficulty,
-            r.favorites_count as likes 
+            r.favorites_count as likes
         FROM recipes r
         JOIN users u ON r.user_id = u.id
         LEFT JOIN reviews rev ON r.id = rev.recipe_id
-    
     `;
-    const conditions = [];
-    const params = [];
 
-    if (keyword) {
-        conditions.push(`(r.title LIKE ? OR r.description LIKE ?)`);
-        params.push(`%${keyword}%`, `%${keyword}%`);
+    // Initialize WHERE and HAVING conditions arrays and params
+    const whereConditions = []; 
+    const havingConditions = []; 
+    const queryParams = []; // Changed name to avoid conflict with req.query
+
+    // --- Conditional JOIN for categories if category_name is provided ---
+    // Note: If you join categories, ensure your recipe_categories table structure is correct.
+    // Assuming 'recipe_categories' is a pivot table between 'recipes' and 'categories'
+    let joinCategories = '';
+    if (category_name) {
+        joinCategories = ` JOIN recipe_categories rc ON r.id = rc.recipe_id JOIN categories c ON rc.category_id = c.id`;
+        whereConditions.push(`c.name = ?`); // Filter by category name in WHERE
+        queryParams.push(category_name);
     }
-
-    if (category_name) { 
-        conditions.push(`c.name = ?`); 
-        params.push(category_name);
+    
+    // --- Add WHERE conditions ---
+    if (keyword) {
+        whereConditions.push(`(r.title LIKE ? OR r.description LIKE ?)`);
+        queryParams.push(`%${keyword}%`, `%${keyword}%`);
     }
 
     if (difficulty) {
-        conditions.push(`r.difficulty = ?`);
-        params.push(difficulty);
-    }
-
-    if (min_rating) {
-        conditions.push(`AVG(rev.rating) >= ?`);
-        params.push(parseFloat(min_rating));
+        whereConditions.push(`r.difficulty = ?`);
+        queryParams.push(difficulty);
     }
 
     if (max_price) {
-        conditions.push(`r.price <= ?`); 
-        params.push(parseFloat(max_price));
+        whereConditions.push(`r.price <= ?`); 
+        queryParams.push(parseFloat(max_price));
     }
 
+    if (max_time) {
+        whereConditions.push(`r.cooking_time <= ?`); // Assuming column is cooking_time
+        queryParams.push(parseInt(max_time));
+    }
+
+    // --- Add JOIN for allergens if allergens are provided ---
+    let joinAllergens = '';
+    if (allergens) {
+        // Assuming allergens is a comma-separated string from frontend (e.g., "gluten,nuts")
+        // and you have a recipe_allergens pivot table and allergens table
+        const allergenArray = allergens.split(',');
+        if (allergenArray.length > 0) {
+            joinAllergens = ` LEFT JOIN recipe_allergens ra ON r.id = ra.recipe_id LEFT JOIN allergens a ON ra.allergen_id = a.id`;
+            // Conditions to exclude recipes that contain any of the listed allergens
+            const allergenPlaceholders = allergenArray.map(() => '?').join(', ');
+            whereConditions.push(`r.id NOT IN (
+                SELECT ra_inner.recipe_id
+                FROM recipe_allergens ra_inner
+                JOIN allergens a_inner ON ra_inner.allergen_id = a_inner.id
+                WHERE a_inner.name IN (${allergenPlaceholders})
+            )`);
+            queryParams.push(...allergenArray);
+        }
+    }
+
+
+    // --- Construct the main part of the query ---
+    let query = selectClause;
+    query += joinCategories; // Add category join
+    query += joinAllergens; // Add allergen join
+
+    if (whereConditions.length > 0) {
+        query += ` WHERE ${whereConditions.join(' AND ')}`; 
+    }
+    
+    // --- GROUP BY Clause (always comes before HAVING) ---
     query += `
         GROUP BY 
             r.id, r.title, r.description, r.image_url, u.username, u.profile_picture, 
             r.cooking_time, r.price, r.difficulty, r.favorites_count 
     `;
 
-    if (conditions.length > 0) {
-        query += ` HAVING ${conditions.join(' AND ')}`; 
+    // --- Add HAVING conditions ---
+    // min_rating needs to be in HAVING as it aggregates AVG(rev.rating)
+    if (min_rating) {
+        havingConditions.push(`AVG(rev.rating) >= ?`);
+        queryParams.push(parseFloat(min_rating));
+    }
+    if (havingConditions.length > 0) {
+        query += ` HAVING ${havingConditions.join(' AND ')}`; 
     }
     
+    // --- ORDER BY, LIMIT, OFFSET ---
     query += ` ORDER BY r.created_at DESC`; 
 
     query += ` LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), parseInt(offset));
+    queryParams.push(parseInt(limit), parseInt(offset));
 
     console.log('DEBUG: Search SQL Query:', query);
-    console.log('DEBUG: Search Query Params:', params);
+    console.log('DEBUG: Search Query Params:', queryParams); // Log params
 
     try {
-        const [rows] = await db.query(query, params);
+        const [rows] = await db.query(query, queryParams); // Use queryParams here
         console.log('DEBUG: Search results count:', rows.length);
 
+        // --- PENTING: KEMBALIKAN HANYA LIST RESEP DI BAWAH KUNCI 'data' ---
         res.json({
             status: 'success',
             message: 'Hasil pencarian resep berhasil diambil',
-            data: rows
+            data: rows // <<< Ini adalah kunci perbaikan untuk Type Error di frontend
         });
         console.log('<<< Response for /search sent successfully. >>>');
     } catch (error) {
