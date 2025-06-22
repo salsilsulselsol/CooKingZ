@@ -24,7 +24,8 @@ class ProfilUtama extends StatefulWidget {
   State<ProfilUtama> createState() => _ProfilUtamaState();
 }
 
-class _ProfilUtamaState extends State<ProfilUtama> with SingleTickerProviderStateMixin {
+class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin {
+
   late TabController _tabController;
   
   UserProfile? _userProfile;
