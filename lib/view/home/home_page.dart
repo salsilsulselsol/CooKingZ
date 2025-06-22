@@ -220,52 +220,140 @@ class _HomePageState extends State<HomePage> {
   }
 
   // --- DEFINISI WIDGET SECTION LAINNYA DI DALAM CLASS INI ---
+Widget _buildTopSection(BuildContext context) {
+  final bool isLoggedIn = _loggedInUsername != 'people';
 
-  Widget _buildTopSection(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB( AppTheme.spacingXLarge, AppTheme.spacingXLarge, AppTheme.spacingXXLarge, AppTheme.spacingLarge, ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text( 'Hi! $_loggedInUsername', style: TextStyle( color: AppTheme.primaryColor, fontSize: 24, fontWeight: FontWeight.bold, ), ),
-              SizedBox(height: AppTheme.spacingSmall),
-              const Text( 'Masak apa hari ini?', style: TextStyle(fontSize: 14, color: Colors.black54), ),
-            ],
-          ),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () { Navigator.pushNamed(context, '/notif'); },
-                child: Container(
-                  width: AppTheme.favoriteButtonSize, height: AppTheme.favoriteButtonSize,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle, image: DecorationImage( image: AssetImage('images/notif.png'), fit: BoxFit.cover, ), ), ),
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppTheme.spacingXLarge,
+      AppTheme.spacingXLarge,
+      AppTheme.spacingXXLarge,
+      AppTheme.spacingLarge,
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            // LOGO TETAP
+            Image.asset(
+              'images/logo.png',
+              width: 32,
+              height: 32,
+            ),
+            const SizedBox(width: AppTheme.spacingSmall),
+
+            // TEXT JIKA LOGIN, TOMBOL JIKA BELUM
+            isLoggedIn
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hi! $_loggedInUsername',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Masak apa hari ini?',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, '/login'),
+                        style: TextButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(60, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: const Text('Login'),
+                      ),
+                      const SizedBox(width: AppTheme.spacingSmall),
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, '/register'),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.black87,
+                          minimumSize: const Size(60, 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: const Text('Daftar'),
+                      ),
+                    ],
+                  ),
+          ],
+        ),
+
+        // ICON SAMPING KANAN
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/notif'),
+              child: Container(
+                width: AppTheme.favoriteButtonSize,
+                height: AppTheme.favoriteButtonSize,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: AssetImage('images/notif.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-              SizedBox(width: AppTheme.spacingMedium),
-              GestureDetector(
-                onTap: () { Navigator.pushNamed(context, '/penjadwalan'); },
-                child: Container(
-                  width: AppTheme.favoriteButtonSize, height: AppTheme.favoriteButtonSize,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle, image: DecorationImage( image: AssetImage('images/calendar.png'), fit: BoxFit.cover, ), ), ),
+            ),
+            const SizedBox(width: AppTheme.spacingMedium),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/penjadwalan'),
+              child: Container(
+                width: AppTheme.favoriteButtonSize,
+                height: AppTheme.favoriteButtonSize,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: AssetImage('images/calendar.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-              SizedBox(width: AppTheme.spacingMedium),
-              GestureDetector(
-                onTap: () { showRecipeRecommendationsTopSheet(context); },
-                child: Container(
-                  width: AppTheme.favoriteButtonSize, height: AppTheme.favoriteButtonSize,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle, image: DecorationImage( image: AssetImage('images/search.png'), fit: BoxFit.cover, ), ), ),
+            ),
+            const SizedBox(width: AppTheme.spacingMedium),
+            GestureDetector(
+              onTap: () => showRecipeRecommendationsTopSheet(context),
+              child: Container(
+                width: AppTheme.favoriteButtonSize,
+                height: AppTheme.favoriteButtonSize,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: DecorationImage(
+                    image: AssetImage('images/search.png'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+
 
   Widget _buildTrendingRecipeSection(BuildContext context) {
     return Column(
