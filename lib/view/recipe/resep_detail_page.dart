@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:video_player/video_player.dart';
 import '../profile/profil/edit_resep.dart';
 import 'bagikan_resep.dart';
+import '../community/review_page.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final int recipeId;
@@ -26,6 +27,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic>? _fetchedRecipeData;
+
 
   bool isFollowing = false;
   DateTime selectedDate = DateTime.now();
@@ -236,24 +238,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   // Fungsi untuk mengecek status favorit resep
   Future<void> _checkFavoriteStatus(int recipeId, int userId) async {
-    final String apiUrl = kIsWeb
-        ? 'http://localhost:3000/recipes/$recipeId/favorite-status?user_id=$userId'
-        : 'http://10.0.2.2:3000/recipes/$recipeId/favorite-status?user_id=$userId';
-
-    final String? accessToken = await _getAccessToken(); // Ambil token
-    // Perhatikan: Anda bisa memilih apakah cek status favorit butuh token atau tidak.
-    // Saat ini, backend Anda mungkin tidak memerlukannya karena rute '/recipes' belum ada `authenticateToken`
-    // Tapi jika di masa depan `favoriteRoutes` juga di bawah `authenticateToken`, ini akan diperlukan.
-
-    Map<String, String> headers = {'Content-Type': 'application/json'};
-    if (accessToken != null) {
-      headers['Authorization'] = 'Bearer $accessToken';
-    }
+    final String apiUrl = '$_baseUrl/recipes/$recipeId/favorite-status?user_id=$userId';
 
     try {
       final response = await http.get(
         Uri.parse(apiUrl),
-        headers: headers, // Gunakan header yang mungkin berisi token
+        headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
@@ -278,20 +268,14 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       return;
     }
 
-    final String? accessToken = await _getAccessToken(); // Ambil token
-    if (accessToken == null) {
-      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
-      return;
-    }
-
-    final String apiUrl = kIsWeb ? 'http://localhost:3000/recipes/${widget.recipeId}/favorite' : 'http://10.0.2.2:3000/recipes/${widget.recipeId}/favorite';
+    final String apiUrl = '$_baseUrl/recipes/${widget.recipeId}/favorite';
 
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Sertakan token
+          // Tidak perlu Authorization header
         },
         body: json.encode({'user_id': _currentLoggedInUserId!}),
       );
@@ -311,8 +295,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           });
           _showSuccessDialog(context, 'Favorit', data['message']);
         }
-      } else if (response.statusCode == 401) {
-        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
         _showErrorDialog(context, 'Favorit Gagal', 'Gagal mengubah status favorit: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
@@ -410,11 +392,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       return;
     }
 
-    final String? accessToken = await _getAccessToken(); // Ambil token
-    if (accessToken == null) {
-      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
-      return;
-    }
+    // Karena user_id dikirim dari frontend, `accessToken` TIDAK diperlukan
+    // untuk rute '/reviews' ini jika Anda tidak menggunakan middleware autentikasi di backend.
+    // final String? accessToken = await _getAccessToken(); // <--- Hapus atau komen ini
+    // if (accessToken == null) { // <--- Hapus atau komen ini
+    //   _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.'); // <--- Hapus atau komen ini
+    //   return; // <--- Hapus atau komen ini
+    // } // <--- Hapus atau komen ini
 
     final String apiUrl = kIsWeb ? 'http://localhost:3000/reviews' : 'http://10.0.2.2:3000/reviews';
 
@@ -423,10 +407,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Sertakan token
+          // Hapus header 'Authorization' karena tidak diperlukan oleh controller addReview baru
+          // 'Authorization': 'Bearer $accessToken',
         },
         body: json.encode({
-          'user_id': _currentLoggedInUserId!,
+          'user_id': _currentLoggedInUserId!, // Ini akan dikirim ke backend
           'recipe_id': widget.recipeId,
           'rating': _currentRating.toInt(),
           'comment': comment,
@@ -443,10 +428,10 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           });
         }
         _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
+        // Refresh detail resep untuk menampilkan rata-rata rating dan jumlah komentar yang diperbarui
         _fetchRecipeDetails(widget.recipeId);
-      } else if (response.statusCode == 401) {
-        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
+        // Hapus `else if (response.statusCode == 401)` karena tidak ada autentikasi token
         _showErrorDialog(context, 'Ulasan Gagal', 'Gagal mengirim ulasan: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
@@ -573,11 +558,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       _buildIngredientsSection(recipe['ingredients'] as List<dynamic>?),
                       _buildStepsSection(recipe['instructions'] as List<dynamic>?),
                       _buildDivider(),
-                      _buildRatingSection(recipe['average_rating'] as double? ?? 0.0),
+                      _buildRatingSection(
+                          double.tryParse(recipe['average_rating']?.toString() ?? '0.0') ?? 0.0
+                      ),
                       _buildCommentInput(),
                       _buildDivider(),
                       _buildViewAllCommentsButton(),
-                      const SizedBox(height: 60),
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
@@ -590,7 +577,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   // Widget untuk menampilkan bagian penulis resep
+// Widget untuk menampilkan bagian penulis resep
   Widget _buildAuthorSection(int userId, String username, String fullName, String? profilePictureUrl) {
+    // --- DEBUG PRINTS TAMBAHAN ---
+    print('DEBUG (_buildAuthorSection): userId: $userId');
+    print('DEBUG (_buildAuthorSection): username: "$username"'); // Pakai quote untuk lihat spasi kosong
+    print('DEBUG (_buildAuthorSection): fullName: "$fullName"'); // Pakai quote untuk lihat spasi kosong
+    print('DEBUG (_buildAuthorSection): profilePictureUrl: $profilePictureUrl');
+    // --- AKHIR DEBUG PRINTS TAMBAHAN ---
+
     String finalProfileImageUrl = '';
     Widget profileImageWidget;
 
@@ -630,7 +625,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   Text(
                     '@$username',
                     style: TextStyle(
-                      color: AppTheme.primaryColor,
+                      color: AppTheme.primaryColor, // Pastikan warna ini kontras
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -638,7 +633,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   Text(
                     fullName,
                     style: TextStyle(
-                      color: AppTheme.textBrown,
+                      color: AppTheme.textBrown, // Pastikan warna ini kontras
                       fontSize: 14,
                     ),
                   ),
@@ -1535,7 +1530,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: InkWell(
         onTap: () {
-          print('View all comments button pressed');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>  ReviewsPage(
+                recipeId: widget.recipeId,
+                recipeTitle: _fetchedRecipeData?['title'] as String? ?? 'Resep Ini',
+              ),
+            ),
+          );
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

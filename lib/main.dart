@@ -34,7 +34,6 @@ import 'view/profile/profil/profil_utama.dart';
 import 'view/profile/profil/bagikan_profil.dart';
 import 'view/profile/profil/edit_profil.dart';
 import 'view/profile/profil/mengikuti_pengikut.dart';
-import 'view/profile/profil/makanan_favorit.dart';
 import 'view/profile/profil/tambah_resep.dart';
 import 'view/profile/profil/edit_resep.dart';
 
@@ -86,7 +85,7 @@ class MyApp extends StatelessWidget {
 
         // Komunitas
         '/komunitas': (context) => const AppWithNavbar(KomunitasPage()),
-        '/review': (context) => const ReviewPage(),
+        // '/review': (context) => const ReviewPage(),
 
         // Home & Fitur
         '/beranda': (context) => const HomePage(),
@@ -101,8 +100,6 @@ class MyApp extends StatelessWidget {
         '/profil-utama': (context) => const AppWithNavbar(ProfilUtama()),
         '/bagikan-profil': (context) => const AppWithNavbar(BagikanProfil()),
         '/edit-profil': (context) => const AppWithNavbar(EditProfil()),
-        '/makanan-favorit': (context) => const AppWithNavbar(MakananFavorit()),
-
         // Pengaturan
         '/pengaturan-utama': (context) => const AppWithNavbar(PengaturanUtama()),
         '/pengaturan-notifikasi': (context) => const AppWithNavbar(NotificationSettingsScreen()),

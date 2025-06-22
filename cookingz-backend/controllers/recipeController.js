@@ -232,50 +232,68 @@ const recipeController = {
   },
 
   // Fungsi untuk mendapatkan detail resep berdasarkan ID (READ)
-  getRecipeById: async (req, res, next) => {
+// Fungsi untuk mendapatkan detail resep berdasarkan ID (READ)
+getRecipeById: async (req, res, next) => {
     const { id } = req.params;
     console.log(`\n--- DEBUG: Entering getRecipeById for ID: ${id} ---`);
     try {
-      const [recipes] = await pool.query('SELECT * FROM recipes WHERE id = ?', [id]);
-      console.log('DEBUG: Recipe query result:', recipes);
-      if (recipes.length === 0) {
-        console.log('DEBUG: Recipe not found for ID:', id);
-        return res.status(404).json({ message: 'Resep tidak ditemukan.' });
-      }
-      const recipe = recipes[0];
+        const [recipes] = await pool.query(
+            `SELECT
+                r.*,
+                u.username,
+                u.full_name,
+                u.profile_picture,
+                (SELECT COUNT(*) FROM user_favorites WHERE recipe_id = r.id) AS favorites_count,
+                (SELECT COUNT(*) FROM reviews WHERE recipe_id = r.id) AS comments_count,
+                (SELECT AVG(rating) FROM reviews WHERE recipe_id = r.id) AS average_rating
+             FROM
+                recipes r
+             JOIN
+                users u ON r.user_id = u.id
+             WHERE
+                r.id = ?`,
+            [id]
+        );
 
-      const [tools] = await pool.query(
-        'SELECT t.name FROM recipe_tools rt JOIN tools t ON rt.tool_id = t.id WHERE rt.recipe_id = ?',
-        [id]
-      );
-      console.log('DEBUG: Tools query result:', tools);
+        console.log('DEBUG: Recipe query result:', recipes);
+        if (recipes.length === 0) {
+            console.log('DEBUG: Recipe not found for ID:', id);
+            return res.status(404).json({ message: 'Resep tidak ditemukan.' });
+        }
+        const recipe = recipes[0];
 
-      const [ingredients] = await pool.query(
-        'SELECT ri.quantity, ri.unit, i.name FROM recipe_ingredients ri JOIN ingredients i ON ri.ingredient_id = i.id WHERE ri.recipe_id = ? ORDER BY i.name',
-        [id]
-      );
-      console.log('DEBUG: Ingredients query result:', ingredients);
+        const [tools] = await pool.query(
+            'SELECT t.name FROM recipe_tools rt JOIN tools t ON rt.tool_id = t.id WHERE rt.recipe_id = ?',
+            [id]
+        );
+        console.log('DEBUG: Tools query result:', tools);
 
-      const [steps] = await pool.query(
-        'SELECT rs.step_number, rs.description FROM recipe_steps rs WHERE rs.recipe_id = ? ORDER BY rs.step_number',
-        [id]
-      );
-      console.log('DEBUG: Instructions query result:', steps);
+        const [ingredients] = await pool.query(
+            'SELECT ri.quantity, ri.unit, i.name FROM recipe_ingredients ri JOIN ingredients i ON ri.ingredient_id = i.id WHERE ri.recipe_id = ? ORDER BY i.name',
+            [id]
+        );
+        console.log('DEBUG: Ingredients query result:', ingredients);
 
-      res.status(200).json({
-        ...recipe,
-        tools: tools.map(t => t.name),
-        ingredients: ingredients,
-        instructions: steps.map(s => s.description)
-      });
-      console.log('--- DEBUG: Exiting getRecipeById successfully ---');
+        const [steps] = await pool.query(
+            'SELECT rs.step_number, rs.description FROM recipe_steps rs WHERE rs.recipe_id = ? ORDER BY rs.step_number',
+            [id]
+        );
+        console.log('DEBUG: Instructions query result:', steps);
+
+        res.status(200).json({
+            ...recipe,
+            tools: tools.map(t => t.name),
+            ingredients: ingredients,
+            instructions: steps.map(s => s.description)
+        });
+        console.log('--- DEBUG: Exiting getRecipeById successfully ---');
 
     } catch (error) {
-      console.error('Error getting recipe by ID:', error);
-      console.log('--- DEBUG: Exiting getRecipeById with error ---');
-      next(error);
+        console.error('Error getting recipe by ID:', error);
+        console.log('--- DEBUG: Exiting getRecipeById with error ---');
+        next(error);
     }
-  },
+},
 
   // Fungsi untuk memperbarui resep (UPDATE)
   updateRecipe: async (req, res, next) => {

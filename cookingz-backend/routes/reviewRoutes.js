@@ -1,14 +1,20 @@
-// cookingz-backend/routes/reviewRoutes.js
+// File: cookingz-backend/routes/reviewRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const reviewController = require('../controllers/reviewController');
 
-// Rute untuk menambahkan ulasan ke resep tertentu
-// Contoh: POST /api/recipes/123/reviews
-router.post('/:id/reviews', reviewController.addReview);
+// Catatan: Middleware autentikasi TIDAK diterapkan di sini
+// karena user_id diambil langsung dari body/query frontend.
+// Ini memiliki IMPLIKASI KEAMANAN yang serius.
 
-// Rute untuk mendapatkan semua ulasan untuk resep tertentu
-// Contoh: GET /api/recipes/123/reviews
-router.get('/:id/reviews', reviewController.getReviewsByRecipeId);
+// POST /reviews - Menambahkan ulasan baru
+router.post('/', reviewController.addReview);
+
+// GET /reviews/:recipeId - Mendapatkan semua ulasan untuk resep tertentu
+router.get('/:recipeId', reviewController.getReviewsByRecipeId);
+
+// DELETE /reviews/:reviewId - Menghapus ulasan tertentu
+router.delete('/:reviewId', reviewController.deleteReview);
 
 module.exports = router;

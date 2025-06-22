@@ -14,6 +14,7 @@ const forgotPasswordRoutes = require('./routes/forgotPasswordRoutes'); // <<< AD
 const categoryRoutes = require('./routes/categoryRoutes');
 const discoveryRoutes = require('./routes/discoveryRoutes'); // Untuk /home dan /search
 const utilityRoutes = require('./routes/utilityRoutes'); // <<< TAMBAHKAN INI untuk jadwal & notifikasi
+const reviewRoutes = require('./routes/reviewRoutes');
 const authenticateToken = require('./middleware/authMiddleware'); // Pastikan ini ada
 
 const path = require('path');
@@ -35,6 +36,7 @@ app.use('/recipes', recipeRoutes);
 app.use('/users', userRoutes);
 app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, biasanya /favorites
 app.use('/categories', categoryRoutes);
+app.use('/reviews', reviewRoutes);
 
 // Pasang discoveryRoutes di '/home' dengan middleware autentikasi opsional
 app.use('/home', (req, res, next) => {
