@@ -5,7 +5,7 @@ const db = require('../db');
 // Fungsi untuk mendapatkan profil pengguna yang sedang login ('me')
 exports.getMyProfile = async (req, res) => {
     // ID pengguna didapatkan dari middleware otentikasi JWT
-    const userId = req.userId; 
+    const userId = req.user.userId; 
     console.log(`>>> Controller getMyProfile BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
     if (!userId) { // Seharusnya tidak terjadi jika authenticateToken berfungsi
@@ -82,7 +82,7 @@ exports.getUserRecipes = async (req, res) => {
 
 // Fungsi untuk mendapatkan resep favorit pengguna yang sedang login
 exports.getMyFavoriteRecipes = async (req, res) => {
-    const userId = req.userId; // ID pengguna dari token JWT
+    const userId = req.user.userId; // ID pengguna dari token JWT
     console.log(`>>> Controller getMyFavoriteRecipes BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
     if (!userId) { // Seharusnya tidak terjadi jika authenticateToken berfungsi
@@ -156,7 +156,7 @@ exports.getUserById = async (req, res) => {
 
 // Fungsi untuk memperbarui profil pengguna yang sedang login
 exports.updateMyProfile = async (req, res) => {
-    const userId = req.userId; // ID pengguna dari token JWT
+    const userId = req.user.userId; // ID pengguna dari token JWT
     console.log(`>>> Controller updateMyProfile BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
     const { fullName, username, bio, cooking_level } = req.body; // Tambahkan cooking_level
@@ -206,7 +206,7 @@ exports.updateMyProfile = async (req, res) => {
 exports.getFollowingList = async (req, res) => {
     try {
         const profileUserId = req.params.id; // ID profil yang sedang dilihat
-        const loggedInUserId = req.userId; // ID pengguna yang login (dari token, bisa null jika rute publik)
+        const loggedInUserId = req.user.userId; // ID pengguna yang login (dari token, bisa null jika rute publik)
 
         const query = `
             SELECT 
@@ -233,7 +233,7 @@ exports.getFollowingList = async (req, res) => {
 exports.getFollowersList = async (req, res) => {
     try {
         const profileUserId = req.params.id; // ID profil yang sedang dilihat
-        const loggedInUserId = req.userId; // ID pengguna yang login (dari token, bisa null jika rute publik)
+        const loggedInUserId = req.user.userId; // ID pengguna yang login (dari token, bisa null jika rute publik)
 
         const query = `
             SELECT 
@@ -258,7 +258,7 @@ exports.getFollowersList = async (req, res) => {
 
 // Fungsi untuk follow seorang pengguna
 exports.followUser = async (req, res) => {
-    const loggedInUserId = req.userId; // ID pengguna yang login dari token
+    const loggedInUserId = req.user.userId; // ID pengguna yang login dari token
     const userToFollowId = parseInt(req.params.id); // ID pengguna yang akan di-follow
 
     if (!loggedInUserId) {
@@ -287,7 +287,7 @@ exports.followUser = async (req, res) => {
 
 // Fungsi untuk unfollow seorang pengguna
 exports.unfollowUser = async (req, res) => {
-    const loggedInUserId = req.userId; // ID pengguna yang login dari token
+    const loggedInUserId = req.user.userId; // ID pengguna yang login dari token
     const userToUnfollowId = parseInt(req.params.id); // ID pengguna yang akan di-unfollow
 
     if (!loggedInUserId) {
@@ -314,7 +314,7 @@ exports.unfollowUser = async (req, res) => {
 // Fungsi untuk menghapus pengguna
 exports.deleteUser = async (req, res) => {
     const userIdToDelete = parseInt(req.params.id); // ID user dari URL
-    const authenticatedUserId = req.userId; // ID user dari token JWT
+    const authenticatedUserId = req.user.userId; // ID user dari token JWT
 
     console.log(`>>> Controller deleteUser BERHASIL DICAPAI! Menghapus ID: ${userIdToDelete}, oleh User ID: ${authenticatedUserId} <<<`);
 

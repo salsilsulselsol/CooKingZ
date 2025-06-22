@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
 
 
   // Base URL for your backend API
-  final String _baseUrl = 'http://192.168.100.44:3000'; // <<<--- GANTI DENGAN IP BACKEND ANDA YANG BENAR
+  final String _baseUrl = 'http://localhost:3000'; // <<<--- GANTI DENGAN IP BACKEND ANDA YANG BENAR
 
   @override
   void initState() {

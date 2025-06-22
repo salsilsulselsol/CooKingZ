@@ -21,7 +21,13 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  final String _baseUrl = 'http://192.168.100.44:3000'; // ← Ganti IP sesuai backend kamu
+  late final String _baseUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _baseUrl = const String.fromEnvironment('BASE_URL', defaultValue: 'http://localhost:3000');
+  }
 
   @override
   void dispose() {

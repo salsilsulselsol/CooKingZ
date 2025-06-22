@@ -1,12 +1,17 @@
+// lib/view/profile/profil/mengikuti_pengikut.dart
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
 import 'dart:convert';
 import 'package:masak2/view/component/back_button_widget.dart';
 import '../../../models/follower_user_model.dart'; 
 
 class MengikutiPengikut extends StatefulWidget {
-  const MengikutiPengikut({super.key});
+  // 1. Terima userId dari halaman profil
+  final int userId; 
+  const MengikutiPengikut({super.key, required this.userId});
 
   @override
   State<MengikutiPengikut> createState() => _MengikutiPengikutState();
@@ -18,46 +23,81 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
 
   List<FollowerUser> _followingList = [];
   List<FollowerUser> _followersList = [];
+  List<FollowerUser> _filteredFollowingList = [];
+  List<FollowerUser> _filteredFollowersList = [];
+
   bool _isLoadingFollowing = true;
   bool _isLoadingFollowers = true;
   
-  // Asumsi profil yang dilihat adalah profil kita sendiri (ID 1)
-  final int _profileUserId = 1; 
   String _profileUsername = 'memuat...';
-  // Asumsi pengguna yang sedang login adalah ID 1
-  final int _loggedInUserId = 1; 
+  int? _loggedInUserId; 
   
   bool _hasMadeChanges = false;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_filterLists);
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Inisialisasi TabController dengan index awal dari argumen navigasi
     final int initialIndex = ModalRoute.of(context)?.settings.arguments as int? ?? 0;
     _tabController = TabController(length: 2, vsync: this, initialIndex: initialIndex);
-    _fetchData();
+    _initializeAndFetchData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.removeListener(_filterLists);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchData() async {
-    // Ambil semua data yang diperlukan saat halaman dibuka
+  // 2. Tambahkan helper untuk mendapatkan header otentikasi
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+  
+  Future<void> _initializeAndFetchData() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _loggedInUserId = prefs.getInt('user_id');
+      });
+    }
+    // Ambil semua data yang diperlukan
     _fetchUsername();
     _fetchFollowingList();
     _fetchFollowersList();
   }
 
+  void _filterLists() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredFollowingList = _followingList.where((user) {
+        return user.fullName.toLowerCase().contains(query) || user.username.toLowerCase().contains(query);
+      }).toList();
+      _filteredFollowersList = _followersList.where((user) {
+        return user.fullName.toLowerCase().contains(query) || user.username.toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
   Future<void> _fetchUsername() async {
     final baseUrl = dotenv.env['BASE_URL'];
     try {
-      final response = await http.get(Uri.parse('$baseUrl/users/$_profileUserId'));
+      final headers = await _getAuthHeaders(); // <-- Gunakan token
+      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}'), headers: headers); // <-- Gunakan widget.userId
       if(mounted && response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body)['data'];
         setState(() { _profileUsername = data['username'] ?? 'Tidak Ditemukan'; });
       }
     } catch(e) {
@@ -70,11 +110,13 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
     setState(() => _isLoadingFollowing = true);
     final baseUrl = dotenv.env['BASE_URL'];
     try {
-      final response = await http.get(Uri.parse('$baseUrl/users/$_profileUserId/following'));
-       if(mounted && response.statusCode == 200) {
-        final List<dynamic> body = json.decode(response.body);
+      final headers = await _getAuthHeaders(); // <-- Gunakan token
+      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}/following'), headers: headers); // <-- Gunakan widget.userId
+      if(mounted && response.statusCode == 200) {
+        final List<dynamic> body = json.decode(response.body)['data'];
         setState(() {
           _followingList = body.map((data) => FollowerUser.fromJson(data)).toList();
+          _filteredFollowingList = _followingList; // Inisialisasi list filter
         });
       }
     } catch(e) {
@@ -89,11 +131,13 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
     setState(() => _isLoadingFollowers = true);
     final baseUrl = dotenv.env['BASE_URL'];
     try {
-      final response = await http.get(Uri.parse('$baseUrl/users/$_profileUserId/followers'));
-       if(mounted && response.statusCode == 200) {
-        final List<dynamic> body = json.decode(response.body);
+      final headers = await _getAuthHeaders(); // <-- Gunakan token
+      final response = await http.get(Uri.parse('$baseUrl/users/${widget.userId}/followers'), headers: headers); // <-- Gunakan widget.userId
+      if(mounted && response.statusCode == 200) {
+        final List<dynamic> body = json.decode(response.body)['data'];
         setState(() {
           _followersList = body.map((data) => FollowerUser.fromJson(data)).toList();
+          _filteredFollowersList = _followersList; // Inisialisasi list filter
         });
       }
     } catch(e) {
@@ -104,6 +148,8 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
   }
 
   Future<void> _toggleFollow(FollowerUser userToToggle) async {
+    if (_loggedInUserId == null) return; // Jangan lakukan apa-apa jika tidak login
+
     final originalStatus = userToToggle.isFollowing;
     
     // Optimistic UI update
@@ -116,21 +162,23 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
     final url = Uri.parse('$baseUrl/users/${userToToggle.id}/$action');
     
     try {
-      // Panggil API
-      final response = await http.post(url);
+      final headers = await _getAuthHeaders(); // <-- Gunakan token
+      final response = await http.post(url, headers: headers);
       if (response.statusCode != 200) {
-        throw Exception('Gagal follow/unfollow user');
+        throw Exception('Gagal follow/unfollow user: ${response.body}');
       }
-      // Jika berhasil, tandai bahwa ada perubahan
       _hasMadeChanges = true;
+      // Refresh list yang relevan setelah berhasil
+      if (widget.userId == _loggedInUserId && action == 'unfollow') {
+         _fetchFollowingList();
+      }
     } catch (e) {
-       // Jika gagal, kembalikan state UI ke semula
        if(mounted) {
         setState(() {
           userToToggle.isFollowing = originalStatus;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal, periksa koneksi Anda.'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -191,8 +239,8 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildUserListView(list: _followingList, isLoading: _isLoadingFollowing),
-                  _buildUserListView(list: _followersList, isLoading: _isLoadingFollowers),
+                  _buildUserListView(list: _filteredFollowingList, isLoading: _isLoadingFollowing),
+                  _buildUserListView(list: _filteredFollowersList, isLoading: _isLoadingFollowers),
                 ],
               ),
             ),
@@ -220,14 +268,14 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
 
   Widget _buildUserTile(FollowerUser user) {
     final baseUrl = dotenv.env['BASE_URL'] ?? '';
-    final imagePath = user.profilePicture?.startsWith('/') ?? false
-        ? user.profilePicture
-        : '/${user.profilePicture}';
+    final imagePath = (user.profilePicture != null && user.profilePicture!.isNotEmpty)
+      ? (user.profilePicture!.startsWith('/') ? user.profilePicture : '/${user.profilePicture}')
+      : null;
 
     return ListTile(
       leading: CircleAvatar(
         radius: 24,
-        backgroundImage: (user.profilePicture != null && user.profilePicture!.isNotEmpty)
+        backgroundImage: (imagePath != null)
             ? NetworkImage('$baseUrl$imagePath')
             : const AssetImage('images/default_avatar.png') as ImageProvider,
       ),
@@ -238,9 +286,8 @@ class _MengikutiPengikutState extends State<MengikutiPengikut> with SingleTicker
   }
   
   Widget _buildFollowButton(FollowerUser user) {
-    // Jangan tampilkan tombol untuk profil kita sendiri jika muncul di list
     if (user.id == _loggedInUserId) {
-      return const SizedBox(width: 48); // Beri ruang kosong agar sejajar
+      return const SizedBox(width: 90); // Beri ruang kosong agar sejajar
     }
     return ElevatedButton(
       onPressed: () => _toggleFollow(user),
