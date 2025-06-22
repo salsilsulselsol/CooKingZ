@@ -52,7 +52,7 @@ app.use('/home', (req, res, next) => {
 
 // Pasang utilityRoutes di '/api/utilities' dan lindungi dengan authenticateToken
 // Ini berarti setiap permintaan ke /api/utilities/* akan melalui autentikasi JWT.
-app.use('/api/utilities', authenticateToken, utilityRoutes); // <<< TAMBAHKAN INI
+app.use('/api/utilities', utilityRoutes); // <<< TAMBAHKAN INI
 app.use('/forgot-password', forgotPasswordRoutes); // <<< ADD THIS (TAMBAHKAN INI)
 
 

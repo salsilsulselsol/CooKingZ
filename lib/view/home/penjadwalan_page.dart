@@ -6,12 +6,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../models/food_model.dart'; 
-import '../../models/scheduled_food_model.dart'; // Import model ScheduledFood yang baru
-import '../component/food_card_jadwal.dart'; // Import widget FoodCardJadwal
-import '../../view/component/header_back.dart'; // Import HeaderWidget
+import '../../models/scheduled_food_model.dart';
+import '../component/food_card_jadwal.dart';
 
 class PenjadwalanPage extends StatefulWidget {
+  // We no longer need userId as a constructor argument if we're fetching it internally
   const PenjadwalanPage({Key? key}) : super(key: key);
 
   @override
@@ -19,12 +18,13 @@ class PenjadwalanPage extends StatefulWidget {
 }
 
 class _PenjadwalanPageState extends State<PenjadwalanPage> {
-  List<ScheduledFood> _scheduledMeals = []; // Menggunakan ScheduledFood
+  List<ScheduledFood> _scheduledMeals = [];
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  int? _currentLoggedInUserId; // Declare it here to hold the user ID
 
-  final String _baseUrl = 'http://192.168.100.44:3000'; // <<< GANTI DENGAN IP BACKEND ANDA
+  final String _baseUrl = 'http://localhost:3000';
 
   @override
   void initState() {
@@ -32,8 +32,13 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
     _fetchMealSchedules();
   }
 
+  // Function to get the user ID from SharedPreferences
+  Future<int?> _getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('user_id'); // Ensure 'user_id' is the correct key
+  }
+
   Future<void> _fetchMealSchedules() async {
-    print('DEBUG PENJADWALAN: Mulai fetch jadwal makan...');
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -44,104 +49,75 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
+      // Get the current logged-in user ID
+      _currentLoggedInUserId = await _getCurrentUserId();
+
+      print('DEBUG (PenjadwalanPage): Token retrieved: $token');
+      print('DEBUG (PenjadwalanPage): User ID for API call: $_currentLoggedInUserId');
+
       if (token == null) {
         setState(() {
           _hasError = true;
           _errorMessage = 'Anda harus login untuk melihat jadwal makan.';
           _isLoading = false;
         });
-        print('DEBUG PENJADWALAN: Tidak ada token, tidak bisa fetch jadwal.');
         return;
       }
 
-      final uri = Uri.parse('$_baseUrl/api/utilities/meal-schedules');
-      print('DEBUG PENJADWALAN: Fetching dari URL: $uri');
+      if (_currentLoggedInUserId == null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'User ID tidak ditemukan. Harap login ulang.';
+          _isLoading = false;
+        });
+        return;
+      }
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      // Construct the URL with the retrieved user ID
+      final uri = Uri.parse('$_baseUrl/api/utilities/get_meal-schedules/$_currentLoggedInUserId');
+      final response = await http.get(uri, headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
 
-      print('DEBUG PENJADWALAN: Status Code API: ${response.statusCode}');
-      print('DEBUG PENJADWALAN: Response Body API: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
+      print('DEBUG (PenjadwalanPage): Response status code: ${response.statusCode}');
+      print('DEBUG (PenjadwalanPage): Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final List<dynamic> scheduleList = responseData['data'];
-
+        final data = json.decode(response.body);
+        final List<dynamic> scheduleList = data['data'];
         setState(() {
-          _scheduledMeals = scheduleList.map((jsonItem) => ScheduledFood.fromJson(jsonItem)).toList();
-          // Sort the scheduled meals by date (ascending)
+          _scheduledMeals = scheduleList
+              .map((item) => ScheduledFood.fromJson(item))
+              .toList();
           _scheduledMeals.sort((a, b) => a.date.compareTo(b.date));
           _isLoading = false;
         });
-        print('DEBUG PENJADWALAN: Jadwal makan berhasil diparsing. Count: ${_scheduledMeals.length}');
       } else {
         setState(() {
           _hasError = true;
-          _errorMessage = 'Gagal memuat jadwal makan: ${response.statusCode} ${response.reasonPhrase}';
+          _errorMessage =
+              'Gagal memuat jadwal makan: ${response.statusCode} ${response.reasonPhrase} - ${json.decode(response.body)['message'] ?? ''}';
           _isLoading = false;
         });
-        print('[ERROR] PENJADWALAN: Gagal memuat jadwal: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
       setState(() {
         _hasError = true;
-        _errorMessage = 'Terjadi kesalahan saat memuat jadwal makan: $e';
+        _errorMessage = 'Terjadi kesalahan: $e';
         _isLoading = false;
       });
-      print('[EXCEPTION] PENJADWALAN: Error fetching jadwal: $e');
     }
   }
 
-  Future<void> _addMealSchedule(int recipeId, String mealType, DateTime date) async {
-    print('DEBUG PENJADWALAN: Menambahkan jadwal: Recipe ID: $recipeId, Meal Type: $mealType, Date: $date');
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-
-      if (token == null) {
-        print('ERROR: Tidak login. Tidak bisa menambahkan jadwal makan.');
-        return;
-      }
-
-      final uri = Uri.parse('$_baseUrl/api/utilities/meal-schedules');
-      final response = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'recipe_id': recipeId,
-          'meal_type': mealType,
-          'date': DateFormat('yyyy-MM-dd').format(date), // Format tanggal sesuai backend
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        print('DEBUG: Jadwal makan berhasil ditambahkan. Refreshing list.');
-        _fetchMealSchedules(); // Fetch ulang untuk memperbarui daftar
-      } else {
-        print('[ERROR] PENJADWALAN: Gagal menambahkan jadwal: ${response.statusCode} ${response.body}');
-      }
-    } catch (e) {
-      print('[EXCEPTION] PENJADWALAN: Error menambahkan jadwal: $e');
-    }
-  }
-
-  Future<void> _deleteMealSchedule(int scheduleId) async {
-    print('DEBUG PENJADWALAN: Menghapus jadwal ID: $scheduleId');
+  Future<void> _deleteMealSchedule(int scheduleId,int user_Id) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
       if (token == null) return;
 
-      final uri = Uri.parse('$_baseUrl/api/utilities/meal-schedules/$scheduleId');
+      final uri = Uri.parse('$_baseUrl/api/utilities/meal-schedules/$scheduleId/$user_Id');
       final response = await http.delete(
         uri,
         headers: {
@@ -151,93 +127,41 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
       );
 
       if (response.statusCode == 200) {
-        print('DEBUG: Jadwal makan $scheduleId berhasil dihapus. Refreshing list.');
-        _fetchMealSchedules(); // Fetch ulang untuk memperbarui daftar
+        _fetchMealSchedules(); // Refresh schedules after deletion
       } else {
-        print('[ERROR] PENJADWALAN: Gagal menghapus jadwal $scheduleId: ${response.statusCode} ${response.body}');
+        print('[ERROR] Hapus jadwal gagal: ${response.statusCode} ${response.body}');
       }
     } catch (e) {
-      print('[EXCEPTION] PENJADWALAN: Error menghapus jadwal: $e');
+      print('[EXCEPTION] Hapus jadwal error: $e');
     }
   }
 
-  // Fungsi untuk menampilkan date picker
-  void _showDatePicker() async {
-    print('DEBUG PENJADWALAN: showDatePicker dipanggil.');
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2026),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF006666),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Color(0xFF006666),
-            ),
-            dialogTheme: DialogThemeData(backgroundColor: Colors.white),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (pickedDate != null) {
-      print('DEBUG PENJADWALAN: Tanggal dipilih: $pickedDate');
-      // TODO: Di sini Anda perlu cara untuk memilih RECIPE ID dan MEAL_TYPE
-      // Untuk tujuan testing awal, Anda bisa hardcode recipeId dan mealType,
-      // atau memunculkan dialog/bottom sheet lain untuk memilih resep.
-      
-      // Contoh hardcode untuk testing:
-      final int testRecipeId = 1; // Ganti dengan ID resep yang ada di DB Anda
-      final String testMealType = 'Sarapan'; // Ganti dengan jenis makan yang valid (Sarapan, Makan Siang, Makan Malam, Camilan)
-
-      _addMealSchedule(testRecipeId, testMealType, pickedDate);
-    } else {
-      print('DEBUG PENJADWALAN: Date picker dibatalkan.');
-    }
-  }
-
-  // Helper untuk format tanggal pengelompokan (Hari Ini, Kemarin, atau tanggal penuh)
   String _formatDateForGrouping(DateTime date) {
-    final DateTime now = DateTime.now();
-    final DateTime yesterday = now.subtract(const Duration(days: 1));
-
-    if (_isSameDay(date, now)) {
-      return 'Hari Ini';
-    } else if (_isSameDay(date, yesterday)) {
-      return 'Kemarin';
-    } else {
-      return DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date); // Tambahkan tahun untuk kejelasan
-    }
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (_isSameDay(date, now)) return 'Hari Ini';
+    if (_isSameDay(date, yesterday)) return 'Kemarin';
+    return DateFormat('EEEE, dd MMMM', 'id_ID').format(date);
   }
 
-  // Helper untuk membandingkan apakah dua tanggal adalah hari yang sama
-  bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-           date1.month == date2.month &&
-           date1.day == date2.day;
+  bool _isSameDay(DateTime d1, DateTime d2) {
+    return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
   }
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG PENJADWALAN: build method dipanggil. isLoading: $_isLoading, hasError: $_hasError, scheduledMeals.length: ${_scheduledMeals.length}');
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: Container(
-          color: Colors.white,
           padding: const EdgeInsets.only(top: 30, left: 16, right: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 icon: Image.asset('images/arrow.png', width: 24, height: 24),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.pop(context),
               ),
               const Text(
                 'Penjadwalan',
@@ -247,10 +171,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
                   fontSize: 20,
                 ),
               ),
-              IconButton(
-                icon: Image.asset('images/calendar.png', width: 28, height: 28),
-                onPressed: _showDatePicker, // Tombol untuk menambah jadwal
-              ),
+              const SizedBox(width: 48), // Keep spacing consistent
             ],
           ),
         ),
@@ -269,7 +190,9 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
                       ),
                     )
                   : _scheduledMeals.isEmpty
-                      ? Center(child: Text('Tidak ada jadwal makan.', style: TextStyle(color: Colors.grey)))
+                      ? const Center(
+                          child: Text('Tidak ada jadwal makan.',
+                              style: TextStyle(color: Colors.grey)))
                       : ListView.builder(
                           itemCount: _scheduledMeals.length,
                           itemBuilder: (context, index) {
@@ -277,11 +200,12 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Tampilkan tanggal hanya sekali jika ada perubahan hari
-                                // Perhatikan: ini akan berfungsi jika _scheduledMeals sudah diurutkan berdasarkan tanggal
-                                if (index == 0 || !_isSameDay(scheduledMeal.date, _scheduledMeals[index - 1].date))
+                                if (index == 0 ||
+                                    !_isSameDay(scheduledMeal.date,
+                                        _scheduledMeals[index - 1].date))
                                   Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    padding:
+                                        const EdgeInsets.only(bottom: 8.0),
                                     child: Text(
                                       _formatDateForGrouping(scheduledMeal.date),
                                       style: const TextStyle(
@@ -293,7 +217,7 @@ class _PenjadwalanPageState extends State<PenjadwalanPage> {
                                   ),
                                 FoodCardJadwal(
                                   scheduledMeal: scheduledMeal,
-                                  onDelete: () => _deleteMealSchedule(scheduledMeal.id),
+                                  onDelete: () => _deleteMealSchedule(scheduledMeal.id,scheduledMeal.userId),
                                 ),
                                 const SizedBox(height: 16),
                               ],

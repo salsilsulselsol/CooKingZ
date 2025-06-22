@@ -7,13 +7,15 @@ const utilityController = require('../controllers/utilityController');
 // --- Rute untuk Jadwal Makan (Meal Schedules) ---
 
 // GET semua jadwal makan untuk user yang sedang login
-router.get('/meal-schedules', utilityController.getMealSchedules);
+router.get('/get_meal-schedules/:id', utilityController.getMealSchedules);
 
 // POST jadwal makan baru
 router.post('/meal-schedules', utilityController.addMealSchedule);
 
-// DELETE jadwal makan berdasarkan ID
-router.delete('/meal-schedules/:id', utilityController.deleteMealSchedule);
+// DELETE dengan dua parameter: jadwal dan user
+router.delete('/meal-schedules/:id/:user_id', utilityController.deleteMealSchedule);
+
+
 
 // --- Rute untuk Notifikasi ---
 
