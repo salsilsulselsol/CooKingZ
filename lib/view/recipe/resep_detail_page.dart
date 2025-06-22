@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:video_player/video_player.dart';
 import '../profile/profil/edit_resep.dart';
 import 'bagikan_resep.dart';
+import '../community/review_page.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final int recipeId;
@@ -389,11 +390,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       return;
     }
 
-    final String? accessToken = await _getAccessToken(); // Ambil token
-    if (accessToken == null) {
-      _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.');
-      return;
-    }
+    // Karena user_id dikirim dari frontend, `accessToken` TIDAK diperlukan
+    // untuk rute '/reviews' ini jika Anda tidak menggunakan middleware autentikasi di backend.
+    // final String? accessToken = await _getAccessToken(); // <--- Hapus atau komen ini
+    // if (accessToken == null) { // <--- Hapus atau komen ini
+    //   _showErrorDialog(context, 'Autentikasi Gagal', 'Anda tidak memiliki sesi login yang aktif. Silakan login kembali.'); // <--- Hapus atau komen ini
+    //   return; // <--- Hapus atau komen ini
+    // } // <--- Hapus atau komen ini
 
     final String apiUrl = kIsWeb ? 'http://localhost:3000/reviews' : 'http://10.0.2.2:3000/reviews';
 
@@ -402,10 +405,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken', // Sertakan token
+          // Hapus header 'Authorization' karena tidak diperlukan oleh controller addReview baru
+          // 'Authorization': 'Bearer $accessToken',
         },
         body: json.encode({
-          'user_id': _currentLoggedInUserId!,
+          'user_id': _currentLoggedInUserId!, // Ini akan dikirim ke backend
           'recipe_id': widget.recipeId,
           'rating': _currentRating.toInt(),
           'comment': comment,
@@ -422,10 +426,10 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           });
         }
         _showSuccessDialog(context, 'Ulasan Berhasil', 'Ulasan Anda berhasil ditambahkan!');
+        // Refresh detail resep untuk menampilkan rata-rata rating dan jumlah komentar yang diperbarui
         _fetchRecipeDetails(widget.recipeId);
-      } else if (response.statusCode == 401) {
-        _showErrorDialog(context, 'Autentikasi Diperlukan', 'Sesi Anda telah berakhir atau tidak valid. Silakan login kembali.');
       } else {
+        // Hapus `else if (response.statusCode == 401)` karena tidak ada autentikasi token
         _showErrorDialog(context, 'Ulasan Gagal', 'Gagal mengirim ulasan: ${json.decode(response.body)['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
@@ -555,7 +559,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       _buildCommentInput(),
                       _buildDivider(),
                       _buildViewAllCommentsButton(),
-                      const SizedBox(height: 60),
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
@@ -1513,7 +1517,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: InkWell(
         onTap: () {
-          print('View all comments button pressed');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>  ReviewsPage(
+                recipeId: widget.recipeId,
+                recipeTitle: _fetchedRecipeData?['title'] as String? ?? 'Resep Ini',
+              ),
+            ),
+          );
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
