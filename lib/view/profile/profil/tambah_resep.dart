@@ -9,6 +9,8 @@ import 'dart:io'; // Diperlukan untuk menggunakan objek 'File', yang merepresent
 import 'package:flutter/foundation.dart' show kIsWeb; // Sebuah konstanta boolean (`kIsWeb`) untuk memeriksa apakah aplikasi sedang berjalan di platform web.
 import 'package:http_parser/http_parser.dart'; // Diperlukan untuk membuat objek `MediaType` yang mendefinisikan tipe MIME dari file yang diunggah (misalnya, 'image/jpeg').
 import '/../models/category_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 // Kelas statis untuk mendefinisikan palet warna yang konsisten di seluruh aplikasi.
 class AppColors {
@@ -233,8 +235,16 @@ class _BuatResepState extends State<BuatResep> {
     // PENTING: URL ini harus disesuaikan dengan lingkungan pengembangan Anda.
     const String apiUrl = 'http://localhost:3000/recipes'; // Contoh untuk web di mesin yang sama.
 
-    // ID pengguna sementara. Dalam aplikasi nyata, ini harus didapat dari state login/autentikasi.
-    const int dummyUserId = 1;
+    final prefs = await SharedPreferences.getInstance();
+    final int? userIdInt = prefs.getInt('user_id');
+    if (userIdInt == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal mendapatkan ID pengguna. Silakan login ulang.')),
+      );
+      return;
+    }
+    final String userId = userIdInt.toString(); // <-- Konversi ke String
+
 
     // 1. MENGUMPULKAN DAN MEMBERSIHKAN DATA TEKS
     // Mengambil teks dari controller dan `.trim()` untuk menghapus spasi di awal/akhir.
@@ -312,7 +322,7 @@ class _BuatResepState extends State<BuatResep> {
 
     // 5. MENAMBAHKAN FIELD TEKS KE REQUEST
     // Data List dan Map harus diubah menjadi string JSON menggunakan `json.encode` agar bisa dikirim.
-    request.fields['userId'] = dummyUserId.toString();
+    request.fields['userId'] = userId;
     request.fields['categoryId'] = categoryId;
     request.fields['title'] = title;
     request.fields['description'] = description;
@@ -400,13 +410,15 @@ class _BuatResepState extends State<BuatResep> {
       print('Response Data: $responseData');
       print('-----------------------');
 
-      // Memeriksa status code dari respons. 201 (Created) menandakan sukses.
+     // Memeriksa status code dari respons. 201 (Created) menandakan sukses.
       if (response.statusCode == 201) {
         var jsonResponse = json.decode(responseData); // Mengurai respons JSON dari server.
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Resep berhasil ditambahkan! ID: ${jsonResponse['recipeId']}')),
         );
-        // Jika berhasil, reset semua field di form.
+
+        // Reset form
         _titleController.clear();
         _descriptionController.clear();
         _estimatedTimeController.clear();
@@ -416,7 +428,6 @@ class _BuatResepState extends State<BuatResep> {
           _selectedCategory = null;
           _selectedImage = null;
           _selectedVideo = null;
-          // Reset list controller dinamis dan tambahkan satu field kosong kembali.
           _toolControllers.clear();
           _toolControllers.add(TextEditingController());
           _ingredientControllers.clear();
@@ -428,6 +439,9 @@ class _BuatResepState extends State<BuatResep> {
           _instructionControllers.clear();
           _instructionControllers.add(TextEditingController());
         });
+
+        // ✅ Navigasi ke halaman profil utama
+        Navigator.pushNamedAndRemoveUntil(context, '/profil-utama', (route) => false);
       } else {
         // Jika gagal, tampilkan pesan error dari server.
         var jsonResponse = json.decode(responseData);
@@ -435,6 +449,7 @@ class _BuatResepState extends State<BuatResep> {
           SnackBar(content: Text('Gagal menambahkan resep: ${jsonResponse['message'] ?? 'Terjadi kesalahan tidak dikenal'}')),
         );
       }
+
     } catch (e) {
       // Menangani error jika terjadi masalah jaringan atau saat parsing JSON.
       print('Error submitting recipe: $e');
