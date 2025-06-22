@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:masak2/view/auth/login_page.dart';
 import 'dart:convert';
-import '../../view/component/header_back.dart';
+import 'dart:async'; // Import untuk Timer
+import '../../view/component/header_back.dart'; // Pastikan path ini benar
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -12,8 +14,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
-  // Replace with your backend URL (Ganti dengan URL backend Anda)
-  final String _backendUrl = "http://localhost:3000"; 
+  final String _backendUrl = "http://localhost:3000"; // Ganti dengan URL backend Anda
 
   Future<void> _sendOtp() async {
     final email = _emailController.text;
@@ -33,6 +34,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       if (response.statusCode == 200) {
         _showAlertDialog('Sukses', responseData['message']);
+        // Navigasi ke OTPScreen dan berikan email yang digunakan
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => OTPScreen(email: email)),
@@ -151,8 +153,70 @@ class OTPScreen extends StatefulWidget {
 class _OTPScreenState extends State<OTPScreen> {
   final List<TextEditingController> _otpControllers =
       List.generate(6, (index) => TextEditingController());
-  // Replace with your backend URL (Ganti dengan URL backend Anda)
-  final String _backendUrl = "http://localhost:3000"; 
+  final String _backendUrl = "http://localhost:3000"; // Ganti dengan URL backend Anda
+  Timer? _timer;
+  int _countdownSeconds = 300; // 5 menit = 300 detik
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    for (var controller in _otpControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _startCountdown() {
+    _countdownSeconds = 300; // Reset timer saat dimulai atau dikirim ulang ke 5 menit penuh
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdownSeconds > 0) {
+        setState(() {
+          _countdownSeconds--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  // Fungsi untuk memformat waktu mundur menjadi menit dan detik
+  String _formatDuration(int seconds) {
+    final minutes = (seconds ~/ 60).toString().padLeft(2, '0');
+    final remainingSeconds = (seconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$remainingSeconds';
+  }
+
+  Future<void> _resendOtp() async {
+    // Implementasi kirim ulang OTP ke backend
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendUrl/forgot-password/send-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': widget.email}),
+      );
+
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        _showAlertDialog('Sukses', responseData['message']);
+        _startCountdown(); // Mulai hitung mundur lagi
+        for (var controller in _otpControllers) {
+          controller.clear(); // Bersihkan field OTP
+        }
+      } else {
+        _showAlertDialog('Error', responseData['message'] ?? 'Gagal mengirim ulang OTP.');
+      }
+    } catch (e) {
+      _showAlertDialog('Error', 'Terjadi kesalahan koneksi: $e');
+    }
+  }
 
   Future<void> _verifyOtp() async {
     final otp = _otpControllers.map((controller) => controller.text).join();
@@ -172,6 +236,7 @@ class _OTPScreenState extends State<OTPScreen> {
 
       if (response.statusCode == 200) {
         _showAlertDialog('Sukses', responseData['message']);
+        _timer?.cancel(); // Hentikan timer setelah verifikasi berhasil
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => NewPasswordScreen(email: widget.email)),
@@ -241,10 +306,20 @@ class _OTPScreenState extends State<OTPScreen> {
                       }),
                     ),
                     const SizedBox(height: 30),
-                    const Center(
-                      child: Text("Tidak menerima email? Anda bisa\nkirim ulang dalam 49 detik",
-                        textAlign: TextAlign.center,
-                      ),
+                    Center(
+                      child: _countdownSeconds > 0
+                          ? Text(
+                              "Tidak menerima email? Anda bisa\nkirim ulang dalam ${_formatDuration(_countdownSeconds)}",
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 14),
+                            )
+                          : TextButton(
+                              onPressed: _resendOtp,
+                              child: const Text(
+                                "Kirim Ulang Kode",
+                                style: TextStyle(color: Color(0xFF005D56), fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                            ),
                     ),
                     const Spacer(),
                     Center(
@@ -286,8 +361,7 @@ class NewPasswordScreen extends StatefulWidget {
 class _NewPasswordScreenState extends State<NewPasswordScreen> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  // Replace with your backend URL (Ganti dengan URL backend Anda)
-  final String _backendUrl = "http://localhost:3000"; 
+  final String _backendUrl = "http://localhost:3000"; // Ganti dengan URL backend Anda
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -500,6 +574,7 @@ class OtpBox extends StatelessWidget {
     );
   }
 }
+
 class SuccessDialog extends StatelessWidget {
   const SuccessDialog({super.key});
 
@@ -527,7 +602,14 @@ class SuccessDialog extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             ),
-            onPressed: () => Navigator.of(context).popUntil((route) => route.settings.name == '/login'),
+            onPressed: () {
+              // Navigasi kembali ke halaman login dan hapus semua rute sebelumnya
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
             child: const Text(
               "Kembali Ke Login",
               style: TextStyle(color: Colors.white),
