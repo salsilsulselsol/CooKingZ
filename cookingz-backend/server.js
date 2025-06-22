@@ -38,18 +38,7 @@ app.use('/recipes', favoriteRoutes); // Pastikan ini rute yang Anda maksud, bias
 app.use('/categories', categoryRoutes);
 app.use('/reviews', reviewRoutes);
 
-// Pasang discoveryRoutes di '/home' dengan middleware autentikasi opsional
-app.use('/home', (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token) {
-        authenticateToken(req, res, next);
-    } else {
-        next(); // Lanjutkan tanpa autentikasi jika tidak ada token
-    }
-}, discoveryRoutes);
-
+app.use('/home', discoveryRoutes); 
 // Pasang utilityRoutes di '/api/utilities' dan lindungi dengan authenticateToken
 // Ini berarti setiap permintaan ke /api/utilities/* akan melalui autentikasi JWT.
 app.use('/api/utilities', utilityRoutes); // <<< TAMBAHKAN INI

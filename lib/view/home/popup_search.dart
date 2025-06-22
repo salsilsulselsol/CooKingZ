@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import 'popup_filter.dart';
 import '../component/search_bar_widget.dart';
+import 'package:intl/intl.dart'; 
 
 class SearchPopup extends StatefulWidget {
   const SearchPopup({Key? key}) : super(key: key);
@@ -26,14 +27,15 @@ class _RecipeRecommendationsBottomSheetState extends State<SearchPopup> {
   Future<void> _showFilterAndGetParams() async {
     final Map<String, dynamic>? result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => FilterPopup(initialParams: _filterParams),
+      builder: (context) => FilterPopup(initialParams: Map<String, dynamic>.from(_filterParams)),
     );
 
     if (result != null) {
       setState(() {
         _filterParams = result;
+        _filterParams.removeWhere((key, value) => value == null || (value is List && value.isEmpty) || (value is String && value.isEmpty));
       });
-      print('DEBUG: Filter params received: $_filterParams');
+      print('DEBUG: Filter params received and set: $_filterParams');
     }
   }
 
@@ -42,17 +44,45 @@ class _RecipeRecommendationsBottomSheetState extends State<SearchPopup> {
 
     final Map<String, dynamic> searchParams = {
       'keyword': keyword.isNotEmpty ? keyword : null,
-      'categories': selectedCategories.isNotEmpty ? selectedCategories.toList() : null,
-      ..._filterParams,
+      ..._filterParams, 
     };
 
-    searchParams.removeWhere((key, value) => value == null || (value is List && value.isEmpty));
+    searchParams.removeWhere((key, value) => value == null || (value is List && value.isEmpty) || (value is String && value.isEmpty));
 
     print('DEBUG: Performing search with params from SearchPopup: $searchParams');
+
+    Navigator.of(context).pop(); 
 
     Navigator.of(context).pushNamed(
       '/hasil-pencarian',
       arguments: searchParams,
+    );
+  }
+
+  void _resetAllFilters() {
+    setState(() {
+      _filterParams = {};
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Semua filter telah dibatalkan.')),
+    );
+  }
+
+  void _deleteSingleFilter(String keyToDelete, {String? valueToDelete}) {
+    setState(() {
+      if (_filterParams.containsKey(keyToDelete)) {
+        if (keyToDelete == 'allergens' && _filterParams[keyToDelete] is List && valueToDelete != null) {
+          (_filterParams[keyToDelete] as List).remove(valueToDelete);
+          if ((_filterParams[keyToDelete] as List).isEmpty) {
+            _filterParams.remove(keyToDelete);
+          }
+        } else {
+          _filterParams.remove(keyToDelete);
+        }
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Filter $keyToDelete dibatalkan.')),
     );
   }
 
@@ -62,41 +92,75 @@ class _RecipeRecommendationsBottomSheetState extends State<SearchPopup> {
     List<Widget> chips = [];
 
     _filterParams.forEach((key, value) {
-      if (value == null) return;
-      String label = '';
-
+      if (value == null || (value is List && value.isEmpty) || (value is String && value.isEmpty)) return;
+      
       if (key == 'allergens' && value is List) {
-        label = 'Alergen: ${(value as List).join(', ')}';
-      } else if (key == 'difficulty') {
-        label = 'Kesulitan: $value';
-      } else if (key == 'min_rating') {
-        label = 'Rating ≥ $value';
-      } else if (key == 'max_price') {
-        label = 'Harga ≤ $value';
-      } else if (key == 'max_time') {
-        label = 'Durasi ≤ $value menit';
+        for (var allergen in value) {
+          chips.add(
+            Chip(
+              label: Text('Alergen: $allergen'),
+              backgroundColor: AppTheme.searchBarColor,
+              labelStyle: TextStyle(color: AppTheme.primaryColor),
+              onDeleted: () => _deleteSingleFilter(key, valueToDelete: allergen),
+              deleteIcon: Icon(Icons.close, size: 18, color: AppTheme.primaryColor),
+            ),
+          );
+        }
       } else {
-        label = '$key: $value';
-      }
+        String label = '';
+        if (key == 'difficulty') {
+          label = 'Kesulitan: ${value[0].toUpperCase()}${value.substring(1)}';
+        } else if (key == 'min_rating') {
+          label = 'Rating ≥ $value';
+        } else if (key == 'max_price') {
+          label = 'Harga ≤ Rp${NumberFormat.currency(locale: 'id_ID', symbol: '').format(value)}';
+        } else if (key == 'max_time') {
+          label = 'Durasi ≤ $value menit';
+        } else {
+          label = '$key: $value';
+        }
 
-      chips.add(
-        Chip(
-          label: Text(label),
-          backgroundColor: AppTheme.searchBarColor,
-        ),
-      );
+        chips.add(
+          Chip(
+            label: Text(label),
+            backgroundColor: AppTheme.searchBarColor,
+            labelStyle: TextStyle(color: AppTheme.primaryColor),
+            onDeleted: () => _deleteSingleFilter(key),
+            deleteIcon: Icon(Icons.close, size: 18, color: AppTheme.primaryColor),
+          ),
+        );
+      }
     });
+
+    if (chips.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Filter aktif:", style: TextStyle(fontWeight: FontWeight.bold)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Filter aktif:", style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+            GestureDetector(
+              onTap: _resetAllFilters,
+              child: Text(
+                'Batalkan Semua',
+                style: TextStyle(
+                  color: Colors.red[700], 
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 4,
           children: chips,
         ),
+        const SizedBox(height: 12),
       ],
     );
   }
@@ -118,7 +182,7 @@ class _RecipeRecommendationsBottomSheetState extends State<SearchPopup> {
         AppTheme.spacingXXLarge,
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min, // Biarkan Column mengambil ukuran minimum yang diperlukan
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
@@ -141,41 +205,52 @@ class _RecipeRecommendationsBottomSheetState extends State<SearchPopup> {
           ),
           const SizedBox(height: 12),
 
-          _buildFilterSummary(),
-          const SizedBox(height: 20),
+          // --- START MODIFIKASI: Bungkus konten yang bisa di-scroll dengan SingleChildScrollView ---
+          Flexible( // Gunakan Flexible agar SingleChildScrollView tidak mengambil tinggi tak terbatas
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildFilterSummary(),
+                  if (_filterParams.isEmpty) const SizedBox(height: 20), // Spasi hanya jika tidak ada filter
 
-          Text('Rekomendasi Resep', style: AppTheme.headerStyle),
-          const SizedBox(height: 12),
+                  Text('Rekomendasi Resep', style: AppTheme.headerStyle),
+                  const SizedBox(height: 12),
 
-          Wrap(
-            spacing: AppTheme.spacingMedium,
-            runSpacing: AppTheme.spacingLarge,
-            children: [
-              for (var category in [
-                'Soto', 'Hamburger', 'Egg Rolls', 'Wraps',
-                'Cheesecake', 'Tomato Soup', 'Parfait', 'Vegan', 'Baked Salmon'
-              ])
-                _buildRecommendationChip(category),
-            ],
-          ),
-          const SizedBox(height: 24),
+                  Wrap(
+                    spacing: AppTheme.spacingMedium,
+                    runSpacing: AppTheme.spacingLarge,
+                    children: [
+                      for (var category in [
+                        'Soto', 'Hamburger', 'Egg Rolls', 'Wraps',
+                        'Cheesecake', 'Tomato Soup', 'Parfait', 'Vegan', 'Baked Salmon'
+                      ])
+                        _buildRecommendationChip(category),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
 
-          ElevatedButton(
-            onPressed: _performSearch,
-            style: ElevatedButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-              backgroundColor: AppTheme.searchBarColor,
-              padding: EdgeInsets.symmetric(vertical: AppTheme.spacingLarge),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
+                  ElevatedButton(
+                    onPressed: _performSearch,
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      backgroundColor: AppTheme.searchBarColor,
+                      padding: EdgeInsets.symmetric(vertical: AppTheme.spacingLarge),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusXLarge),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Cari',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Cari',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
+          // --- END MODIFIKASI ---
         ],
       ),
     );

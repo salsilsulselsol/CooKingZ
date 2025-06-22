@@ -12,9 +12,9 @@ import 'package:masak2/view/profile/profil/mengikuti_pengikut.dart';
 import 'package:masak2/models/food_model.dart';
 import 'package:masak2/models/user_profile_model.dart';
 import 'package:masak2/view/component/grid_2_builder.dart';
-import 'package:masak2/view/auth/login_page.dart'; // Import LoginPage
-import 'package:masak2/view/auth/register_page.dart'; // Import RegisterPage
-
+import 'package:masak2/view/auth/login_page.dart';
+import 'package:masak2/view/auth/register_page.dart';
+import 'package:masak2/theme/theme.dart'; // <<< Pastikan ini diimport untuk AppTheme
 
 class ProfilUtama extends StatefulWidget {
   final int? userId; 
@@ -34,8 +34,14 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   bool _isLoading = true;
   String? _errorMessage;
   bool _isLoggedIn = false; // New state variable to track login status
+  int? _currentLoggedInUserId; // Untuk menyimpan ID pengguna yang login dari SharedPreferences
 
-  bool get _isMyProfile => widget.userId == null;
+  // Mengubah getter ini agar lebih akurat setelah kita punya _currentLoggedInUserId
+  bool get _isMyProfile {
+    // Jika widget.userId adalah null, artinya pengguna mencoba melihat profil mereka sendiri
+    // Dan kita perlu membandingkan dengan _currentLoggedInUserId yang sebenarnya login
+    return widget.userId == null || widget.userId == _currentLoggedInUserId;
+  }
 
   @override
   void initState() {
@@ -54,7 +60,9 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   Future<Map<String, String>> _getAuthHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
-    if (token != null && token.isNotEmpty) {
+    _currentLoggedInUserId = prefs.getInt('user_id'); // Ambil ID pengguna saat ini
+
+    if (token != null && token.isNotEmpty && _currentLoggedInUserId != null && _currentLoggedInUserId != 0) {
       _isLoggedIn = true;
       return {
         'Content-Type': 'application/json',
@@ -71,34 +79,36 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   Future<void> _checkAndLoadData() async {
     if (!mounted) return;
 
-    // First, check login status
-    await _getAuthHeaders(); // This will set _isLoggedIn
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    if (!_isLoggedIn && _isMyProfile) { // Guest trying to view own profile
+    // First, check login status and get auth headers
+    final headers = await _getAuthHeaders(); // This will set _isLoggedIn and _currentLoggedInUserId
+
+    // Logika untuk menampilkan guest view (ketika mencoba melihat profil sendiri tapi belum login)
+    if (!_isLoggedIn && _isMyProfile) {
       setState(() {
         _isLoading = false;
       });
-      return; // Stop loading data as it's a guest view
-    } else if (!_isLoggedIn && !_isMyProfile) { // Guest trying to view other profile while not logged in
-        // If the intent is to allow guests to see *other user's public profiles*,
-        // this logic needs adjustment to proceed with fetching public profile data.
-        // For this task, interpreting "guest" as seeing login/register view.
-        setState(() {
-          _isLoading = false;
-          _errorMessage = "Silakan login untuk melihat profil ini."; // Generic message for unauthenticated access
-        });
-        return;
+      return; // Stop loading data, will show guest view
+    } 
+    // Logika untuk mencoba melihat profil orang lain tanpa login (jika tidak diizinkan backend)
+    else if (!_isLoggedIn && !_isMyProfile) {
+      // Jika backend Anda mengizinkan profil publik, Anda bisa melanjutkan fetching di sini.
+      // Jika tidak, tampilkan pesan error atau arahkan ke login.
+      // Untuk saat ini, kita anggap tidak diizinkan dan tampilkan pesan error.
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Silakan login untuk melihat profil ini."; // Pesan umum
+      });
+      return;
     }
 
     // Adjust tab controller length based on whether it's my profile or another user's
     // This needs to be done here after _isLoggedIn is determined
     _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this);
-
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
 
     try {
       final user = await _fetchUserProfile();
@@ -145,7 +155,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
 
   Future<List<Food>> _fetchUserRecipes(int userId) async {
     final baseUrl = dotenv.env['BASE_URL'];
-    final headers = await _getAuthHeaders();
+    final headers = await _getAuthHeaders(); // Memastikan headers diambil dengan token jika ada
     final response = await http.get(Uri.parse('$baseUrl/users/$userId/recipes'), headers: headers);
 
     if (response.statusCode == 200) {
@@ -161,7 +171,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
 
   Future<List<Food>> _fetchFavoriteRecipes() async {
     final baseUrl = dotenv.env['BASE_URL'];
-    final headers = await _getAuthHeaders();
+    final headers = await _getAuthHeaders(); // Memastikan headers diambil dengan token jika ada
     final response = await http.get(Uri.parse('$baseUrl/users/me/favorites'), headers: headers);
       
     if (response.statusCode == 200) {
@@ -199,9 +209,8 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       }
   }
 
-  // --- FUNGSI BARU UNTUK LOGIKA FOLLOW/UNFOLLOW ---
   Future<void> _toggleFollow() async {
-    // Pastikan profil yang dilihat adalah profil orang lain
+    // Pastikan profil yang dilihat adalah profil orang lain dan tidak null
     if (_isMyProfile || _userProfile == null) return;
 
     // Tentukan endpoint berdasarkan status follow saat ini
@@ -211,7 +220,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     try {
       final response = await http.post(
         Uri.parse(url),
-        headers: await _getAuthHeaders(),
+        headers: await _getAuthHeaders(), // Pastikan headers diambil dengan token yang valid
       );
 
       if (response.statusCode == 200) {
@@ -226,6 +235,9 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
             _userProfile!.followersCount--;
           }
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_userProfile!.isFollowedByMe ? 'Berhasil mengikuti!' : 'Berhasil berhenti mengikuti.')),
+        );
       } else {
         final body = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -238,7 +250,6 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       );
     }
   }
-  // ---------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -246,11 +257,12 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       return const Center(child: CircularProgressIndicator());
     }
 
-    // If not logged in and userId is null (meaning 'my profile' view), show guest view
+    // Menggunakan _isMyProfile yang sudah diperbarui dan _isLoggedIn
     if (!_isLoggedIn && _isMyProfile) { 
       return _buildGuestView();
     }
 
+    // Jika mencoba melihat profil orang lain tanpa login (dan tidak diizinkan backend)
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -270,65 +282,82 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     );
   }
 
+  // Mengubah _buildGuestView agar sesuai dengan tampilan login/daftar
   Widget _buildGuestView() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil'),
         centerTitle: true,
+        
+        elevation: 0, // Hilangkan bayangan jika mau tampilan flat
+        title: Text(
+          'Profil',
+          style: TextStyle(
+            color: AppTheme.primaryColor, // Warna teks hijau
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            color: AppTheme.primaryColor, // Warna ikon titik tiga hijau
+            onPressed: () {
+              Navigator.pushNamed(context, '/pengaturan-utama');
+            },
+          ),
+        ],
       ),
+
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'images/default_avatar.png', // Placeholder image for guest
-                width: 100,
-                height: 100,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Masuk untuk melihat profil Anda',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'images/logo.png', // Menggunakan logo utama aplikasi
+              width: 150, // Sesuaikan ukuran
+              height: 150,
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Masuk atau Daftar untuk melihat profil',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row( // Menggunakan Row untuk tombol berdampingan
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
                   onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (context) => LoginPage()));
-                    _checkAndLoadData(); // Reload data after login attempt
+                    _checkAndLoadData(); // Coba muat ulang data setelah login
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0A6859),
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor, // Menggunakan AppTheme
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   child: const Text('Login'),
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
+                const SizedBox(width: 16), // Spasi antar tombol
+                TextButton(
                   onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterPage()));
-                    _checkAndLoadData(); // Reload data after register attempt (though usually registration leads to login)
+                    _checkAndLoadData(); // Coba muat ulang data setelah daftar
                   },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0A6859),
-                    side: const BorderSide(color: Color(0xFF0A6859)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.grey[300],
+                    foregroundColor: Colors.black87,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   child: const Text('Daftar'),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -346,7 +375,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
               controller: _tabController,
               children: _isMyProfile 
                 ? [_buildUserRecipesTab(), _buildFavoritesTab()]
-                : [_buildUserRecipesTab()],
+                : [_buildUserRecipesTab()], // Hanya tab resep jika bukan profil sendiri
             ),
           ),
         ],
@@ -357,9 +386,9 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   Widget _buildProfileHeader(UserProfile user) {
     ImageProvider profileImage;
     final String? profilePicPath = user.profilePicture;
+    final baseUrl = dotenv.env['BASE_URL']; // Pastikan dotenv sudah diinisialisasi
 
-    if (profilePicPath != null && profilePicPath.isNotEmpty) {
-      final baseUrl = dotenv.env['BASE_URL']!;
+    if (profilePicPath != null && profilePicPath.isNotEmpty && baseUrl != null) {
       final fullUrl = '$baseUrl$profilePicPath?v=${DateTime.now().millisecondsSinceEpoch}';
       profileImage = NetworkImage(fullUrl);
     } else {
@@ -486,7 +515,6 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     );
   }
 
-  // --- WIDGET TOMBOL DINAMIS UNTUK FOLLOW/UNFOLLOW ---
   Widget _buildOtherProfileActions() {
     bool isFollowing = _userProfile?.isFollowedByMe ?? false;
 
@@ -507,17 +535,15 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       ],
     );
   }
-  // --------------------------------------------------
 
   Widget _buildStatCounter(String count, String label, int userId) {
     return GestureDetector(
       onTap: () {
-        if (_isLoggedIn) { // Only allow navigation if logged in
-            if (label == 'Mengikuti' || label == 'Pengikut') {
-              _navigateToFollowerPage(label == 'Mengikuti' ? 0 : 1, userId);
-            }
+        // Cek _isLoggedIn dan pastikan userId yang valid untuk navigasi
+        if (_isLoggedIn && (label == 'Mengikuti' || label == 'Pengikut')) {
+          _navigateToFollowerPage(label == 'Mengikuti' ? 0 : 1, userId);
         } else {
-          // Optional: Show a message or navigate to login page
+          // Tampilkan pesan atau arahkan ke login jika tidak diizinkan
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Silakan login untuk melihat detail ini.')),
           );
@@ -547,7 +573,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
         unselectedLabelColor: Colors.grey,
         tabs: [
           const Tab(text: 'Resep'),
-          if (_isMyProfile) const Tab(text: 'Favorit'),
+          if (_isMyProfile) const Tab(text: 'Favorit'), // Hanya tampilkan tab Favorit jika ini profil sendiri
         ],
       ),
     );
@@ -560,7 +586,8 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   }
   
   Widget _buildFavoritesTab() {
-    if (!_isMyProfile) return Container();
+    // Pastikan ini tidak akan dipanggil jika _isMyProfile false
+    if (!_isMyProfile) return Container(); 
     
     return _favoriteRecipes.isEmpty
       ? const Center(child: Text("Anda belum memiliki resep favorit."))
@@ -572,9 +599,11 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       foods: recipes,
       onFavoritePressed: (index) {
         // TODO: Implementasi logika favorit
+        // Anda mungkin perlu memanggil _checkAndLoadData() lagi setelah ini
       },
       onCardTap: (index) {
         // TODO: Implementasi navigasi ke detail resep
+        // Contoh: Navigator.pushNamed(context, '/detail-resep', arguments: recipes[index].id);
       },
     );
   }

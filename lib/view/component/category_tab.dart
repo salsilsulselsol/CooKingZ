@@ -32,10 +32,7 @@ class CategoryTabBar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isSelected ? primaryColor : Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: primaryColor,
-                  width: 1,
-                ),
+                border: Border.all(color: primaryColor, width: 1),
               ),
               child: Center(
                 child: Text(
@@ -53,4 +50,3 @@ class CategoryTabBar extends StatelessWidget {
     );
   }
 }
-

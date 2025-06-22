@@ -126,12 +126,13 @@ class FoodCard extends StatelessWidget {
     return IntrinsicHeight(
       child: Container(
         decoration: BoxDecoration(
-          border: Border(
+          color: Colors.white,
+            border: Border(
             top: BorderSide.none,
-            left: BorderSide(color: AppTheme.emeraldGreen, width: AppTheme.borderWidth),
-            right: BorderSide(color: AppTheme.emeraldGreen, width: AppTheme.borderWidth),
-            bottom: BorderSide(color: AppTheme.emeraldGreen, width: AppTheme.borderWidth),
-          ),
+            left: BorderSide(color: AppTheme.emeraldGreen, width: 3),
+            right: BorderSide(color: AppTheme.emeraldGreen, width: 3),
+            bottom: BorderSide(color: AppTheme.emeraldGreen, width: 3),
+            ),
           borderRadius: const BorderRadius.only(
             bottomRight: Radius.circular(AppTheme.borderRadiusMedium),
             bottomLeft: Radius.circular(AppTheme.borderRadiusMedium),
