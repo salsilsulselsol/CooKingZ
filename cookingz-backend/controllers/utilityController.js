@@ -3,21 +3,26 @@ const db = require('../db');
 
 // --- Fungsi untuk Jadwal Makan (Meal Schedules) ---
 
-// GET semua jadwal makan untuk user yang sedang login
 exports.getMealSchedules = async (req, res) => {
     const requestedUserId = parseInt(req.params.id); // Dapatkan userId dari URL parameter
-    const authenticatedUserId = req.userId; // user_id didapatkan dari authenticateToken
+    // const authenticatedUserId = req.userId; // user_id didapatkan dari authenticateToken (jika Anda pakai middleware itu)
 
     console.log(`>>> Controller getMealSchedules BERHASIL DICAPAI! <<<`);
     console.log(`Requested User ID from URL: ${requestedUserId}`);
     
-
     // --- PEMERIKSAAN KEAMANAN PENTING ---
-
+    // Jika Anda ingin memastikan user hanya bisa melihat jadwalnya sendiri:
+    // if (authenticatedUserId && requestedUserId !== authenticatedUserId) {
+    //     return res.status(403).json({
+    //         status: 'error',
+    //         message: 'Anda tidak diizinkan melihat jadwal pengguna lain.'
+    //     });
+    // }
     // --- AKHIR PEMERIKSAAN KEAMANAN ---
 
     try {
-       const [rows] = await db.query(
+        // <<< PERBAIKAN DI SINI: Menggunakan 'db.query' karena diimport sebagai 'db' >>>
+        const [rows] = await db.query(
             `SELECT
                 ms.id,
                 ms.user_id,
@@ -33,15 +38,25 @@ exports.getMealSchedules = async (req, res) => {
                 r.price AS recipe_price,
                 r.image_url AS recipe_image_url,
                 r.video_url AS recipe_video_url,
-                r.favorites_count AS recipe_favorites_count
+                r.favorites_count AS recipe_favorites_count,
+                
+                -- Menambahkan rata-rata rating dari tabel reviews
+                AVG(rev.rating) AS recipe_rating
 
             FROM meal_schedules ms
             JOIN recipes r ON ms.recipe_id = r.id
+            LEFT JOIN reviews rev ON r.id = rev.recipe_id 
+
             WHERE ms.user_id = ?
-            ORDER BY ms.date ASC, ms.meal_type ASC
-            `,
-            [requestedUserId]  // ✅ Parameter user yang dijadwalkan
-            );
+
+            GROUP BY 
+                ms.id, ms.user_id, ms.recipe_id, ms.meal_type, ms.date,
+                r.title, r.description, r.cooking_time, r.difficulty, r.price,
+                r.image_url, r.video_url, r.favorites_count
+
+            ORDER BY ms.date ASC, ms.meal_type ASC`,
+            [requestedUserId] // Parameter user yang dijadwalkan
+        );
 
         console.log(`Fetched meal schedules count: ${rows.length} for user_id: ${requestedUserId}`);
         res.json({

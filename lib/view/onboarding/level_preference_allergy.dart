@@ -485,7 +485,7 @@ class _AllergyQuestionnairePageState extends State<AllergyQuestionnairePage> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Lorem ipsum dolor sit amet consectetur. Leo ornare ullamcorper viverra ultrices in.',
+                    'Beri tahu kami jika Anda memiliki alergi makanan agar kami dapat menyesuaikan menu dengan aman.',
                     style: TextStyle(fontSize: 14, color: Color(0xFF616161)),
                   ),
                 ],
