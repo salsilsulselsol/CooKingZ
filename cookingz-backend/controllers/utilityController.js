@@ -4,33 +4,19 @@ const db = require('../db');
 // --- Fungsi untuk Jadwal Makan (Meal Schedules) ---
 
 exports.getMealSchedules = async (req, res) => {
-    const requestedUserId = parseInt(req.params.id); // Dapatkan userId dari URL parameter
-    // const authenticatedUserId = req.userId; // user_id didapatkan dari authenticateToken (jika Anda pakai middleware itu)
+    const requestedUserId = parseInt(req.params.id);
 
     console.log(`>>> Controller getMealSchedules BERHASIL DICAPAI! <<<`);
     console.log(`Requested User ID from URL: ${requestedUserId}`);
-    
-    // --- PEMERIKSAAN KEAMANAN PENTING ---
-    // Jika Anda ingin memastikan user hanya bisa melihat jadwalnya sendiri:
-    // if (authenticatedUserId && requestedUserId !== authenticatedUserId) {
-    //     return res.status(403).json({
-    //         status: 'error',
-    //         message: 'Anda tidak diizinkan melihat jadwal pengguna lain.'
-    //     });
-    // }
-    // --- AKHIR PEMERIKSAAN KEAMANAN ---
 
     try {
-        // <<< PERBAIKAN DI SINI: Menggunakan 'db.query' karena diimport sebagai 'db' >>>
         const [rows] = await db.query(
             `SELECT
                 ms.id,
                 ms.user_id,
                 ms.recipe_id,
-                ms.meal_type,
                 ms.date,
 
-                -- Data dari tabel recipes
                 r.title AS recipe_title,
                 r.description AS recipe_description,
                 r.cooking_time AS recipe_cooking_time,
@@ -39,23 +25,23 @@ exports.getMealSchedules = async (req, res) => {
                 r.image_url AS recipe_image_url,
                 r.video_url AS recipe_video_url,
                 r.favorites_count AS recipe_favorites_count,
-                
-                -- Menambahkan rata-rata rating dari tabel reviews
+
                 AVG(rev.rating) AS recipe_rating
 
             FROM meal_schedules ms
             JOIN recipes r ON ms.recipe_id = r.id
-            LEFT JOIN reviews rev ON r.id = rev.recipe_id 
+            LEFT JOIN reviews rev ON r.id = rev.recipe_id
 
             WHERE ms.user_id = ?
 
-            GROUP BY 
-                ms.id, ms.user_id, ms.recipe_id, ms.meal_type, ms.date,
+            GROUP BY
+                ms.id, ms.user_id, ms.recipe_id,
+                ms.date,
                 r.title, r.description, r.cooking_time, r.difficulty, r.price,
                 r.image_url, r.video_url, r.favorites_count
 
-            ORDER BY ms.date ASC, ms.meal_type ASC`,
-            [requestedUserId] // Parameter user yang dijadwalkan
+            ORDER BY ms.date ASC`,
+            [requestedUserId]
         );
 
         console.log(`Fetched meal schedules count: ${rows.length} for user_id: ${requestedUserId}`);
@@ -76,22 +62,23 @@ exports.getMealSchedules = async (req, res) => {
 
 // POST jadwal makan baru
 exports.addMealSchedule = async (req, res) => {
-    // ✅ Ambil user_id dari request body instead of JWT
-    const { user_id, recipe_id, meal_type, date } = req.body;
+    // === PERUBAHAN DI SINI: Hapus 'meal_type' ===
+    const { user_id, recipe_id, date } = req.body;
     console.log(`>>> Controller addMealSchedule BERHASIL DICAPAI! untuk user_id: ${user_id}, recipe_id: ${recipe_id} <<<`);
 
-    // ✅ Validasi semua field termasuk user_id
-    if (!user_id || !recipe_id || !meal_type || !date) {
+    // === PERUBAHAN DI SINI: Hapus validasi 'meal_type' ===
+    if (!user_id || !recipe_id || !date) {
         return res.status(400).json({
             status: 'error',
-            message: 'user_id, recipe_id, meal_type, dan date wajib diisi.'
+            message: 'user_id, recipe_id, dan date wajib diisi.' // Pesan error diperbarui
         });
     }
 
     try {
+        // === PERUBAHAN DI SINI: Hapus 'meal_type' dari query INSERT ===
         const [result] = await db.query(
-            `INSERT INTO meal_schedules (user_id, recipe_id, meal_type, date) VALUES (?, ?, ?, ?)`,
-            [user_id, recipe_id, meal_type, date] // ✅ Gunakan user_id dari body
+            `INSERT INTO meal_schedules (user_id, recipe_id, date) VALUES (?, ?, ?)`,
+            [user_id, recipe_id, date] // Array parameter diperbarui
         );
         console.log(`Meal schedule added. Insert ID: ${result.insertId}`);
         res.status(201).json({
@@ -108,7 +95,6 @@ exports.addMealSchedule = async (req, res) => {
         });
     }
 };
-
 
 // controllers/utilityController.js
 exports.deleteMealSchedule = async (req, res) => {
@@ -181,7 +167,7 @@ exports.markNotificationAsRead = async (req, res) => {
     try {
         const [result] = await db.query(
             `UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?`,
-            [id, userId] // Pastikan user hanya bisa mengubah status notifikasinya sendiri
+            [id, userId]
         );
         if (result.affectedRows === 0) {
             return res.status(404).json({
