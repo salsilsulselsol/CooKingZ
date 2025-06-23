@@ -469,7 +469,7 @@ class _HomePageState extends State<HomePage> {
                       child: FoodCard(
                         food: recipe,
                         onCardTap: () {
-                          Navigator.pushNamed(context, '/detail-resep', arguments: recipe.id);
+                          Navigator.pushNamed(context, '/detail-resep/${recipe.id}');
                         },
                         onFavoritePressed: () {
                           print('Favorite pressed for ${recipe.name}');
@@ -601,7 +601,7 @@ class _HomePageState extends State<HomePage> {
               return FoodCard(
                 food: recipe,
                 onCardTap: () {
-                  Navigator.pushNamed(context, '/detail-resep', arguments: recipe.id);
+                  Navigator.pushNamed(context, '/detail-resep/${recipe.id}');
                 },
                 onFavoritePressed: () {
                   print('Favorite pressed for ${recipe.name}');
