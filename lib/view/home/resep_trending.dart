@@ -250,15 +250,15 @@ class _ResepTrendingState extends State<ResepTrending> {
                           fit: BoxFit.cover,
                         ),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Image.asset( // Icon love lokal
-                    'images/love.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                ),
+                // Positioned(
+                //   top: 8,
+                //   right: 8,
+                //   child: Image.asset( // Icon love lokal
+                //     'images/love.png',
+                //     width: 24,
+                //     height: 24,
+                //   ),
+                // ),
               ],
             ),
             Expanded(
