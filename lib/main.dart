@@ -68,7 +68,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF206153)),
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      initialRoute: '/beranda',
       routes: {
         // Onboarding & Auth
         '/': (context) => const HomeScreen(),

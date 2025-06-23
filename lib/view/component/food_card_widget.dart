@@ -138,7 +138,7 @@ class FoodCard extends StatelessWidget {
                   Text(
                     food.description ?? '',
                     style: AppTheme.foodDescriptionStyle,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],

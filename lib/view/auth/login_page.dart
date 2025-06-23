@@ -92,7 +92,7 @@ class _LoginPageState extends State<LoginPage> {
         // Delay sebentar supaya user lihat notifikasinya dulu (opsional)
         await Future.delayed(const Duration(milliseconds: 500));
 
-        Navigator.pushNamedAndRemoveUntil(context, '/beranda', (route) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/boardinga', (route) => false);
       }
 
 

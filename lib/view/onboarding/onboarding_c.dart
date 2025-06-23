@@ -72,7 +72,7 @@ class OnboardingC extends StatelessWidget {
                       minimumSize: const Size(double.infinity, 50),
                     ),
                     onPressed: () {
-                      Navigator.pushNamed(context, '/cooking');
+                      Navigator.pushNamed(context, '/beranda');
                     },
                     child: const Text(
                       'Selanjutnya',

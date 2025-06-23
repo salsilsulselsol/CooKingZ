@@ -264,11 +264,8 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const OnboardingA()),
-                  );
+                    Navigator.of(context).pop();
+                    Navigator.pushReplacementNamed(context, '/login');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF57B4BA),
@@ -277,7 +274,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
-                child: const Text("Lanjutkan", style: TextStyle(color: Colors.white, fontSize: 18)),
+                child: const Text("Lanjutkan Login", style: TextStyle(color: Colors.white, fontSize: 18)),
               ),
             ],
           ),
