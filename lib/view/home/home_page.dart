@@ -441,7 +441,7 @@ class _HomePageState extends State<HomePage> {
             padding: EdgeInsets.only(left: AppTheme.spacingXLarge, right: AppTheme.spacingXXLarge, top: AppTheme.spacingXLarge, bottom: AppTheme.spacingXLarge),
             child: GestureDetector(
               onTap: () {
-                Navigator.pushNamed(context, '/resep-anda');
+                Navigator.pushNamed(context, '/profil-utama');
               },
               child: Text(
                 'Resep Anda >',
