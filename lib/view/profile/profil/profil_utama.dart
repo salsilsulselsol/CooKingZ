@@ -16,7 +16,7 @@ import 'package:masak2/models/user_profile_model.dart';
 import 'package:masak2/view/component/grid_2_builder.dart';
 import 'package:masak2/view/auth/login_page.dart'; // Import LoginPage
 import 'package:masak2/view/auth/register_page.dart'; // Import RegisterPage
-
+import 'package:masak2/view/recipe/resep_detail_page.dart';
 
 class ProfilUtama extends StatefulWidget {
   final int? userId; 
@@ -612,7 +612,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       ? const Center(child: Text("Anda belum memiliki resep favorit."))
       : _buildRecipeGrid(_favoriteRecipes);
   }
-  
+
   Widget _buildRecipeGrid(List<Food> recipes) {
     return FoodGridWidget(
       foods: recipes,
@@ -620,7 +620,26 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
         // TODO: Implementasi logika favorit
       },
       onCardTap: (index) {
-        // TODO: Implementasi navigasi ke detail resep
+        // Pastikan recipe id valid
+        if (recipes[index].id != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RecipeDetailPage(
+                recipeId: recipes[index].id!,
+              ),
+            ),
+          ).then((_) {
+            // Optional: Refresh data setelah kembali dari detail page jika diperlukan
+            if (mounted) {
+              _checkAndLoadData();
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Resep tidak valid')),
+          );
+        }
       },
     );
   }
