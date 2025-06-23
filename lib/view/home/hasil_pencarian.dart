@@ -36,7 +36,7 @@ class _HasilPencaharianState extends State<HasilPencaharian> {
   Map<String, dynamic> _currentSearchParams = {};
 
   // Pastikan ini adalah IP backend Anda yang benar dan dapat diakses
-  final String _baseUrl = 'http://192.168.100.44:3000';
+  final String _baseUrl = 'http://localhost:3000';
 
   @override
   void initState() {
