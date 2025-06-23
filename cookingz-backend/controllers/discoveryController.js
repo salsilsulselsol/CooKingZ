@@ -4,28 +4,29 @@ const db = require('../db');
 // Fungsi untuk mendapatkan resep trending
 async function getTrendingRecipes() {
     try {
-        const [rows] = await db.query(
-            `SELECT 
-                r.id, 
-                r.title, 
-                r.image_url, 
-                u.username, 
-                u.profile_picture, 
-                AVG(rev.rating) as avg_rating, 
-                COUNT(rev.id) as total_reviews, 
-                r.description, 
+        const query = `
+            SELECT
+                r.id,
+                r.title,
+                r.image_url,
+                r.description,
                 r.cooking_time,
-                r.price as price, 
-                r.difficulty
-             FROM recipes r
-             LEFT JOIN reviews rev ON r.id = rev.recipe_id
-             JOIN users u ON r.user_id = u.id
-             GROUP BY 
-                r.id, r.title, r.image_url, u.username, u.profile_picture, 
-                r.description, r.cooking_time, r.price, r.difficulty 
-             ORDER BY avg_rating DESC, total_reviews DESC
-             LIMIT 10`
-        );
+                r.price,
+                r.difficulty,
+                u.username,
+                u.profile_picture,
+                COALESCE(r.favorites_count, 0) AS total_reviews
+            FROM
+                recipes r
+            JOIN
+                users u ON r.user_id = u.id
+            GROUP BY
+                r.id
+            ORDER BY
+                total_reviews DESC
+            LIMIT 10;
+        `;
+        const [rows] = await db.query(query);
         return rows;
     } catch (error) {
         console.error('Error fetching trending recipes:', error);
@@ -66,22 +67,26 @@ async function getBestUsers() {
 // FUNGSI UNTUK MENDAPATKAN RESEP TERBARU UNTUK SEMUA PENGGUNA
 async function getLatestRecipes() {
     try {
-        const [rows] = await db.query(
-            `SELECT 
-                r.id, 
-                r.title, 
-                r.image_url, 
-                u.username, 
-                u.profile_picture, 
-                r.description, 
-                r.cooking_time, -- <<< CORRECTED
-                r.price as price, 
-                r.difficulty
-             FROM recipes r
-             JOIN users u ON r.user_id = u.id
-             ORDER BY r.created_at DESC
-             LIMIT 50`
-        );
+        // Query ini mengambil data resep terbaru lengkap dengan rating dan likes
+        const query = `
+            SELECT
+                r.id, r.title, r.image_url, r.description, r.cooking_time, r.price, r.difficulty,
+                u.username, u.profile_picture,
+                COALESCE(AVG(rev.rating), 0) AS avg_rating,
+                COALESCE(r.favorites_count, 0) AS total_reviews
+            FROM
+                recipes r
+            JOIN
+                users u ON r.user_id = u.id
+            LEFT JOIN
+                reviews rev ON r.id = rev.recipe_id
+            GROUP BY
+                r.id
+            ORDER BY
+                r.created_at DESC
+            LIMIT 50;
+        `;
+        const [rows] = await db.query(query);
         return rows;
     } catch (error) {
         console.error('Error fetching latest recipes:', error);
@@ -91,28 +96,32 @@ async function getLatestRecipes() {
 
 // FUNGSI UNTUK MENDAPATKAN RESEP PENGGUNA YANG SEDANG LOGIN
 async function getUserRecipes(userId) {
-    if (!userId) {
+    if (!userId || userId === 0) {
         return [];
     }
     try {
-        const [rows] = await db.query(
-            `SELECT 
-                r.id, 
-                r.title, 
-                r.image_url, 
-                u.username, 
-                u.profile_picture, 
-                r.description, 
-                r.cooking_time, -- <<< CORRECTED
-                r.price as price, 
-                r.difficulty
-             FROM recipes r
-             JOIN users u ON r.user_id = u.id
-             WHERE r.user_id = ?
-             ORDER BY r.created_at DESC
-             LIMIT 10`,
-            [userId]
-        );
+        // Query ini mengambil resep milik pengguna yang login, lengkap dengan rating dan likes
+        const query = `
+            SELECT
+                r.id, r.title, r.image_url, r.description, r.cooking_time, r.price, r.difficulty,
+                u.username, u.profile_picture,
+                COALESCE(AVG(rev.rating), 0) AS avg_rating,
+                COALESCE(r.favorites_count, 0) AS total_reviews
+            FROM
+                recipes r
+            JOIN
+                users u ON r.user_id = u.id
+            LEFT JOIN
+                reviews rev ON r.id = rev.recipe_id
+            WHERE
+                r.user_id = ?
+            GROUP BY
+                r.id
+            ORDER BY
+                r.created_at DESC
+            LIMIT 10;
+        `;
+        const [rows] = await db.query(query, [userId]);
         return rows;
     } catch (error) {
         console.error('Error fetching user recipes:', error);

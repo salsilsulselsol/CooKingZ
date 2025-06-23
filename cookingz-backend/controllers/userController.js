@@ -52,46 +52,31 @@ exports.getMyProfile = async (req, res) => {
 exports.getUserRecipes = async (req, res) => {
     try {
         const userId = req.params.id;
-        console.log(`>>> Controller getUserRecipes (DEBUGGING) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
+        console.log(`>>> Controller getUserRecipes (PERBAIKAN) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
-        // QUERY YANG SUDAH DISEDERHANAKAN (tanpa sub-query rating)
-//        const query = `
-//            SELECT
-//                r.id,
-//                r.title,
-//                r.description,
-//                r.image_url,
-//                r.cooking_time,
-//                r.difficulty,
-//                r.price,
-//                r.favorites_count AS likes,
-//                0 AS rating  -- Kita beri nilai rating 0 untuk sementara
-//            FROM recipes AS r
-//            WHERE r.user_id = ?
-//        `;
-
+        // QUERY PERBAIKAN: Memastikan alias konsisten dengan food_model.dart (avg_rating, total_reviews)
         const query = `
-                    SELECT
-                        r.id,
-                        r.title,
-                        r.description,
-                        r.image_url,
-                        r.cooking_time,
-                        r.difficulty,
-                        r.price,
-                        COALESCE(r.favorites_count, 0) AS total_reviews,
-                        COALESCE(AVG(rev.rating), 0) AS avg_rating
-                    FROM
-                        recipes AS r
-                    LEFT JOIN
-                        reviews AS rev ON r.id = rev.recipe_id
-                    WHERE
-                        r.user_id = ?
-                    GROUP BY
-                        r.id
-                    ORDER BY
-                        r.created_at DESC;
-                `;
+            SELECT
+                r.id,
+                r.title,
+                r.description,
+                r.image_url,
+                r.cooking_time,
+                r.difficulty,
+                r.price,
+                COALESCE(r.favorites_count, 0) AS total_reviews,
+                COALESCE(AVG(rev.rating), 0) AS avg_rating
+            FROM
+                recipes AS r
+            LEFT JOIN
+                reviews AS rev ON r.id = rev.recipe_id
+            WHERE
+                r.user_id = ?
+            GROUP BY
+                r.id
+            ORDER BY
+                r.created_at DESC;
+        `;
 
         const [recipes] = await db.query(query, [userId]);
         
@@ -99,7 +84,7 @@ exports.getUserRecipes = async (req, res) => {
         res.status(200).json({ status: 'success', message: 'Resep pengguna berhasil diambil.', data: recipes });
 
     } catch (error) {
-        console.error('Error saat mengambil resep pengguna (DEBUGGING):', error);
+        console.error('Error saat mengambil resep pengguna (PERBAIKAN):', error);
         res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server saat mengambil resep.', error: error.message });
     }
 };
@@ -107,10 +92,10 @@ exports.getUserRecipes = async (req, res) => {
 // Fungsi untuk mendapatkan resep favorit pengguna yang sedang login
 exports.getMyFavoriteRecipes = async (req, res) => {
     const userId = req.user.userId;
-    console.log(`>>> Controller getMyFavoriteRecipes (DEBUGGING) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
+    console.log(`>>> Controller getMyFavoriteRecipes (PERBAIKAN) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
     try {
-        // QUERY YANG SUDAH DISEDERHANAKAN (tanpa sub-query rating)
+        // QUERY PERBAIKAN: Mengambil data rating dan likes dengan benar, tidak di-hardcode.
         const query = `
             SELECT 
                 r.id, 
@@ -120,11 +105,14 @@ exports.getMyFavoriteRecipes = async (req, res) => {
                 r.cooking_time,
                 r.difficulty,
                 r.price,
-                r.favorites_count AS likes,
-                0 AS rating -- Kita beri nilai rating 0 untuk sementara
+                COALESCE(r.favorites_count, 0) AS total_reviews,
+                COALESCE(AVG(rev.rating), 0) AS avg_rating
             FROM recipes AS r
             INNER JOIN recipe_favorites AS rf ON r.id = rf.recipe_id
+            LEFT JOIN reviews AS rev ON r.id = rev.recipe_id
             WHERE rf.user_id = ?
+            GROUP BY r.id
+            ORDER BY rf.created_at DESC
         `;
 
         const [recipes] = await db.query(query, [userId]);
@@ -133,7 +121,7 @@ exports.getMyFavoriteRecipes = async (req, res) => {
         res.status(200).json({ status: 'success', message: 'Resep favorit berhasil diambil.', data: recipes });
 
     } catch (error) {
-        console.error('Error saat mengambil resep favorit (DEBUGGING):', error);
+        console.error('Error saat mengambil resep favorit (PERBAIKAN):', error);
         res.status(500).json({ status: 'error', message: 'Terjadi kesalahan pada server saat mengambil resep favorit.', error: error.message });
     }
 };
