@@ -19,7 +19,7 @@ import 'package:masak2/view/auth/register_page.dart'; // Import RegisterPage
 import 'package:masak2/view/recipe/resep_detail_page.dart';
 
 class ProfilUtama extends StatefulWidget {
-  final int? userId; 
+  final int? userId;
   const ProfilUtama({super.key, this.userId});
 
   @override
@@ -29,7 +29,7 @@ class ProfilUtama extends StatefulWidget {
 class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin {
 
   late TabController _tabController;
-  
+
   UserProfile? _userProfile;
   List<Food> _userRecipes = [];
   List<Food> _favoriteRecipes = [];
@@ -49,7 +49,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
   void initState() {
     super.initState();
     // INI ADALAH SATU-SATUNYA TEMPAT _tabController HARUS DIINISIALISASI
-    _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this); 
+    _tabController = TabController(length: _isMyProfile ? 2 : 1, vsync: this);
     _checkAndLoadData(); // Panggil fungsi untuk memeriksa status login dan memuat data
   }
 
@@ -100,14 +100,14 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       });
       return; // Stop loading data as it's a guest view
     } else if (!_isLoggedIn && !_isMyProfile) { // Guest trying to view other profile while not logged in
-        // If the intent is to allow guests to see *other user's public profiles*,
-        // this logic needs adjustment to proceed with fetching public profile data.
-        // For this task, interpreting "guest" as seeing login/register view.
-        setState(() {
-          _isLoading = false;
-          _errorMessage = "Silakan login untuk melihat profil ini."; // Generic message for unauthenticated access
-        });
-        return;
+      // If the intent is to allow guests to see *other user's public profiles*,
+      // this logic needs adjustment to proceed with fetching public profile data.
+      // For this task, interpreting "guest" as seeing login/register view.
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Silakan login untuk melihat profil ini."; // Generic message for unauthenticated access
+      });
+      return;
     }
 
     // Adjust tab controller length based on whether it's my profile or another user's
@@ -124,7 +124,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       final user = await _fetchUserProfile();
       final recipes = await _fetchUserRecipes(user.id);
       final favorites = _isMyProfile ? await _fetchFavoriteRecipes() : <Food>[];
-      
+
       if (mounted) {
         setState(() {
           _userProfile = user;
@@ -142,12 +142,12 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       }
     }
   }
-  
+
   Future<UserProfile> _fetchUserProfile() async {
     final baseUrl = dotenv.env['BASE_URL'];
     final endpoint = _isMyProfile ? '/users/me' : '/users/${widget.userId}';
     final headers = await _getAuthHeaders();
-    
+
     final uri = Uri.parse('$baseUrl$endpoint?cache_buster=${DateTime.now().millisecondsSinceEpoch}');
     final response = await http.get(uri, headers: headers);
 
@@ -157,7 +157,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     } else if (response.statusCode == 401) { // Unauthorized, possibly expired token or no token for 'me' endpoint
       throw Exception('Sesi Anda telah berakhir atau tidak terautentikasi. Silakan login kembali.');
     } else if (response.statusCode == 404 && !_isMyProfile) {
-        throw Exception('Profil pengguna tidak ditemukan.');
+      throw Exception('Profil pengguna tidak ditemukan.');
     } else {
       throw Exception('Gagal memuat profil (Status: ${response.statusCode}) - Body: ${response.body}');
     }
@@ -172,7 +172,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       List<dynamic> body = json.decode(response.body)['data'];
       return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
     } else if (response.statusCode == 401) {
-        throw Exception('Tidak memiliki akses untuk melihat resep pengguna ini.');
+      throw Exception('Tidak memiliki akses untuk melihat resep pengguna ini.');
     }
     else {
       throw Exception('Gagal memuat resep pengguna.');
@@ -183,12 +183,12 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     final baseUrl = dotenv.env['BASE_URL'];
     final headers = await _getAuthHeaders(); // Memastikan headers diambil dengan token jika ada
     final response = await http.get(Uri.parse('$baseUrl/users/me/favorites'), headers: headers);
-      
+
     if (response.statusCode == 200) {
       List<dynamic> body = json.decode(response.body)['data'];
       return body.map((dynamic item) => Food.fromJson(item as Map<String, dynamic>)).toList();
     } else if (response.statusCode == 401) {
-        throw Exception('Tidak memiliki akses untuk melihat resep favorit.');
+      throw Exception('Tidak memiliki akses untuk melihat resep favorit.');
     }
     else {
       throw Exception('Gagal memuat resep favorit.');
@@ -197,26 +197,26 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
 
   void _navigateToEditProfile() async {
     final result = await Navigator.push(
-      context, 
-      MaterialPageRoute(builder: (context) => const EditProfil())
+        context,
+        MaterialPageRoute(builder: (context) => const EditProfil())
     );
     if (result == true && mounted) {
       _checkAndLoadData(); // Reload all data after edit
     }
   }
-  
-  void _navigateToFollowerPage(int initialIndex, int userId) async {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MengikutiPengikut(userId: userId),
-          settings: RouteSettings(arguments: initialIndex),
-        ),
-      );
 
-      if (result == true && mounted) {
-        _checkAndLoadData(); // Reload all data after follow/unfollow
-      }
+  void _navigateToFollowerPage(int initialIndex, int userId) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MengikutiPengikut(userId: userId),
+        settings: RouteSettings(arguments: initialIndex),
+      ),
+    );
+
+    if (result == true && mounted) {
+      _checkAndLoadData(); // Reload all data after follow/unfollow
+    }
   }
 
   Future<void> _toggleFollow() async {
@@ -226,7 +226,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     // Tentukan endpoint berdasarkan status follow saat ini
     final String action = _userProfile!.isFollowedByMe ? 'unfollow' : 'follow';
     final url = '${dotenv.env['BASE_URL']}/users/${_userProfile!.id}/$action';
-    
+
     try {
       final response = await http.post(
         Uri.parse(url),
@@ -268,7 +268,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     }
 
     // If not logged in and userId is null (meaning 'my profile' view), show guest view
-    if (!_isLoggedIn && _isMyProfile) { 
+    if (!_isLoggedIn && _isMyProfile) {
       return _buildGuestView(); // _buildGuestView sudah mengembalikan Scaffold
     }
 
@@ -293,7 +293,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
 
     // Ini adalah tampilan profil utama (baik profil sendiri maupun profil pengguna lain)
     // PERBAIKAN: Bungkus RefreshIndicator dengan Scaffold agar memiliki Material ancestor
-    return Scaffold( 
+    return Scaffold(
       body: RefreshIndicator(
         onRefresh: _checkAndLoadData, // Gunakan fungsi _checkAndLoadData untuk refresh data
         child: _buildProfileBody(_userProfile!), // _buildProfileBody mengembalikan Column, bukan Scaffold
@@ -306,7 +306,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        
+
         elevation: 0, // Hilangkan bayangan jika mau tampilan flat
         title: Text(
           'Profil',
@@ -392,9 +392,9 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: _isMyProfile 
-                ? [_buildUserRecipesTab(), _buildFavoritesTab()]
-                : [_buildUserRecipesTab()], // Hanya tab resep jika bukan profil sendiri
+              children: _isMyProfile
+                  ? [_buildUserRecipesTab(), _buildFavoritesTab()]
+                  : [_buildUserRecipesTab()], // Hanya tab resep jika bukan profil sendiri
             ),
           ),
         ],
@@ -411,7 +411,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       final fullUrl = '$baseUrl$profilePicPath?v=${DateTime.now().millisecondsSinceEpoch}';
       profileImage = NetworkImage(fullUrl);
     } else {
-      profileImage = const AssetImage('images/default_avatar.png'); 
+      profileImage = const AssetImage('images/default_avatar.png');
     }
 
     return Padding(
@@ -453,7 +453,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
                     ]
                   ],
                 ),
-                const SizedBox(height: 2), 
+                const SizedBox(height: 2),
                 Text(
                   '@${user.username}',
                   style: const TextStyle(fontSize: 15, color: Colors.grey),
@@ -498,7 +498,7 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
       ],
     );
   }
-  
+
   Widget _buildMyProfileActions() {
     return Row(
       children: [
@@ -600,17 +600,17 @@ class _ProfilUtamaState extends State<ProfilUtama> with TickerProviderStateMixin
 
   Widget _buildUserRecipesTab() {
     return _userRecipes.isEmpty
-      ? const Center(child: Text("Pengguna ini belum memiliki resep."))
-      : _buildRecipeGrid(_userRecipes);
+        ? const Center(child: Text("Pengguna ini belum memiliki resep."))
+        : _buildRecipeGrid(_userRecipes);
   }
-  
+
   Widget _buildFavoritesTab() {
     // Pastikan ini tidak akan dipanggil jika _isMyProfile false
-    if (!_isMyProfile) return Container(); 
-    
+    if (!_isMyProfile) return Container();
+
     return _favoriteRecipes.isEmpty
-      ? const Center(child: Text("Anda belum memiliki resep favorit."))
-      : _buildRecipeGrid(_favoriteRecipes);
+        ? const Center(child: Text("Anda belum memiliki resep favorit."))
+        : _buildRecipeGrid(_favoriteRecipes);
   }
 
   Widget _buildRecipeGrid(List<Food> recipes) {

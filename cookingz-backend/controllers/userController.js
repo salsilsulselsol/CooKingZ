@@ -55,20 +55,43 @@ exports.getUserRecipes = async (req, res) => {
         console.log(`>>> Controller getUserRecipes (DEBUGGING) BERHASIL DICAPAI! untuk user_id: ${userId} <<<`);
 
         // QUERY YANG SUDAH DISEDERHANAKAN (tanpa sub-query rating)
+//        const query = `
+//            SELECT
+//                r.id,
+//                r.title,
+//                r.description,
+//                r.image_url,
+//                r.cooking_time,
+//                r.difficulty,
+//                r.price,
+//                r.favorites_count AS likes,
+//                0 AS rating  -- Kita beri nilai rating 0 untuk sementara
+//            FROM recipes AS r
+//            WHERE r.user_id = ?
+//        `;
+
         const query = `
-            SELECT 
-                r.id, 
-                r.title, 
-                r.description, 
-                r.image_url, 
-                r.cooking_time,
-                r.difficulty,
-                r.price,
-                r.favorites_count AS likes,
-                0 AS rating  -- Kita beri nilai rating 0 untuk sementara
-            FROM recipes AS r
-            WHERE r.user_id = ?
-        `;
+                    SELECT
+                        r.id,
+                        r.title,
+                        r.description,
+                        r.image_url,
+                        r.cooking_time,
+                        r.difficulty,
+                        r.price,
+                        COALESCE(r.favorites_count, 0) AS total_reviews,
+                        COALESCE(AVG(rev.rating), 0) AS avg_rating
+                    FROM
+                        recipes AS r
+                    LEFT JOIN
+                        reviews AS rev ON r.id = rev.recipe_id
+                    WHERE
+                        r.user_id = ?
+                    GROUP BY
+                        r.id
+                    ORDER BY
+                        r.created_at DESC;
+                `;
 
         const [recipes] = await db.query(query, [userId]);
         
