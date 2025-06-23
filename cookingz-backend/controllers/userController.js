@@ -398,3 +398,47 @@ exports.getAllLatestUsers = async (req, res) => {
         });
     }
 };
+
+// Fungsi untuk mendapatkan pengguna terbaik berdasarkan rating
+exports.getBestUsers = async (req, res) => {
+  console.log('>>> Controller getBestUsers BERHASIL DICAPAI! <<<');
+
+  try {
+    const query = `
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        u.email,
+        u.cooking_level,
+        u.bio,
+        u.profile_picture,
+        u.created_at,
+        COALESCE(AVG(rv.rating), 0) AS average_rating,
+        COUNT(r.id) AS recipe_count
+      FROM users u
+      LEFT JOIN recipes r ON u.id = r.user_id
+      LEFT JOIN reviews rv ON r.id = rv.recipe_id
+      GROUP BY u.id
+      HAVING COUNT(r.id) > 0
+      ORDER BY average_rating DESC, recipe_count DESC
+      LIMIT 10
+    `;
+
+    const [bestUsers] = await db.query(query);
+
+    console.log(`Fetched best users count: ${bestUsers.length}`);
+    res.status(200).json({
+      status: 'success',
+      message: 'Pengguna terbaik berhasil diambil',
+      data: bestUsers
+    });
+  } catch (error) {
+    console.error('Error fetching best users:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Gagal mengambil pengguna terbaik',
+      error: error.message
+    });
+  }
+};

@@ -1,5 +1,3 @@
-// File: lib/view/home/pengguna_terbaik.dart
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:masak2/view/profile/profil/profil_utama.dart';
@@ -8,9 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:masak2/view/component/bottom_navbar.dart';
 import 'package:masak2/view/component/header_b_n_s.dart';
-import 'package:masak2/view/component/grid_pengguna.dart'; // Import ChefCard yang sudah diupdate
+import 'package:masak2/view/component/grid_pengguna.dart';
 import '../../theme/theme.dart';
-import '../../models/user_profile_model.dart'; // Import UserProfile model
+import '../../models/user_profile_model.dart';
 
 class PenggunaTerbaik extends StatefulWidget {
   const PenggunaTerbaik({super.key});
@@ -22,12 +20,12 @@ class PenggunaTerbaik extends StatefulWidget {
 class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
   List<UserProfile> _popularUsers = [];
   List<UserProfile> _latestUsers = [];
-  int? _currentUserId; // <<< LANGKAH 1: TAMBAHKAN VARIABEL INI
+  int? _currentUserId;
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
 
-  final String _baseUrl = 'http://localhost:3000'; // <<< GANTI DENGAN IP BACKEND ANDA
+  final String _baseUrl = 'http://localhost:3000'; // Replace with your backend URL
 
   @override
   void initState() {
@@ -36,7 +34,7 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
   }
 
   Future<void> _fetchAllUsersData() async {
-    print('DEBUG PTERBAIK: Mulai fetch semua data pengguna...');
+    print('DEBUG PTERBAIK: Starting to fetch all user data...');
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -47,34 +45,34 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
 
-      // <<< LANGKAH 2: AMBIL ID PENGGUNA YANG LOGIN
+      // Get current user ID
       setState(() {
         _currentUserId = prefs.getInt('id');
       });
 
-      // --- Fetch Pengguna Populer (dari /home endpoint) ---
-      final uriHome = Uri.parse('$_baseUrl/home');
-      final responseHome = await http.get(
-        uriHome,
+      // --- Fetch Best Users (from /users/best endpoint) ---
+      final uriBestUsers = Uri.parse('$_baseUrl/users/best');
+      final responseBestUsers = await http.get(
+        uriBestUsers,
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
 
-      if (responseHome.statusCode == 200) {
-        final Map<String, dynamic> responseDataHome = json.decode(responseHome.body);
-        _popularUsers = (responseDataHome['data']['bestUsers'] as List)
+      if (responseBestUsers.statusCode == 200) {
+        final Map<String, dynamic> responseDataBestUsers = json.decode(responseBestUsers.body);
+        _popularUsers = (responseDataBestUsers['data'] as List)
             .map((jsonItem) => UserProfile.fromJson(jsonItem))
             .toList();
-        print('DEBUG PTERBAIK: Pengguna Populer berhasil diparsing. Jumlah: ${_popularUsers.length}');
+        print('DEBUG PTERBAIK: Best users parsed successfully. Count: ${_popularUsers.length}');
       } else {
-        print('[ERROR] PTERBAIK: Gagal memuat Pengguna Populer: ${responseHome.statusCode} ${responseHome.body}');
+        print('[ERROR] PTERBAIK: Failed to load best users: ${responseBestUsers.statusCode} ${responseBestUsers.body}');
         _hasError = true;
-        _errorMessage = 'Gagal memuat pengguna populer.';
+        _errorMessage = 'Failed to load best users.';
       }
 
-      // --- Fetch Pengguna Terbaru (dari /users/latest endpoint) ---
+      // --- Fetch Latest Users (from /users/latest endpoint) ---
       final uriLatestUsers = Uri.parse('$_baseUrl/users/latest');
       final responseLatestUsers = await http.get(
         uriLatestUsers,
@@ -89,40 +87,40 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
         _latestUsers = (responseDataLatestUsers['data'] as List)
             .map((jsonItem) => UserProfile.fromJson(jsonItem))
             .toList();
-        print('DEBUG PTERBAIK: Pengguna Terbaru berhasil diparsing. Jumlah: ${_latestUsers.length}');
+        print('DEBUG PTERBAIK: Latest users parsed successfully. Count: ${_latestUsers.length}');
       } else {
-        print('[ERROR] PTERBAIK: Gagal memuat Pengguna Terbaru: ${responseLatestUsers.statusCode} ${responseLatestUsers.body}');
+        print('[ERROR] PTERBAIK: Failed to load latest users: ${responseLatestUsers.statusCode} ${responseLatestUsers.body}');
         _hasError = true;
-        _errorMessage = 'Gagal memuat pengguna terbaru.';
+        _errorMessage = 'Failed to load latest users.';
       }
 
       setState(() {
         _isLoading = false;
         if (_hasError) {
-          _errorMessage = _errorMessage.isEmpty ? 'Gagal memuat data pengguna.' : _errorMessage;
+          _errorMessage = _errorMessage.isEmpty ? 'Failed to load user data.' : _errorMessage;
         }
       });
-      print('DEBUG PTERBAIK: Fetch semua data pengguna selesai.');
+      print('DEBUG PTERBAIK: Finished fetching all user data.');
     } catch (e) {
       setState(() {
         _hasError = true;
-        _errorMessage = 'Terjadi kesalahan saat memuat data pengguna: $e';
+        _errorMessage = 'Error occurred while loading user data: $e';
         _isLoading = false;
       });
-      print('[EXCEPTION] PTERBAIK: Error fetching semua pengguna: $e');
+      print('[EXCEPTION] PTERBAIK: Error fetching all users: $e');
     }
   }
 
   Future<void> _toggleFollow(int userId) async {
-    print('DEBUG PTERBAIK: Toggle follow untuk user ID: $userId');
+    print('DEBUG PTERBAIK: Toggle follow for user ID: $userId');
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Follow/Unfollow user ID $userId (belum diimplementasikan)')),
+      SnackBar(content: Text('Follow/Unfollow user ID $userId (not implemented yet)')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG PTERBAIK: build method dipanggil. isLoading: $_isLoading, hasError: $_hasError');
+    print('DEBUG PTERBAIK: build method called. isLoading: $_isLoading, hasError: $_hasError');
     return BottomNavbar(
       Scaffold(
         backgroundColor: AppTheme.backgroundColor,
@@ -139,45 +137,45 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _hasError
-                        ? Center(
-                            child: Text(
-                              _errorMessage,
-                              style: const TextStyle(color: Colors.red),
-                              textAlign: TextAlign.center,
-                            ),
-                          )
-                        : SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  height: 320,
-                                  decoration: const BoxDecoration(
-                                    color: AppTheme.primaryColor,
-                                    borderRadius: BorderRadius.all(Radius.circular(30)),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildSectionTitle("Pengguna Populer", isGreenBackground: true),
-                                      _buildHorizontalUserList(_popularUsers, useGreenBackground: true),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.only(top: AppTheme.spacingXXLarge),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildSectionTitle("Pengguna Terbaru", isGreenBackground: false),
-                                      _buildVerticalUsersGrid(_latestUsers, useGreenBackground: false),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 90),
-                              ],
-                            ),
-                    ),
+                    ? Center(
+                  child: Text(
+                    _errorMessage,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+                    : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 320,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primaryColor,
+                          borderRadius: BorderRadius.all(Radius.circular(30)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionTitle("Pengguna Populer", isGreenBackground: true),
+                            _buildHorizontalUserList(_popularUsers, useGreenBackground: true),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.only(top: AppTheme.spacingXXLarge),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionTitle("Pengguna Terbaru", isGreenBackground: false),
+                            _buildVerticalUsersGrid(_latestUsers, useGreenBackground: false),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 90),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -210,12 +208,13 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingLarge),
           child: Text(
-            'Tidak ada pengguna ditemukan.',
+            'No users found.',
             style: TextStyle(color: useGreenBackground ? Colors.white70 : Colors.grey),
           ),
         ),
       );
     }
+
     return Expanded(
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -228,7 +227,6 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
             isFollowing: false,
             onFollowToggle: () => _toggleFollow(userProfile.id),
             useGreenBackground: useGreenBackground,
-            // <<< LANGKAH 3: TAMBAHKAN LOGIKA IF/ELSE DI SINI
             onTap: () {
               if (userProfile.id == _currentUserId) {
                 Navigator.push(context, MaterialPageRoute(
@@ -252,12 +250,13 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
         child: Padding(
           padding: const EdgeInsets.all(AppTheme.spacingLarge),
           child: Text(
-            'Tidak ada pengguna ditemukan.',
+            'No users found.',
             style: TextStyle(color: useGreenBackground ? Colors.white70 : Colors.grey),
           ),
         ),
       );
     }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXXLarge),
       child: GridView.builder(
@@ -277,7 +276,6 @@ class _PenggunaTerbaikState extends State<PenggunaTerbaik> {
             isFollowing: userProfile.isFollowedByMe,
             onFollowToggle: () => _toggleFollow(userProfile.id),
             useGreenBackground: useGreenBackground,
-            // <<< LANGKAH 3 (LAGI): TAMBAHKAN LOGIKA IF/ELSE DI SINI
             onTap: () {
               if (userProfile.id == _currentUserId) {
                 Navigator.push(context, MaterialPageRoute(

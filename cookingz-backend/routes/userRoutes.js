@@ -15,10 +15,13 @@ router.get('/me', authenticateToken, userController.getMyProfile);
 // GET resep favorit pengguna yang sedang login
 router.get('/me/favorites', authenticateToken, userController.getMyFavoriteRecipes);
 
-// PUT (update) profil pengguna yang sedang login (membutuhkan autentikasi dan upload file opsional)
-router.put('/me', authenticateToken, upload.single('profile_picture'), userController.updateMyProfile);
+// <<< RUTE BARU: GET PENGGUNA TERBAIK (BERDASARKAN RATING) >>>
+router.get('/best', optionalAuthenticateToken, userController.getBestUsers);
 
 router.get('/latest', userController.getAllLatestUsers); // <<< TAMBAHKAN INI
+
+// PUT (update) profil pengguna yang sedang login (membutuhkan autentikasi dan upload file opsional)
+router.put('/me', authenticateToken, upload.single('profile_picture'), userController.updateMyProfile);
 
 // POST untuk follow user lain
 router.post('/:id/follow', authenticateToken, userController.followUser);
