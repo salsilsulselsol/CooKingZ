@@ -10,7 +10,6 @@ class ScheduledFood {
   final int id;
   final int userId;
   final int recipeId;
-  final String mealType;
   final DateTime date;
 
   // Data dari tabel recipes (disesuaikan dengan alias dari query SQL)
@@ -29,7 +28,6 @@ class ScheduledFood {
     required this.id,
     required this.userId,
     required this.recipeId,
-    required this.mealType,
     required this.date,
     this.recipeTitle,
     this.recipeDescription,
@@ -47,7 +45,6 @@ class ScheduledFood {
       id: json['id'] as int,
       userId: json['user_id'] as int,
       recipeId: json['recipe_id'] as int,
-      mealType: json['meal_type'] as String,
       date: DateTime.parse(json['date']),
 
       recipeTitle: json['recipe_title'] as String?,
@@ -70,7 +67,6 @@ class ScheduledFood {
     "id": id,
     "user_id": userId,
     "recipe_id": recipeId,
-    "meal_type": mealType,
     "date": date.toIso8601String(),
 
     "recipe_title": recipeTitle,
