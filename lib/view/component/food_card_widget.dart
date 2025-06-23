@@ -79,28 +79,6 @@ class FoodCard extends StatelessWidget {
           
           Positioned(
             top: AppTheme.spacingMedium,
-            right: AppTheme.spacingMedium,
-            child: GestureDetector(
-              onTap: onFavoritePressed,
-              child: Container(
-                width: AppTheme.favoriteButtonSize,
-                height: AppTheme.favoriteButtonSize,
-                child: Center(
-                  child: Image.asset(
-                    'images/love.png',
-                    width: AppTheme.favoriteIconSize,
-                    height: AppTheme.favoriteIconSize,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.favorite_border, color: Colors.white, size: 16);
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          Positioned(
-            top: AppTheme.spacingMedium,
             left: AppTheme.spacingMedium,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
