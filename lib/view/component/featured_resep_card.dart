@@ -1,7 +1,9 @@
+// File: lib/view/component/featured_resep_card.dart
+
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 
-class FeaturedRecipeCard extends StatefulWidget {
+class FeaturedRecipeCard extends StatelessWidget {
   final Map<String, dynamic> recipe;
 
   const FeaturedRecipeCard({
@@ -9,22 +11,37 @@ class FeaturedRecipeCard extends StatefulWidget {
     required this.recipe,
   }) : super(key: key);
 
-  @override
-  State<FeaturedRecipeCard> createState() => _FeaturedRecipeCardState();
-}
-
-class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
-  bool _isLoading = true;
+  // Helper widget untuk membuat item info (Ikon + Teks) agar kode tidak berulang
+  Widget _buildInfoItem(BuildContext context, {required IconData icon, required Color iconColor, required String text}) {
+    return Padding(
+      // Beri sedikit jarak horizontal untuk setiap item
+      padding: const EdgeInsets.symmetric(horizontal: 4.0), 
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: iconColor, size: 16),
+          const SizedBox(width: 4),
+          Text(text, style: AppTheme.foodInfoStyle),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final recipe = widget.recipe;
-    final String imagePath = recipe['image'] ?? 'images/placeholder.png';
-    final String name = recipe['name'] ?? 'Resep Tanpa Nama';
+    // Ekstrak semua data dari map
+    final String name = recipe['name'] ?? 'Resep Unggulan';
+    final String imageUrl = recipe['imageUrl'] ?? '';
     final String description = recipe['description'] ?? 'Tidak ada deskripsi';
-    final String likes = recipe['likes'] ?? '0';
+    final String likes = recipe['likes']?.toString() ?? '0';
     final String time = recipe['time'] ?? 'N/A';
-    final String price = recipe['price'] ?? '0';
+    final String difficulty = recipe['difficulty'] ?? 'Mudah';
+    final String price = recipe['price']?.toString() ?? '0';
+    
+    final num ratingValue = recipe['avg_rating'] ?? 0.0;
+    final String rating = (ratingValue > 0) ? ratingValue.toStringAsFixed(1) : 'N/A';
+    
+    final recipeId = recipe['id'];
 
     return Container(
       margin: const EdgeInsets.only(top: 5, bottom: 15),
@@ -36,19 +53,20 @@ class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
             color: Colors.black.withOpacity(0.1),
             spreadRadius: 1,
             blurRadius: 5,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: GestureDetector(
         onTap: () {
-          final id = recipe['id']?.toString() ?? '';
-          Navigator.pushNamed(context, '/detail-resep/$id');
+          if (recipeId != null) {
+            Navigator.pushNamed(context, '/detail-resep/$recipeId');
+          }
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Gambar dengan loader dan tombol favorite
+            // --- Bagian Gambar (tidak berubah) ---
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
               child: Stack(
@@ -57,41 +75,26 @@ class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
                     height: AppTheme.foodCardImageHeight,
                     width: double.infinity,
                     color: Colors.grey[200],
-                    child: Image.asset(
-                      imagePath,
-                      height: AppTheme.foodCardImageHeight,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                        if (wasSynchronouslyLoaded || frame != null) {
-                          Future.microtask(() {
-                            if (mounted) setState(() => _isLoading = false);
-                          });
-                        }
-                        return child;
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(Icons.broken_image, size: 60, color: Colors.grey[600]),
-                        );
-                      },
-                    ),
+                    child: imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            height: AppTheme.foodCardImageHeight,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(child: CircularProgressIndicator());
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(Icons.broken_image, size: 60, color: Colors.grey[600]),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Icon(Icons.image_not_supported, size: 60, color: Colors.grey[600]),
+                          ),
                   ),
-                  // Loader pojok kanan atas
-                  if (_isLoading)
-                    Positioned(
-                      top: AppTheme.spacingMedium,
-                      right: AppTheme.spacingMedium + 40,
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  // Tombol Favorite
                   Positioned(
                     top: AppTheme.spacingMedium,
                     right: AppTheme.spacingMedium,
@@ -107,14 +110,9 @@ class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
                             height: 30,
                           ),
                         ),
-                        onPressed: () {
-                          print('Favorite button pressed');
-                        },
+                        onPressed: () => print('Favorite button pressed'),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 30,
-                          minHeight: 30,
-                        ),
+                        constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                       ),
                     ),
                   ),
@@ -122,7 +120,7 @@ class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
               ),
             ),
 
-            // Informasi resep
+            // --- Bagian Informasi Resep ---
             Transform.translate(
               offset: const Offset(0, -5),
               child: Center(
@@ -133,7 +131,7 @@ class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
                     borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
                     boxShadow: [AppTheme.boxShadowSmall],
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   child: Column(
                     children: [
                       Text(
@@ -152,58 +150,21 @@ class _FeaturedRecipeCardState extends State<FeaturedRecipeCard> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: AppTheme.spacingSmall),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+
+                      // <<< PERUBAHAN UTAMA: MENGGUNAKAN WRAP UNTUK SEMUA INFO >>>
+                      Wrap(
+                        alignment: WrapAlignment.center, // Pusatkan semua item
+                        spacing: 12.0, // Jarak horizontal antar item
+                        runSpacing: 4.0, // Jarak vertikal jika item turun ke baris baru
                         children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                likes,
-                                style: AppTheme.foodInfoStyle.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.accentTeal,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.spacingXSmall),
-                                Icon(
-                                Icons.favorite,
-                                color: AppTheme.accentTeal,
-                                size: 10
-                                ),
-                              
-                            ],
-                          ),
-                          const SizedBox(width: AppTheme.spacingLarge),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Opacity(
-                                opacity: 0.7,
-                                child: Image.asset(
-                                  'images/alarm.png',
-                                  width: AppTheme.iconSizeSmall,
-                                  height: AppTheme.iconSizeSmall,
-                                ),
-                              ),
-                              const SizedBox(width: AppTheme.spacingXSmall),
-                              Text(
-                                time,
-                                style: AppTheme.foodInfoStyle.copyWith(
-                                  color: AppTheme.accentTeal,
-                                ),
-                                
-                              ),
-                              const SizedBox(width: AppTheme.spacingLarge),
-                              Text(
-                          "RP $price",
-                          style: AppTheme.foodPriceStyle,
-                        ),
-                            ],
-                          ),
+                          _buildInfoItem(context, icon: Icons.star, iconColor: Colors.amber, text: rating),
+                          _buildInfoItem(context, icon: Icons.favorite, iconColor: Colors.redAccent, text: likes),
+                          _buildInfoItem(context, icon: Icons.timer_outlined, iconColor: AppTheme.accentTeal, text: time),
+                          _buildInfoItem(context, icon: Icons.whatshot_outlined, iconColor: Colors.deepOrange, text: difficulty),
+                          _buildInfoItem(context, icon: Icons.paid_outlined, iconColor: Colors.green, text: "Rp $price"),
                         ],
-                      ),
-                      
+                      )
+                      // <<< AKHIR PERUBAHAN >>>
                     ],
                   ),
                 ),

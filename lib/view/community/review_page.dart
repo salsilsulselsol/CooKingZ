@@ -1,13 +1,14 @@
-// File: lib/view/community/review_page.dart (Versi Final - Khusus untuk Balasan Diskusi)
+// File: lib/view/community/review_page.dart (Versi Final dengan Expand/Collapse)
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/theme.dart';
-import '../../view/component/header_back.dart'; // Ganti dengan path Anda
-import '../../view/component/bottom_navbar.dart'; // Ganti dengan path Anda
+import '../../view/component/header_back.dart';
+import '../../view/component/bottom_navbar.dart';
 
 class ReviewsPage extends StatefulWidget {
   final int recipeId;
@@ -29,11 +30,37 @@ class _ReviewsPageState extends State<ReviewsPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   Map<String, dynamic>? _recipeData;
+  int? _loggedInUserId;
+  final Set<int> _expandedComments = {}; // State untuk melacak komentar yang terbuka
 
   @override
   void initState() {
     super.initState();
-    _fetchPageData();
+    _initializePage();
+  }
+
+  Future<void> _initializePage() async {
+    await _loadCurrentUser();
+    await _fetchPageData();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _loggedInUserId = prefs.getInt('user_id');
+      });
+    }
+  }
+
+  void _toggleReplies(int commentId) {
+    setState(() {
+      if (_expandedComments.contains(commentId)) {
+        _expandedComments.remove(commentId);
+      } else {
+        _expandedComments.add(commentId);
+      }
+    });
   }
 
   Future<void> _fetchPageData() async {
@@ -44,7 +71,6 @@ class _ReviewsPageState extends State<ReviewsPage> {
     });
 
     try {
-      // Ambil detail resep untuk ditampilkan di card atas
       final recipeResponse = await http.get(Uri.parse('$_baseUrl/recipes/${widget.recipeId}'));
       if (recipeResponse.statusCode == 200) {
         if (mounted) setState(() => _recipeData = json.decode(recipeResponse.body));
@@ -52,7 +78,6 @@ class _ReviewsPageState extends State<ReviewsPage> {
         throw Exception('Gagal mengambil detail resep: ${recipeResponse.statusCode}');
       }
 
-      // Ambil semua ulasan dan balasannya
       final reviewsResponse = await http.get(Uri.parse('$_baseUrl/reviews/${widget.recipeId}'));
       if (reviewsResponse.statusCode == 200) {
         if (mounted) setState(() => _reviews = List<Map<String, dynamic>>.from(json.decode(reviewsResponse.body)));
@@ -90,7 +115,7 @@ class _ReviewsPageState extends State<ReviewsPage> {
                       children: [
                         Text(_errorMessage, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
                         const SizedBox(height: 16),
-                        ElevatedButton(onPressed: _fetchPageData, child: const Text('Coba Lagi')),
+                        ElevatedButton(onPressed: _initializePage, child: const Text('Coba Lagi')),
                       ],
                     ),
                   ),
@@ -112,7 +137,6 @@ class _ReviewsPageState extends State<ReviewsPage> {
       padding: const EdgeInsets.only(bottom: 90, top: 8),
       children: [
         if (_recipeData != null) _buildRecipeCard(_recipeData!),
-
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
           child: Text(
@@ -121,7 +145,6 @@ class _ReviewsPageState extends State<ReviewsPage> {
             style: TextStyle(fontSize: 15, color: AppTheme.textBrown.withOpacity(0.8)),
           ),
         ),
-
         if (_reviews.isEmpty)
           const Center(
             child: Padding(
@@ -141,8 +164,12 @@ class _ReviewsPageState extends State<ReviewsPage> {
     );
   }
 
+  // --- FUNGSI UTAMA YANG DIUBAH ---
   Widget _buildCommentThread({required Map<String, dynamic> comment, required int depth}) {
     final List<dynamic> replies = comment['replies'] ?? [];
+    final int commentId = comment['id'];
+    final bool isExpanded = _expandedComments.contains(commentId);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -152,12 +179,35 @@ class _ReviewsPageState extends State<ReviewsPage> {
             commentData: comment,
             onReply: () => _showReplyDialog(
               context: context,
-              parentId: comment['id'],
+              parentId: commentId,
               recipeId: widget.recipeId,
             ),
           ),
         ),
+
         if (replies.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(left: (depth * 16.0) + 16.0),
+            child: TextButton(
+              onPressed: () => _toggleReplies(commentId),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                isExpanded
+                    ? 'Sembunyikan Balasan'
+                    : 'Lihat ${replies.length} Balasan...',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+
+        if (isExpanded && replies.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(left: (depth * 16.0) + 16.0),
             child: Container(
@@ -176,8 +226,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
   }
 
   void _showReplyDialog({required BuildContext context, required int recipeId, required int parentId}) {
-    final TextEditingController _commentController = TextEditingController();
-    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+    final TextEditingController commentController = TextEditingController();
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -185,9 +235,9 @@ class _ReviewsPageState extends State<ReviewsPage> {
         return AlertDialog(
           title: const Text('Tulis Balasan'),
           content: Form(
-            key: _formKey,
+            key: formKey,
             child: TextFormField(
-              controller: _commentController,
+              controller: commentController,
               autofocus: true,
               decoration: const InputDecoration(hintText: 'Balasan Anda...'),
               validator: (value) {
@@ -201,10 +251,10 @@ class _ReviewsPageState extends State<ReviewsPage> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
             ElevatedButton(
               onPressed: () {
-                if (_formKey.currentState!.validate()) {
+                if (formKey.currentState!.validate()) {
                   _postComment(
                     recipeId: recipeId,
-                    comment: _commentController.text,
+                    comment: commentController.text,
                     parentId: parentId,
                   );
                   Navigator.pop(context);
@@ -219,23 +269,30 @@ class _ReviewsPageState extends State<ReviewsPage> {
   }
 
   Future<void> _postComment({required int recipeId, required String comment, int? parentId, int? rating}) async {
-    // ==============================================================================
-    // !! PENTING: Ganti `1` dengan ID pengguna yang sedang login dari state management Anda !!
-    const int currentUserId = 1; // <-- INI HANYA CONTOH, HARUS DINAMIS
-    // ==============================================================================
+    if (_loggedInUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda harus login untuk bisa membalas.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/reviews'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'user_id': currentUserId,
+          'user_id': _loggedInUserId,
           'recipe_id': recipeId,
           'comment': comment,
           'parent_id': parentId,
           'rating': rating,
         }),
       );
+
+      if (!mounted) return;
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Balasan berhasil dikirim!'), backgroundColor: Colors.green));
@@ -248,11 +305,10 @@ class _ReviewsPageState extends State<ReviewsPage> {
         throw Exception('Gagal mengirim: ${error['message']}');
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
     }
   }
-
-  // --- Widget-widget dan fungsi helper lainnya ---
 
   Widget _buildRecipeCard(Map<String, dynamic> recipe) {
     final String recipeImageUrl = recipe['image_url'] != null && (recipe['image_url'] as String).isNotEmpty
@@ -383,9 +439,15 @@ class _ReviewsPageState extends State<ReviewsPage> {
             child: Padding(
               padding: const EdgeInsets.only(right: 4.0, bottom: 4.0),
               child: TextButton.icon(
-                icon: Icon(Icons.reply, size: 16, color: AppTheme.primaryColor),
-                label: Text('Balas', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                onPressed: onReply,
+                icon: Icon(Icons.reply, size: 16, color: _loggedInUserId != null ? AppTheme.primaryColor : Colors.grey),
+                label: Text(
+                  'Balas',
+                  style: TextStyle(
+                    color: _loggedInUserId != null ? AppTheme.primaryColor : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: _loggedInUserId != null ? onReply : null,
                 style: TextButton.styleFrom(
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),

@@ -391,23 +391,32 @@ class _HomePageState extends State<HomePage> {
             physics: const ClampingScrollPhysics(), // Memungkinkan scroll horizontal
             itemBuilder: (context, index) {
               final recipe = _trendingRecipes[index];
+
+              // Asumsikan `_baseUrl` (contoh: 'http://192.168.100.44:3000') tersedia di dalam state class Anda.
+              // Buat URL gambar yang lengkap dengan aman.
+              final String fullImageUrl = (recipe.image != null && recipe.image!.isNotEmpty)
+                  ? _baseUrl + recipe.image!
+                  : ""; // Jadi string kosong jika tidak ada gambar
+
               return Row( // Menggunakan Row untuk menempatkan kartu dan separator
                 children: [
                   SizedBox( 
                     width: 250, 
                     child: TrendingRecipeCard(
-                      imagePath: recipe.image,
-                      title: recipe.name,
+                      // Kirim URL yang sudah lengkap ke parameter `imageUrl`
+                      imageUrl: fullImageUrl,
+                      title: recipe.name ?? 'Resep Baru',
                       description: recipe.description ?? 'Tidak ada deskripsi',
                       favorites: recipe.likes?.toString() ?? '0',
                       duration: recipe.cookingTime != null ? '${recipe.cookingTime} menit' : 'N/A',
-                      price: recipe.price ?? 'Gratis',
+                      // Pastikan price juga diubah ke String jika datanya bukan String
+                      price: recipe.price?.toString() ?? 'Gratis', 
                       detailRoute: '/detail-resep/${recipe.id}',
                     ),
                   ),
                   // Menambahkan SizedBox sebagai pemisah antar kotak
-                  if (index < _trendingRecipes.length - 1) // Jangan tambahkan setelah kotak terakhir
-                    const SizedBox(width: AppTheme.spacingMedium), // Sesuaikan lebar pemisah
+                  if (index < _trendingRecipes.length - 1)
+                    const SizedBox(width: 16), // Sesuaikan dengan AppTheme.spacingMedium jika ada
                 ],
               );
             },

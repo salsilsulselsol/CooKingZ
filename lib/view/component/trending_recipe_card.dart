@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../theme/theme.dart'; // Impor theme jika diperlukan untuk styling
 
 class TrendingRecipeCard extends StatelessWidget {
-  final String imagePath;
+  // 1. Ganti nama 'imagePath' menjadi 'imageUrl' agar lebih jelas maksudnya
+  final String imageUrl;
   final String title;
   final String description;
   final String favorites;
@@ -9,10 +11,10 @@ class TrendingRecipeCard extends StatelessWidget {
   final String price;
   final String detailRoute;
 
-
   const TrendingRecipeCard({
     Key? key,
-    required this.imagePath,
+    // 2. Sesuaikan constructor untuk menerima 'imageUrl'
+    required this.imageUrl,
     required this.title,
     required this.description,
     required this.favorites,
@@ -25,19 +27,13 @@ class TrendingRecipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navigate to detail page with the recipe ID
-        Navigator.pushNamed(
-          context,
-          detailRoute,
-        );
-          
+        Navigator.pushNamed(context, detailRoute);
       },
       child: Column(
         children: [
           Stack(
             clipBehavior: Clip.none,
             children: [
-              // Main container
               Container(
                 margin: const EdgeInsets.only(
                   left: 10,
@@ -47,25 +43,51 @@ class TrendingRecipeCard extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Image Container
+                    // --- PERBAIKAN UTAMA ADA DI SINI ---
                     ClipRRect(
-                      
                       borderRadius: const BorderRadius.all(Radius.circular(12)),
-                      child: Container(
-                        height: 180,
-                        width: 358,
-                        decoration: BoxDecoration(
-                          image: DecorationImage(
-                            image: AssetImage(imagePath),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
+                      // 3. Gunakan Image.network untuk menampilkan gambar dari URL
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              height: 180,
+                              width: 358,
+                              fit: BoxFit.cover,
+                              // Optional: Tampilkan loading indicator saat gambar diunduh
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  height: 180,
+                                  width: 358,
+                                  color: Colors.grey[200],
+                                  child: const Center(child: CircularProgressIndicator()),
+                                );
+                              },
+                              // Optional: Tampilkan placeholder jika gambar gagal dimuat
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  'images/placeholder.png', // Pastikan ada gambar ini di folder assets/images
+                                  height: 180,
+                                  width: 358,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          // Jika imageUrl kosong, tampilkan placeholder
+                          : Image.asset(
+                              'images/placeholder.png', // Pastikan ada gambar ini di folder assets/images
+                              height: 180,
+                              width: 358,
+                              fit: BoxFit.cover,
+                            ),
                     ),
-                    // Info Container
+                    // --- Akhir dari bagian yang diubah ---
+                    
+                    // Info Container (tidak perlu diubah)
                     Container(
                       height: 76,
                       width: 340,
+                      // ... sisa kode Anda tetap sama
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
