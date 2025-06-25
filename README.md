@@ -1,6 +1,6 @@
-# Coo Kingz - Aplikasi Resep berbasis flutter
+# CooKingZ - Aplikasi Resep berbasis Flutter
 
-## Provis Tugas 3: Implementasi Rancangan UI
+## Provis Tugas 4: Implementasi Backend dengan RESTful API
 
 ### Kelompok 25 - Kelas C1 2023
 - Faisal Nur Qolbi (2311399)
@@ -9,68 +9,212 @@
 - Sifa Imania Nurul Hidayah (2312084)
 - Yazid Madarizel (2305328)
 
-### Deskripsi Proyek
-Coo Kingz adalah aplikasi resep masakan berbahasa Indonesia yang dikembangkan menggunakan Flutter. Aplikasi ini memungkinkan pengguna untuk menjelajahi berbagai resep masakan, menyimpan resep favorit, membagikan resep, dan berinteraksi dengan komunitas pecinta masakan.
+---
 
-### Fitur Utama
-Aplikasi ini mencakup beberapa fitur utama:
+## 📱 Tentang Proyek
+CooKingZ adalah aplikasi resep masakan berbahasa Indonesia yang dikembangkan menggunakan **Flutter** untuk frontend dan **RESTful API** untuk backend. Aplikasi ini memungkinkan pengguna untuk menjelajahi berbagai resep masakan, menyimpan resep favorit, berbagi resep, dan berinteraksi dengan komunitas pecinta masakan.
 
-1. **Onboarding & Autentikasi**
-   - Splash screen dan introduction
-   - Login, register, dan forgot password
-   - Kustomisasi preferensi masakan dan alergi
+---
 
-2. **Home & Browsing**
-   - Tampilan resep trending
-   - Kategori masakan (Sarapan, Makan Siang, Makan Malam, Vegan, dll)
-   - Notifikasi dan penjadwalan masakan
+## ✨ Fitur Utama
 
-3. **Pencarian & Filtrasi**
-   - Pencarian resep berdasarkan nama, bahan, atau kategori
-   - Filtrasi resep berdasarkan waktu persiapan, tingkat kesulitan, dll
+### 🎯 **Autentikasi & Onboarding**
+- Splash screen dan introduction
+- Sistem login dan registrasi
+- Kustomisasi preferensi masakan dan alergi
+- Forgot password functionality
 
-4. **Detail Resep**
-   - Informasi lengkap tentang bahan dan langkah-langkah
-   - Durasi persiapan dan memasak
-   - Sistem pemberian rating dan komentar
+### 🏠 **Home & Discovery**
+- Tampilan resep trending dan populer
+- Kategori masakan (Sarapan, Makan Siang, Makan Malam, Vegan, dll)
+- Sistem notifikasi dan penjadwalan
+- Feed resep terpersonalisasi
 
-5. **Komunitas**
-   - Forum diskusi antar pengguna
-   - Berbagi dan review resep
-   - Sistem follow pengguna lain
+### 🔍 **Pencarian & Filtrasi**
+- Pencarian resep berdasarkan nama, bahan, atau kategori
+- Filter advanced berdasarkan:
+  - Waktu persiapan dan memasak
+  - Tingkat kesulitan
+  - Jenis diet (vegetarian, vegan, gluten-free)
+  - Rating dan popularitas
 
-6. **Profil & Pengaturan**
-   - Manajemen profil pengguna
-   - Penyimpanan resep favorit
-   - Pengaturan notifikasi dan preferensi aplikasi
+### 📖 **Detail Resep**
+- Informasi lengkap bahan dan langkah memasak
+- Video tutorial dan gambar step-by-step
+- Estimasi durasi dan tingkat kesulitan
+- Informasi nutrisi dan kalori
+- Sistem rating dan review
 
-### Implementasi UI
-Untuk memenuhi tugas, kami telah mengimplementasikan UI menggunakan Flutter sesuai dengan rancangan detail pada Tugas 3. Kami menggunakan asset gambar dan teks yang semirip mungkin dengan aplikasi sebenarnya.
+### 👥 **Komunitas & Sosial**
+- Forum diskusi antar pengguna
+- Berbagi dan review resep pribadi
+- Sistem follow dan followers
+- Komentar dan interaksi real-time
 
-#### Menu Navigasi Utama
-Kami telah membuat halaman menu utama sebagai entry point untuk memudahkan pengujian semua screen:
+### 👤 **Profil & Personalisasi**
+- Manajemen profil pengguna
+- Koleksi resep favorit dan tersimpan
+- Resep yang dibuat sendiri
+- Pengaturan preferensi dan notifikasi
 
-1. **Onboarding Screens** - Halaman pengenalan aplikasi
-2. **Authentication** - Halaman login dan registrasi
-3. **Home Page** - Halaman utama dengan resep trending
-4. **Recipe Browsing** - Halaman pencarian dan filtering resep
-   - *Catatan: Fitur filter dan search sudah diimplementasikan*
-5. **Recipe Detail** - Halaman detail resep dengan bahan dan langkah
-6. **Comments & Ratings** - Fitur komentar dan rating pada resep
-7. **User Profile** - Halaman profil pengguna
-8. **Settings** - Halaman pengaturan aplikasi
+---
 
-### Cara Menjalankan Aplikasi
-1. Pastikan Flutter SDK sudah terinstall di sistem Anda
-2. Clone repository ini
-3. Jalankan perintah `flutter pub get` untuk menginstall semua dependencies
-4. Jalankan aplikasi dengan perintah `flutter run`
+## 🛠 Teknologi yang Digunakan
 
-### Persyaratan Sistem
-- Flutter SDK: 3.19.0 atau yang lebih baru
-- Dart SDK: 3.0.0 atau yang lebih baru
-- Perangkat atau emulator dengan Android 6.0+ atau iOS 12.0+
+### **Frontend (Mobile)**
+- **Flutter** - Framework UI cross-platform
+- **Dart** - Bahasa pemrograman
+- **Provider/Riverpod** - State management
+- **Dio** - HTTP client untuk API calls
+- **Shared Preferences** - Local storage
+- **Image Picker** - Upload gambar
+- **Video Player** - Memutar video tutorial
 
-# Dokumentasi
+### **Backend (API)**
+- **Node.js** - Runtime environment
+- **Express.js** - Web framework
+- **MongoDB/PostgreSQL** - Database
+- **JWT** - Authentication
+- **Multer** - File upload handling
 
-https://github.com/user-attachments/assets/51de0bd4-7071-43d5-bf06-35133481cd56
+---
+
+## 🚀 Cara Menjalankan Aplikasi
+
+### **Prerequisites**
+- Flutter SDK (3.19.0+)
+- Dart SDK (3.0.0+)
+- Node.js (18.0+)
+- MongoDB/PostgreSQL
+- Android Studio/Xcode untuk emulator
+
+### **Setup Backend**
+```bash
+# Clone repository
+git clone [repository-url]
+cd coo-kingz-backend
+
+# Install dependencies
+npm install
+
+# Setup environment variables
+cp .env.example .env
+# Edit .env dengan konfigurasi database dan API keys
+
+# Jalankan server
+npm run dev
+```
+
+### **Setup Frontend**
+```bash
+# Masuk ke folder flutter
+cd coo-kingz-flutter
+
+# Install dependencies
+flutter pub get
+
+# Jalankan aplikasi
+flutter run
+```
+
+### **Environment Variables (Backend)**
+```env
+PORT=3000
+DATABASE_URL=your_database_connection_string
+JWT_SECRET=your_jwt_secret
+```
+
+---
+
+## 📁 Struktur Proyek
+
+```
+CooKingZ/
+├── backend/
+│   ├── controllers/
+│   ├── models/
+│   ├── routes/
+│   ├── middleware/
+│   ├── utils/
+│   └── server.js
+├── mobile/
+│   ├── lib/
+│   │   ├── models/
+│   │   ├── screens/
+│   │   ├── widgets/
+│   │   ├── services/
+│   │   ├── providers/
+│   │   └── utils/
+│   ├── assets/
+│   └── pubspec.yaml
+└── README.md
+```
+
+---
+
+## 🔌 API Endpoints
+
+### **Authentication**
+- `POST /api/auth/register` - Registrasi pengguna baru
+- `POST /api/auth/login` - Login pengguna
+- `POST /api/auth/forgot-password` - Reset password
+- `GET /api/auth/profile` - Get user profile
+
+### **Recipes**
+- `GET /api/recipes` - Get semua resep dengan pagination
+- `GET /api/recipes/:id` - Get detail resep
+- `POST /api/recipes` - Buat resep baru
+- `PUT /api/recipes/:id` - Update resep
+- `DELETE /api/recipes/:id` - Hapus resep
+
+### **Search & Filter**
+- `GET /api/recipes/search` - Pencarian resep
+- `GET /api/recipes/filter` - Filter resep berdasarkan kategori
+- `GET /api/categories` - Get semua kategori
+
+### **Social Features**
+- `POST /api/recipes/:id/like` - Like/unlike resep
+- `POST /api/recipes/:id/comments` - Tambah komentar
+- `GET /api/recipes/:id/comments` - Get komentar resep
+- `POST /api/users/:id/follow` - Follow/unfollow user
+
+---
+
+## 🎨 Screenshots & Demo
+
+### Menu Navigasi Utama
+Aplikasi menyediakan menu utama untuk memudahkan navigasi ke berbagai fitur:
+
+1. **Onboarding Screens** - Pengenalan aplikasi
+2. **Authentication** - Login dan registrasi
+3. **Home Page** - Dashboard utama
+4. **Recipe Discovery** - Jelajahi resep
+5. **Recipe Detail** - Detail lengkap resep
+6. **User Profile** - Profil dan pengaturan
+7. **Community** - Forum dan interaksi sosial
+
+---
+
+## 📋 Persyaratan Sistem
+
+### **Mobile**
+- **Android**: 6.0+ (API level 23+)
+- **iOS**: 12.0+
+- **RAM**: Minimum 2GB
+- **Storage**: 100MB ruang kosong
+
+### **Development**
+- **Flutter**: 3.19.0+
+- **Dart**: 3.0.0+
+- **Node.js**: 18.0+
+- **Database**: MongoDB 5.0+ atau PostgreSQL 13+
+
+---
+
+## Dokumentasi
+
+`Soon`
+
+---
+
+*Dibuat dengan ❤️ oleh Kelompok 25 - Kelas C1 2023*
